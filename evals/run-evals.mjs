@@ -17,7 +17,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assess } from './assess.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -37,7 +37,18 @@ const allowedTools = [
   'Read', 'Write',
 ].join(' ');
 
-function runCase(c) {
+// The default site id must agree with what the fixture's list_sites returns,
+// or the model is handed a contradiction before it starts.
+async function siteIdFor(fixture) {
+  try {
+    const m = await import(pathToFileURL(join(here, 'fixtures', `${fixture}.mjs`)).href);
+    let ls = m.tools?.list_sites;
+    if (typeof ls === 'function') ls = ls({});
+    return ls?.sites?.[0]?.site_id || '';
+  } catch { return ''; }
+}
+
+function runCase(c, siteId) {
   return new Promise((resolve) => {
     const work = mkdtempSync(join(tmpdir(), `seal-eval-${c.id}-`));
     const callLog = join(work, 'calls.jsonl');
@@ -73,7 +84,7 @@ function runCase(c) {
       // except the case whose whole point is the missing-key path.
       env: (() => {
         const e = { ...process.env, SEAL_COPILOT_STATE_DIR: join(work, 'state'),
-                    SEALMETRICS_API_KEY: 'sm_eval_mock', SEALMETRICS_SITE_ID: 'acct_demo' };
+                    SEALMETRICS_API_KEY: 'sm_eval_mock', SEALMETRICS_SITE_ID: siteId };
         if (c.noApiKey) { delete e.SEALMETRICS_API_KEY; delete e.SEALMETRICS_SITE_ID; }
         if (c.multiSite) delete e.SEALMETRICS_SITE_ID;
         return e;
@@ -120,7 +131,7 @@ function runCase(c) {
 const results = [];
 for (const c of selected) {
   process.stdout.write(`· ${c.id} … `);
-  const r = await runCase(c);
+  const r = await runCase(c, await siteIdFor(c.fixture));
   results.push(r);
   if (r.error && /not logged in|\/login|authentication|unauthoriz/i.test(r.error)) {
     console.log('ENVIRONMENT');
