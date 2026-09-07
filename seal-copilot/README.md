@@ -137,10 +137,14 @@ bash scripts/check.sh          # linter, fixture arithmetic, harness self-test, 
 node evals/run-evals.mjs       # the full eval suite against a mock Sealmetrics server
 ```
 
-`check.sh` needs no model and no API key — it is what CI should run. The eval
-suite spawns real `claude -p` sessions, so it needs a logged-in CLI (or
-`ANTHROPIC_API_KEY` in CI) and it costs tokens. Filter to one case while
-iterating: `node evals/run-evals.mjs healthy-says-so`.
+`check.sh` needs no model and no API key — it is what CI should run.
+
+The eval suite spawns real `claude -p` sessions, so it costs tokens and needs
+the **CLI** to be authenticated. Being signed in to the Claude desktop app does
+not cover the terminal binary; they keep separate sessions. Either run `claude`
+in a terminal once and complete `/login`, or export `ANTHROPIC_API_KEY` — the
+second is the better route for CI since it needs no interactive step. Filter to
+one case while iterating: `node evals/run-evals.mjs healthy-says-so`.
 
 ## Support
 

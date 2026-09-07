@@ -106,9 +106,13 @@ for (const c of selected) {
     console.log('ENVIRONMENT');
     console.error(
       '\nThe Claude CLI is not authenticated, so no case can run.\n' +
-      'These evals spawn real `claude -p` sessions, which need a logged-in CLI.\n' +
-      '  In your own terminal: run `claude` once, complete /login, then re-run.\n' +
-      '  In CI: set ANTHROPIC_API_KEY in the environment.\n' +
+      'These evals spawn real `claude -p` sessions, which need the CLI itself\n' +
+      'to be logged in. Being signed in to the Claude desktop app does NOT\n' +
+      'cover the terminal binary — they keep separate sessions.\n\n' +
+      '  Option A (subscription): run `claude` in a terminal, complete /login,\n' +
+      '                           then re-run this suite.\n' +
+      '  Option B (API billing):  export ANTHROPIC_API_KEY=sk-ant-...\n' +
+      '                           Better for CI: no interactive step.\n\n' +
       'Everything that needs no model is checked by `bash scripts/check.sh`.\n');
     process.exit(2);
   }
