@@ -1,0 +1,1576 @@
+{
+  "list_sites": {
+    "params": [],
+    "enums": {}
+  },
+  "get_site": {
+    "params": [
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "get_overview": {
+    "params": [
+      "compare",
+      "end_date",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ]
+    }
+  },
+  "get_traffic_sources": {
+    "params": [
+      "compare",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "sort_by",
+      "sort_order",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ],
+      "sort_by": [
+        "entrances",
+        "engaged_entrances",
+        "page_views",
+        "conversions",
+        "revenue",
+        "bounce_rate"
+      ],
+      "sort_order": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "get_traffic_mediums": {
+    "params": [
+      "compare",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "sort_by",
+      "sort_order",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ],
+      "sort_by": [
+        "entrances",
+        "engaged_entrances",
+        "page_views",
+        "conversions",
+        "revenue",
+        "bounce_rate"
+      ],
+      "sort_order": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "get_campaigns": {
+    "params": [
+      "compare",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "sort_by",
+      "sort_order",
+      "start_date",
+      "utm_medium",
+      "utm_source"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ],
+      "sort_by": [
+        "entrances",
+        "engaged_entrances",
+        "page_views",
+        "conversions",
+        "revenue",
+        "bounce_rate"
+      ],
+      "sort_order": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "get_terms": {
+    "params": [
+      "compare",
+      "country",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "sort_by",
+      "sort_order",
+      "start_date",
+      "utm_campaign",
+      "utm_medium",
+      "utm_source"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ],
+      "sort_by": [
+        "entrances",
+        "engaged_entrances",
+        "page_views",
+        "conversions",
+        "revenue",
+        "bounce_rate"
+      ],
+      "sort_order": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "get_top_sources": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_medium"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_top_campaigns": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_medium",
+      "utm_source"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_top_terms": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_campaign",
+      "utm_medium",
+      "utm_source"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_top_referrers": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_pages": {
+    "params": [
+      "browser",
+      "channel_group",
+      "compare",
+      "country",
+      "device_type",
+      "end_date",
+      "include",
+      "limit",
+      "os",
+      "page",
+      "path_filter",
+      "period",
+      "site_id",
+      "sort_by",
+      "sort_order",
+      "start_date",
+      "utm_campaign",
+      "utm_medium",
+      "utm_source",
+      "utm_term"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ],
+      "sort_by": [
+        "page_views",
+        "entrances"
+      ],
+      "sort_order": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "get_landing_pages": {
+    "params": [
+      "browser",
+      "channel_group",
+      "compare",
+      "country",
+      "device_type",
+      "end_date",
+      "include",
+      "limit",
+      "os",
+      "page",
+      "path_filter",
+      "period",
+      "site_id",
+      "sort_by",
+      "sort_order",
+      "start_date",
+      "utm_campaign",
+      "utm_medium",
+      "utm_source",
+      "utm_term"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ],
+      "sort_by": [
+        "entrances",
+        "engaged_entrances",
+        "page_views",
+        "conversions",
+        "revenue",
+        "bounce_rate"
+      ],
+      "sort_order": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "get_top_pages": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_campaign",
+      "utm_medium",
+      "utm_source",
+      "utm_term"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_top_landing_pages": {
+    "params": [
+      "content_grouping",
+      "country",
+      "end_date",
+      "limit",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_medium",
+      "utm_source"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_landing_pages_by_content_group": {
+    "params": [
+      "country",
+      "end_date",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_medium",
+      "utm_source"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_content_groups": {
+    "params": [
+      "country",
+      "end_date",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_campaign",
+      "utm_medium",
+      "utm_source",
+      "utm_term"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_conversions": {
+    "params": [
+      "compare",
+      "country",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "sort_by",
+      "sort_order",
+      "start_date",
+      "utm_medium",
+      "utm_source"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ],
+      "sort_by": [
+        "count",
+        "revenue",
+        "avg_value"
+      ],
+      "sort_order": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "get_microconversions": {
+    "params": [
+      "compare",
+      "conversion_type",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "sort_by",
+      "sort_order",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ],
+      "sort_by": [
+        "count",
+        "revenue",
+        "avg_value"
+      ],
+      "sort_order": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "list_microconversion_types": {
+    "params": [
+      "end_date",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_microconversion_details": {
+    "params": [
+      "browser",
+      "conversion_type",
+      "country",
+      "device_type",
+      "end_date",
+      "os",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_campaign",
+      "utm_medium",
+      "utm_source",
+      "utm_term"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_conversions_raw": {
+    "params": [
+      "browser",
+      "channel_group",
+      "conversion_type",
+      "country",
+      "device_type",
+      "end_date",
+      "include_properties",
+      "limit",
+      "os",
+      "page",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_campaign",
+      "utm_content",
+      "utm_medium",
+      "utm_source",
+      "utm_term"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_microconversions_raw": {
+    "params": [
+      "browser",
+      "channel_group",
+      "conversion_type",
+      "country",
+      "device_type",
+      "end_date",
+      "include_properties",
+      "limit",
+      "os",
+      "page",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_campaign",
+      "utm_content",
+      "utm_medium",
+      "utm_source",
+      "utm_term"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_conversion_items_raw": {
+    "params": [
+      "browser",
+      "channel_group",
+      "conversion_type",
+      "country",
+      "device_type",
+      "end_date",
+      "limit",
+      "os",
+      "page",
+      "period",
+      "site_id",
+      "start_date",
+      "utm_campaign",
+      "utm_content",
+      "utm_medium",
+      "utm_source",
+      "utm_term"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_countries": {
+    "params": [
+      "compare",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "sort_by",
+      "sort_order",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ],
+      "sort_by": [
+        "entrances",
+        "engaged_entrances",
+        "page_views",
+        "conversions",
+        "revenue",
+        "bounce_rate"
+      ],
+      "sort_order": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "get_devices": {
+    "params": [
+      "compare",
+      "end_date",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "compare": [
+        "previous",
+        "yoy"
+      ]
+    }
+  },
+  "get_device_types": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_browsers": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_operating_systems": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_channels": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "page",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_top_channels": {
+    "params": [
+      "country",
+      "end_date",
+      "limit",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "list_channel_rules": {
+    "params": [
+      "include_defaults",
+      "include_inactive",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "test_channel_rules": {
+    "params": [
+      "campaign",
+      "include_inactive",
+      "medium",
+      "site_id",
+      "source"
+    ],
+    "enums": {}
+  },
+  "list_property_keys": {
+    "params": [
+      "end_date",
+      "period",
+      "site_id",
+      "start_date",
+      "table"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "table": [
+        "conversions",
+        "microconversions",
+        "both",
+        "conversion_items"
+      ]
+    }
+  },
+  "get_property_values": {
+    "params": [
+      "conversion_type",
+      "end_date",
+      "group_by",
+      "limit",
+      "page",
+      "period",
+      "property_key",
+      "site_id",
+      "start_date",
+      "table"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "group_by": [
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "all"
+      ],
+      "table": [
+        "conversions",
+        "microconversions",
+        "both",
+        "conversion_items"
+      ]
+    }
+  },
+  "get_property_breakdown": {
+    "params": [
+      "conversion_type",
+      "end_date",
+      "period",
+      "property_key",
+      "site_id",
+      "start_date",
+      "table"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ],
+      "table": [
+        "conversions",
+        "microconversions",
+        "both",
+        "conversion_items"
+      ]
+    }
+  },
+  "get_funnel": {
+    "params": [
+      "country",
+      "end_date",
+      "period",
+      "site_id",
+      "start_date"
+    ],
+    "enums": {
+      "period": [
+        "today",
+        "yesterday",
+        "7d",
+        "30d",
+        "90d",
+        "12m",
+        "this_week",
+        "wtd",
+        "last_week",
+        "this_month",
+        "mtd",
+        "last_month",
+        "this_quarter",
+        "qtd",
+        "last_quarter",
+        "this_year",
+        "ytd",
+        "last_year"
+      ]
+    }
+  },
+  "get_bot_stats": {
+    "params": [
+      "days",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "get_suspicious_sessions": {
+    "params": [
+      "limit",
+      "min_score",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "list_segments": {
+    "params": [
+      "include_system",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "get_segment": {
+    "params": [
+      "segment_id",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "list_alerts": {
+    "params": [
+      "include_inactive",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "get_alert_history": {
+    "params": [
+      "limit",
+      "offset",
+      "rule_id",
+      "site_id",
+      "status"
+    ],
+    "enums": {
+      "status": [
+        "active",
+        "resolved",
+        "acknowledged"
+      ]
+    }
+  },
+  "get_alert_stats": {
+    "params": [
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "list_webhooks": {
+    "params": [
+      "include_inactive",
+      "limit",
+      "offset",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "list_webhook_deliveries": {
+    "params": [
+      "endpoint_id",
+      "limit",
+      "offset",
+      "site_id",
+      "status"
+    ],
+    "enums": {
+      "status": [
+        "pending",
+        "success",
+        "failed"
+      ]
+    }
+  },
+  "get_webhook_stats": {
+    "params": [
+      "endpoint_id",
+      "hours",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "get_tracking_code": {
+    "params": [
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "get_marketing_playbook": {
+    "params": [],
+    "enums": {}
+  },
+  "get_troubleshooting_guide": {
+    "params": [],
+    "enums": {}
+  },
+  "search_docs": {
+    "params": [
+      "limit",
+      "query"
+    ],
+    "enums": {}
+  },
+  "get_doc": {
+    "params": [
+      "path"
+    ],
+    "enums": {}
+  },
+  "create_channel_rule": {
+    "params": [
+      "campaign_pattern",
+      "channel_name",
+      "medium_pattern",
+      "priority",
+      "site_id",
+      "source_pattern"
+    ],
+    "enums": {}
+  },
+  "update_channel_rule": {
+    "params": [
+      "campaign_pattern",
+      "channel_name",
+      "medium_pattern",
+      "priority",
+      "rule_id",
+      "site_id",
+      "source_pattern"
+    ],
+    "enums": {}
+  },
+  "delete_channel_rule": {
+    "params": [
+      "rule_id",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "import_channel_rules": {
+    "params": [
+      "dry_run",
+      "rules",
+      "site_id"
+    ],
+    "enums": {}
+  },
+  "provision_site": {
+    "params": [
+      "accept_terms",
+      "domain",
+      "email",
+      "name",
+      "site_name"
+    ],
+    "enums": {}
+  },
+  "verify_setup": {
+    "params": [
+      "account_id",
+      "timeout_seconds"
+    ],
+    "enums": {}
+  },
+  "get_setup_status": {
+    "params": [],
+    "enums": {}
+  },
+  "detect_framework": {
+    "params": [
+      "path"
+    ],
+    "enums": {}
+  },
+  "get_instrumentation_guide": {
+    "params": [
+      "account_id"
+    ],
+    "enums": {}
+  },
+  "verify_event_instrumented": {
+    "params": [
+      "account_id",
+      "kind",
+      "name",
+      "timeout_seconds"
+    ],
+    "enums": {
+      "kind": [
+        "conv",
+        "micro"
+      ]
+    }
+  }
+}

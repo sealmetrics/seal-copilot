@@ -1,0 +1,142 @@
+# Persistent State
+
+Seal Copilot remembers what it learned about a site between runs. Without
+this, every scheduled run rediscovers the same facts, every scan re-proposes
+the same finding, and no recommendation is ever verified.
+
+**Location:** `$SEAL_COPILOT_STATE_DIR/<site_id>/` when that environment
+variable is set, otherwise `~/.seal-copilot/<site_id>/`. It lives outside the
+plugin directory, which is read-only after install. Create it on first write.
+The override exists so test runs and sandboxes can be isolated from a real
+account's state — check for it before reading or writing anything below.
+
+**Every read is optional.** If a file is missing or the filesystem is not
+writable (some sandboxed environments), run the discovery you would have run
+anyway and say once, in one line, that results could not be cached. Never
+fail a skill because state is unavailable, and never block on it.
+
+**Every write is append-or-replace, never a read-modify-write race.**
+Scheduled skills can overlap; keep writes small and idempotent.
+
+## The protocol every skill follows
+
+1. **Load** `profile.json` at the start. It answers questions that otherwise
+   cost calls: which site, which timezone, which vertical, what the site's
+   real event names are, which product identifier to use.
+2. **Use it** instead of re-discovering. If a cached value is past its TTL,
+   refresh just that value, not the whole profile.
+3. **Write back** anything you learned that a later run would otherwise have
+   to rediscover.
+4. **Log the run** in `runs.jsonl`.
+
+## `profile.json`
+
+Written by `property-explorer`, `setup-audit` and the core skill. Read by all.
+
+```json
+{
+  "site_id": "acct_123",
+  "site_name": "example.com",
+  "timezone": "Europe/Madrid",
+  "currency": "EUR",
+  "vertical": "ecommerce",
+  "events": {
+    "view": "product_view",
+    "add_to_cart": "add_to_cart",
+    "checkout": "start_checkout",
+    "purchase": "purchase"
+  },
+  "product_identifier": { "key": "sku", "table": "conversion_items" },
+  "agent_analytics_enabled": false,
+  "first_data_date": "2025-11-02",
+  "discovery_cached_at": "2026-09-07",
+  "scheduling_offered": { "monday_briefing": true, "cart_watchdog": false }
+}
+```
+
+**TTL: 7 days** on `discovery_cached_at`. Past that, re-run `list_sites`,
+`list_microconversion_types` and `list_property_keys` and refresh the file.
+Refresh immediately, regardless of TTL, if any skill finds an event name or
+property key that contradicts the profile — that means tracking changed.
+
+`agent_analytics_enabled: false` is what stops every later skill from
+reporting "0% bots" (see the three-outcome rule in `methodology.md`).
+
+`scheduling_offered` exists so the plugin offers a schedule **once** and then
+stops asking.
+
+## `property-map.md`
+
+Written by `property-explorer` only. Read by `product-friction`,
+`opportunity-scan`, `channel-mix-optimizer` and the core skill.
+
+Human-readable Markdown, not JSON — the user is meant to read and correct it.
+It holds the inventory table (property, table, types, cardinality, score), the
+top 5 with their reasons, and the recommended starter analyses.
+
+**TTL: 30 days.** Past that, say it is stale and offer to re-run
+`property-explorer` before relying on it for a recommendation.
+
+## `watchdog-baseline.json`
+
+Written by `calibrate-watchdog`, read and status-updated by `cart-watchdog`.
+Schema and TTL are documented in the `calibrate-watchdog` skill.
+
+## `recommendations.jsonl`
+
+One JSON object per line, appended by any skill that issues a recommendation.
+This is the ledger that turns a report into consulting.
+
+```json
+{"id":"2026-09-07-leaky-summer-sale-es","date":"2026-09-07","skill":"opportunity-scan","pattern":"leaky-campaign","subject":"summer-sale-es","evidence":"2,014 entrances, CR 0.8% vs channel avg 2.1%, 30d","action":"Fix ad-to-landing message match, or pause and reallocate","impact_eur_month":1840,"metric":"campaign CR","baseline":0.008,"target":0.021,"verify_on":"2026-10-05","status":"open"}
+```
+
+- `id` — `<date>-<pattern>-<subject>`, slugified. Used to detect repeats.
+- `metric`, `baseline`, `target` — what must move, and from where to where.
+  Without these the recommendation cannot be verified later, so never omit
+  them.
+- `verify_on` — today + the verification window the recommendation stated
+  (2–4 weeks; one full booking cycle for hotels).
+- `status` — `open` → `verified` | `failed` | `discarded`.
+
+### Follow-up (weekly-health-check and monday-briefing)
+
+Before reporting anything new, read the ledger and act on entries where
+`status` is `open` and `verify_on` is today or earlier:
+
+1. Re-run the one call that measures `metric` for `subject`.
+2. Moved to `target` or beyond → `verified`. Moved less than a third of the
+   way, or backwards → `failed`. In between → leave `open` and push
+   `verify_on` out by two weeks, once only; a second inconclusive check
+   becomes `failed`.
+3. Report the outcome in one line each, above the new findings. Verified
+   recommendations are the plugin's track record — show them.
+4. Rewrite the file with updated statuses.
+
+### Repeat suppression (opportunity-scan)
+
+Do not re-report a pattern that already has an `open` entry for the same
+`subject`, unless the recomputed `impact_eur_month` has grown by ≥50%. In
+that case report it as an escalation and say it was already flagged on
+`date`. Patterns with a `discarded` entry stay suppressed for 90 days.
+
+## `runs.jsonl`
+
+One line per skill execution. Cheap, and it is what makes the call budget
+measurable.
+
+```json
+{"ts":"2026-09-07T08:00:12Z","skill":"monday-briefing","calls":13,"budget":15,"verdict":"watch","scheduled":true,"notes":"bot stats empty"}
+```
+
+Read by `cost-reduction` (to spot skills that consistently overrun) and by the
+eval suite. No skill needs to read it to do its own job.
+
+## Writing state from a skill
+
+Use the `Read` and `Write` tools against the paths above. Two rules:
+
+- **Never write PII into state.** These files hold site configuration,
+  aggregate metrics and recommendation text. Nothing else.
+- **Never invent a cached value.** If a field is absent, it is unknown — go
+  and measure it, do not assume a default.
