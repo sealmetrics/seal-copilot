@@ -2,6 +2,13 @@
 
 ## 1.1.0 — 2026-09-07
 
+### Fixed — the eval runner hid environment failures behind assertion failures
+An unauthenticated CLI produced `FAIL (0 calls) — missing /on track/` for every
+case, which reads as "the skill ignored its tools" when the session never
+started at all. The runner now surfaces the CLI's own error, distinguishes it
+from a real assertion failure, and aborts the whole run with exit code 2 and
+instructions rather than repeating a misleading failure ten times.
+
 ### Added — `install-sealmetrics`
 The gap flagged when 1.0.0 shipped: four MCP tools formed a complete
 first-install flow that no skill used. There is now a skill that takes a site

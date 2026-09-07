@@ -128,6 +128,20 @@ processed or sent to the model.
   hourly time series, so the baseline is built once from raw events and cached
   rather than rebuilt on every check.
 
+## Development
+
+Two checks, from the repository root:
+
+```
+bash scripts/check.sh          # linter, fixture arithmetic, harness self-test, manifest
+node evals/run-evals.mjs       # the full eval suite against a mock Sealmetrics server
+```
+
+`check.sh` needs no model and no API key — it is what CI should run. The eval
+suite spawns real `claude -p` sessions, so it needs a logged-in CLI (or
+`ANTHROPIC_API_KEY` in CI) and it costs tokens. Filter to one case while
+iterating: `node evals/run-evals.mjs healthy-says-so`.
+
 ## Support
 
 support@sealmetrics.com · [docs.sealmetrics.com](https://docs.sealmetrics.com)

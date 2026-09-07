@@ -70,16 +70,25 @@ function runCase(c) {
     proc.on('close', () => {
       clearTimeout(timer);
       const ms = Date.now() - started;
-      let answer = out;
-      try { const j = JSON.parse(out); answer = j.result ?? j.text ?? out; } catch {}
+      let answer = out, cliError = null;
+      try {
+        const j = JSON.parse(out);
+        answer = j.result ?? j.text ?? out;
+        if (j.is_error) cliError = String(answer || "unknown CLI error");
+      } catch { if (!out.trim() && err.trim()) cliError = err.trim().slice(0, 300); }
 
       const calls = existsSync(callLog)
         ? readFileSync(callLog, 'utf8').trim().split('\n').filter(Boolean).map(l => JSON.parse(l))
         : [];
       const rejected = calls.filter(c2 => c2.rejected);
 
+      if (cliError) {
+        rmSync(work, { recursive: true, force: true });
+        return resolve({ id: c.id, fixture: c.fixture, pass: false, error: cliError,
+                         failures: [`the CLI never ran the case: ${cliError}`],
+                         calls: calls.length, rejected: 0, ms, answer });
+      }
       const failures = assess(c, answer, calls);
-      if (!answer.trim() && err) failures.push(`stderr: ${err.slice(0, 300)}`);
 
       rmSync(work, { recursive: true, force: true });
       resolve({ id: c.id, fixture: c.fixture, pass: failures.length === 0, failures,
@@ -93,6 +102,16 @@ for (const c of selected) {
   process.stdout.write(`· ${c.id} … `);
   const r = await runCase(c);
   results.push(r);
+  if (r.error && /not logged in|\/login|authentication|unauthoriz/i.test(r.error)) {
+    console.log('ENVIRONMENT');
+    console.error(
+      '\nThe Claude CLI is not authenticated, so no case can run.\n' +
+      'These evals spawn real `claude -p` sessions, which need a logged-in CLI.\n' +
+      '  In your own terminal: run `claude` once, complete /login, then re-run.\n' +
+      '  In CI: set ANTHROPIC_API_KEY in the environment.\n' +
+      'Everything that needs no model is checked by `bash scripts/check.sh`.\n');
+    process.exit(2);
+  }
   console.log(r.pass ? `PASS (${r.calls} calls, ${(r.ms / 1000).toFixed(0)}s)`
                      : `FAIL (${r.calls} calls) — ${r.failures.join('; ')}`);
 }
