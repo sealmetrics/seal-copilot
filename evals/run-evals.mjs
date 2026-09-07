@@ -38,9 +38,12 @@ function runCase(c) {
     const mcpConfig = JSON.stringify({
       mcpServers: {
         sealmetrics: {
-          command: 'node',
+          // process.execPath, not 'node': under nvm there is no `node` on a
+          // system PATH, and the env block below may replace rather than extend
+          // the server's environment. An absolute interpreter removes the doubt.
+          command: process.execPath,
           args: [join(here, 'mock-server', 'server.mjs')],
-          env: { SEAL_FIXTURE: c.fixture, SEAL_CALL_LOG: callLog },
+          env: { SEAL_FIXTURE: c.fixture, SEAL_CALL_LOG: callLog, PATH: process.env.PATH || '' },
         },
       },
     });
@@ -92,7 +95,8 @@ function runCase(c) {
 
       rmSync(work, { recursive: true, force: true });
       resolve({ id: c.id, fixture: c.fixture, pass: failures.length === 0, failures,
-                calls: calls.length, rejected: rejected.length, ms, answer });
+                calls: calls.length, rejected: rejected.length, ms, answer,
+                toolNames: [...new Set(calls.map(x => x.tool))] });
     });
   });
 }
@@ -118,6 +122,11 @@ for (const c of selected) {
   }
   console.log(r.pass ? `PASS (${r.calls} calls, ${(r.ms / 1000).toFixed(0)}s)`
                      : `FAIL (${r.calls} calls) — ${r.failures.join('; ')}`);
+  if (!r.pass) {
+    const called = r.toolNames?.length ? r.toolNames.join(', ') : '(none)';
+    console.log(`    tools called: ${called}`);
+    console.log('    answer: ' + (r.answer || '').trim().replace(/\s+/g, ' ').slice(0, 400) + '\n');
+  }
 }
 
 const passed = results.filter(r => r.pass).length;
