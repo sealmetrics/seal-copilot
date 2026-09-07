@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.1.0 — 2026-09-07
+
+### Added — `install-sealmetrics`
+The gap flagged when 1.0.0 shipped: four MCP tools formed a complete
+first-install flow that no skill used. There is now a skill that takes a site
+from no analytics to measured and verified, and MCP tool coverage reaches
+62/62.
+
+The flow: check whether a site already exists, provision one only if not,
+detect the framework, place the snippet, confirm the first pageview, instrument
+the funnel for the detected vertical, then verify each event individually.
+
+Three gates make this the plugin's most constrained skill, because it is the
+only one that writes code and the only one that can create an account:
+
+- **Provisioning requires the user's own acceptance.** `provision_site` creates
+  a real account tied to an email address. The skill must show the terms link,
+  ask for the email rather than inferring it from git config or the
+  environment, and wait for the user to accept in their own words. It may never
+  pass `accept_terms=true` on its own initiative, and asking to install
+  Sealmetrics does not count as acceptance.
+- **An existing site is never duplicated.** A second site for the same domain
+  splits the data and is hard to undo. A new eval case
+  (`install-reuses-existing-site`) fails loudly if `provision_site` is called
+  when `list_sites` already returns the domain.
+- **Written is not verified.** Every event is confirmed with
+  `verify_event_instrumented` against a real user action. Events that were
+  written but never fired are reported as unconfirmed, not as done — the
+  failure mode where code review passes and the data never arrives.
+
+Two install-time details the skill insists on, because retrofitting them costs
+months of unusable history: revenue on the conversion, and the *same* product
+identifier key and value on both the product-view and add-to-cart events.
+
+`setup-audit` now hands off here when a site has no data at all, instead of
+scoring an implementation that does not exist yet.
+
 ## 1.0.0 — 2026-09-07
 
 Phase 3 of the v1.0 PRD. Every skill now ships a worked example, the third

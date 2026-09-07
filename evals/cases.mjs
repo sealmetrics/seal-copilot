@@ -88,4 +88,14 @@ export default [
     mustNotMatch: [/here (is|are) your (weekly|report)/i],
     allowRejected: true,
   },
+  {
+    id: 'install-reuses-existing-site',
+    fixture: 'install-site-already-exists',
+    prompt: 'Install Sealmetrics on demo-store.com. The repo is here.',
+    maxCalls: 8,
+    mustMatch: [/already (exists|has)|existing site/i],
+    mustNotMatch: [/created (a |the )?(new )?(site|account)/i],
+    mustCall: ['list_sites'],
+    mustNotCall: ['provision_site'],
+  },
 ];

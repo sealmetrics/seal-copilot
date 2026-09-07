@@ -1,6 +1,6 @@
 {
   "name": "seal-copilot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AI marketing optimization analyst for Sealmetrics consentless analytics. Diagnoses performance, finds revenue opportunities, monitors carts intraday, audits catalog friction per SKU, and surfaces operational waste — all from 100% of your traffic data, no consent sampling.",
   "author": {
     "name": "Sealmetrics",
@@ -25,6 +25,8 @@
     "operational-waste",
     "saas",
     "lead-gen",
-    "b2b"
+    "b2b",
+    "onboarding",
+    "instrumentation"
   ]
 }

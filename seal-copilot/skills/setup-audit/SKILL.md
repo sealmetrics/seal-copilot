@@ -21,7 +21,9 @@ user. Budget: ≤10 calls.
 ## Procedure
 
 1. `get_site` — basics: domains, timezone, tracking status.
-2. `get_overview(30d)` — is data flowing at expected volume?
+2. `get_overview(30d)` — is data flowing at expected volume? If the site has
+   **no data at all**, stop auditing and hand off to `install-sealmetrics`:
+   there is nothing to score until the pixel is live.
 3. `list_microconversion_types` — which funnel stages are instrumented?
    Compare against the canonical funnel for the vertical (stores:
    product_view/add_to_cart/start_checkout; hotels: search/room_view/

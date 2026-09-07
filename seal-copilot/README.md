@@ -23,6 +23,7 @@ on **all** of your traffic — not the fraction that accepted cookies.
 | "Where should I invest?" / "scale or cut" | channel-mix-optimizer — paid-channel RPE reallocation |
 | "What can you analyze?" (first run on a new site) | property-explorer — maps your custom properties |
 | "Reduce expenses" / operational waste | cost-reduction — bots, zombie pages, dead UTMs, stale alerts |
+| "Install Sealmetrics on this site" | install-sealmetrics — snippet, verification, event instrumentation |
 | "Is my tracking set up right?" | setup-audit — implementation score + fixes |
 | Anything else about your traffic | seal-copilot — the core analyst |
 

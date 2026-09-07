@@ -125,6 +125,7 @@ properties, then load the matching playbook:
 | "Why did X drop/spike?" | `diagnose-drop` |
 | "Where am I losing money?" / "find opportunities" | `opportunity-scan` |
 | "Analyze my funnel" / "where do users drop off?" | `funnel-analysis` |
+| "Install Sealmetrics" / "add tracking" / site has no data at all | `install-sealmetrics` |
 | "Is my tracking set up correctly?" | `setup-audit` |
 | "Which products convert worst" / "PDP problems" / per-SKU questions | `product-friction` |
 | "Set up cart monitoring" / no watchdog baseline yet | `calibrate-watchdog` |
