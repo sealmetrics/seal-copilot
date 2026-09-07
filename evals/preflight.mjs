@@ -28,7 +28,9 @@ const proc = spawn('claude', [
   '--plugin-dir', join(root, 'seal-copilot'),
   '--allowed-tools', Object.keys(schema).map(t => `mcp__sealmetrics__${t}`).join(' '),
   '--output-format', 'json', '--no-session-persistence',
-], { cwd: work, env: { ...process.env, SEAL_COPILOT_STATE_DIR: join(work, 'state') }, stdio: ['ignore', 'pipe', 'pipe'] });
+], { cwd: work, stdio: ['ignore', 'pipe', 'pipe'],
+   env: { ...process.env, SEAL_COPILOT_STATE_DIR: join(work, 'state'),
+          SEALMETRICS_API_KEY: 'sm_eval_mock', SEALMETRICS_SITE_ID: 'acct_demo' } });
 
 let out = '', err = '';
 proc.stdout.on('data', d => out += d);

@@ -4,6 +4,12 @@
 // received. `claude plugin eval` is early-access and unavailable, so this is the
 // suite.
 //
+// Note: the plugin loads with its hooks, including the SessionStart gate that
+// tells the model not to touch Sealmetrics when SEALMETRICS_API_KEY is unset.
+// That gate is right in production and wrong here, so every case runs with a
+// dummy key the mock server ignores. Cases that exist to test the unconfigured
+// path set `noApiKey: true`.
+//
 //   node evals/run-evals.mjs                 # all cases
 //   node evals/run-evals.mjs drop sku        # cases whose id matches a filter
 //   node evals/run-evals.mjs --json out.json
@@ -61,7 +67,17 @@ function runCase(c) {
     const started = Date.now();
     const proc = spawn('claude', args, {
       cwd: work,
-      env: { ...process.env, SEAL_COPILOT_STATE_DIR: join(work, 'state') },
+      // The plugin's SessionStart hook refuses to let the model touch Sealmetrics
+      // when SEALMETRICS_API_KEY is unset — correct in production, fatal here,
+      // since the mock server needs no credential. Give every case a dummy key,
+      // except the case whose whole point is the missing-key path.
+      env: (() => {
+        const e = { ...process.env, SEAL_COPILOT_STATE_DIR: join(work, 'state'),
+                    SEALMETRICS_API_KEY: 'sm_eval_mock', SEALMETRICS_SITE_ID: 'acct_demo' };
+        if (c.noApiKey) { delete e.SEALMETRICS_API_KEY; delete e.SEALMETRICS_SITE_ID; }
+        if (c.multiSite) delete e.SEALMETRICS_SITE_ID;
+        return e;
+      })(),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let out = '', err = '';

@@ -73,6 +73,7 @@ export default [
   {
     id: 'multi-site-asks-first',
     fixture: 'multi-site',
+    multiSite: true,       // no SEALMETRICS_SITE_ID, so it has to ask
     prompt: 'How did my site do this month?',
     maxCalls: 4,
     mustMatch: [/which site|store-es|store-fr|hotel-costa/i],
@@ -82,10 +83,14 @@ export default [
   {
     id: 'no-api-key-gives-instructions',
     fixture: 'no-api-key',
+    noApiKey: true,        // the whole point of this case
     prompt: 'Run my weekly health check.',
     maxCalls: 6,
-    mustMatch: [/api (key|token)/i, /settings|my\.sealmetrics\.com/i],
+    mustMatch: [/SEALMETRICS_API_KEY|api (key|token)/i, /settings|my\.sealmetrics\.com/i],
     mustNotMatch: [/here (is|are) your (weekly|report)/i],
+    // With no key the SessionStart hook tells the model not to call the tools,
+    // so zero calls is the correct behavior, not a failure.
+    maxCalls: 0,
     allowRejected: true,
   },
   {
