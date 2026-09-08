@@ -14,7 +14,7 @@
 //   node evals/run-evals.mjs drop sku        # cases whose id matches a filter
 //   node evals/run-evals.mjs --json out.json
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -152,7 +152,14 @@ for (const c of selected) {
   if (!r.pass) {
     const called = r.toolNames?.length ? r.toolNames.join(', ') : '(none)';
     console.log(`    tools called: ${called}`);
-    console.log('    answer: ' + (r.answer || '').trim().replace(/\s+/g, ' ').slice(0, 400) + '\n');
+    console.log('    answer: ' + (r.answer || '').trim().replace(/\s+/g, ' ').slice(0, 1200));
+    try {
+      mkdirSync(join(here, 'results'), { recursive: true });
+      const f = join(here, 'results', `${r.id}.txt`);
+      writeFileSync(f, `# ${r.id} (${r.fixture})\n# failures: ${r.failures.join('; ')}\n` +
+                       `# tools: ${called}\n\n${r.answer || ''}`);
+      console.log(`    full answer: ${f}\n`);
+    } catch { console.log(''); }
   }
 }
 

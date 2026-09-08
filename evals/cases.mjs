@@ -12,6 +12,7 @@
 // SEP, not a literal space — a model that writes "paid\u2011search" with a
 // non-breaking hyphen is not wrong. And never forbid a bare phrase that could
 // legitimately appear inside a disclaimer: forbid the affirmative *claim*.
+// eslint-disable-next-line no-unused-vars -- kept for future prose assertions
 const SEP = '[\\s\\u2010-\\u2015\\u2212-]?';   // space, any dash, or nothing
 export default [
   {
@@ -29,12 +30,21 @@ export default [
     prompt: 'Conversions fell this week. Why?',
     maxCalls: 14,
     mustMatch: [
+      // Naming the campaign is the strong claim; requiring the channel name too
+      // is redundant with it and only adds a way to flake on wording.
       /generic-es/,
-      new RegExp(`paid${SEP}search`, 'i'),
       /230/,                          // operating rule 1: always quantify
       /verify|re-?run|re-?check|check again|in 7 days|next week/i,  // the skill owes a verification plan
+      /year over year|year-over-year|yoy|last year/i,                // step 6 must be performed, not skipped
     ],
-    mustNotMatch: [/seasonal/i],
+    // Forbid the affirmative conclusion, not the word. Step 6 of the cause
+    // hierarchy requires the model to check and rule out seasonality, so
+    // "not seasonal — yoy is also down" must be allowed to say "seasonal".
+    mustNotMatch: [
+      /\b(is|was|it'?s|appears|looks)\s+(likely\s+|probably\s+)?seasonal/i,
+      /seasonal(ity)?\s+(drop|decline|effect|pattern)\b/i,
+      /this is seasonal/i,
+    ],
     mustCall: ['get_bot_stats', 'get_campaigns'],
   },
   {
@@ -51,7 +61,18 @@ export default [
     fixture: 'ecommerce-no-agent-analytics',
     prompt: 'Traffic is up a lot. Is this real, and are bots involved?',
     maxCalls: 12,
-    mustMatch: [/agent analytics|not enabled|unavailable|unvalidated/i],
+    // The concept, not one phrasing: the model must convey that the bot data is
+    // missing or untrustworthy. It wrote "agent analytics is off" on one run and
+    // "the bot report can't be trusted" on the next; both are right. The strict
+    // safety property is mustNotMatch below.
+    mustMatch: [
+      new RegExp([
+        'agent analytics', 'not enabled', 'unavailable', 'unvalidated',
+        'no bot data', 'returned empty', 'empty result',
+        "can'?t be trusted", 'cannot be trusted', 'not reliable', 'unreliable',
+        "can'?t confirm", 'cannot confirm', 'unconfirmed', 'not measured',
+      ].join('|'), 'i'),
+    ],
     // Forbid the affirmative claim only. "which is not the same as 0% bots" is
     // the disclaimer we want, and a naive /0% bots/ ban punishes it.
     mustNotMatch: [
