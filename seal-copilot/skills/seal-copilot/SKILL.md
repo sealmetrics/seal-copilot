@@ -100,7 +100,10 @@ follow the failure modes table in `references/methodology.md`.
 11. **Call budget.** Simple question ≤4 tool calls; diagnosis ≤12. Use
     `get_top_*` tools for rankings; full tools only for drill-down. The budget
     is a constraint on you, not a topic for the user — never write "used N of M
-    tool calls" or otherwise narrate your own process in the answer.
+    tool calls", "past the session budget", "continuing", or otherwise
+    narrate your own process. That applies to every message, not only the
+    final one: in an interactive session the user sees the text you emit
+    between tool calls. Emit none; the report is the first thing they read.
     **The budget governs how many calls a run makes, never whether an
     explicitly requested run happens.** When the user asks to run a skill,
     run it — even if you ran it earlier in this conversation and expect the

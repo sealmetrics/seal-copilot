@@ -353,9 +353,11 @@ export default [
         mustCall: ['list_microconversion_types'] },
       { prompt: 'Run a setup audit on this site.',
         continue: true,
-        // The score must appear again, produced by fresh calls in THIS step.
+        // The refusal was "nothing has shipped, so I won't re-run — which one?".
+        // What matters is fresh calls in THIS step and a fresh score; those two
+        // prove it ran. A phrase ban fired on "nothing has shipped between the
+        // two audits" said AFTER a full re-run. Assert behaviour, not wording.
         mustMatch: [/\b([0-9]|10)\s*\/\s*10\b/],
-        mustNotMatch: [/nothing (has )?(shipped|changed)|same (9|nine|\d+) calls|would produce the same|say the word|which one\?/i],
         mustCall: ['list_microconversion_types', 'get_tracking_code'] },
     ],
   },
