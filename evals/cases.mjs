@@ -123,7 +123,7 @@ export default [
     prompt: 'How did my site do this month?',
     maxCalls: 4,
     mustMatch: [/which site|store-es|store-fr|hotel-costa/i],
-    mustNotCall: ['get_channels'],
+    mustNotCall: ['get_top_channels'],
     allowRejected: true,
   },
   {
@@ -195,7 +195,7 @@ export default [
     // "RPE is a proxy for ROAS, not ROAS itself" is the caveat we want. What
     // is forbidden is a ROAS *figure* the plugin has no spend data to compute.
     mustNotMatch: [/\broas\s*(is|of|=|:)\s*[€$]?\s*\d/i, /\d+(\.\d+)?\s*x?\s*roas\b/i],
-    mustCall: ['get_channels'],
+    mustCall: ['get_top_channels'],
   },
   {
     id: 'cost-reduction-names-the-bot-referrer',
@@ -325,7 +325,7 @@ export default [
     maxCalls: 10,
     mustMatch: [
       /kpis? only|below.*threshold|too low|(0|no|zero) conversions/i,   // low-volume rule
-      /not checked|unavailable|refused|access denied|could not/i,        // the refusal is named
+      /not checked|unavailable|refused|access denied|could not|cannot (be )?(validated|checked)/i,  // the gap is named
       /unvalidated|cannot (validate|confirm)|couldn'?t (validate|confirm)|no conversions to validate/i,
     ],
     mustNotMatch: [
@@ -335,7 +335,7 @@ export default [
       // disclaimer and necessarily contains both words; do not ban it.
       /\|[^|\n]*Access denied[^|\n]*\|/i,
     ],
-    mustCall: ['get_overview', 'get_channels', 'get_bot_stats'],   // the steps must be attempted
+    mustCall: ['get_overview', 'get_top_channels'],   // the working channel tool; get_channels 403s for every modern key
     allowRejected: true,
     // The run log must be measurable, and the profile must actually exist.
     stateMustContain: [/"calls"\s*:\s*"?\d+/, /"budget"\s*:\s*"?\d+/, /"site_id"\s*:\s*"sealmetricsv2"/, /agent_analytics_enabled/,

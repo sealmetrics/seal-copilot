@@ -76,11 +76,13 @@ returns single-period data silently** — you will report "no change" on data
 that never contained a comparison.
 
 **Comparing channels period over period** therefore takes two calls with a
-**calendar-pair preset**, diffed by you:
+**calendar-pair preset**, diffed by you — and the tool is `get_top_channels`,
+never `get_channels` (which 403s for every modern API key; see "A successful
+call can still be a failure"):
 
-- `get_channels(period=this_week)` vs `get_channels(period=last_week)`
-- `get_channels(period=this_month)` vs `get_channels(period=last_month)`
-- `get_channels(period=this_quarter)` vs `get_channels(period=last_quarter)`
+- `get_top_channels(period=this_week)` vs `get_top_channels(period=last_week)`
+- `get_top_channels(period=this_month)` vs `get_top_channels(period=last_month)`
+- `get_top_channels(period=this_quarter)` vs `get_top_channels(period=last_quarter)`
 
 `30d` has no matching prior-window preset. When you need a rolling 30-day
 channel comparison, use `start_date`/`end_date` for both windows instead.
@@ -160,24 +162,41 @@ The common case is a missing `site_id`. Resolve it once with `list_sites`,
 cache it in `profile.json`, and pass it explicitly when the account has more
 than one site.
 
-**Twenty tools may refuse that same id with "Access denied".** They are the
-configuration family — `get_channels`, `get_bot_stats`,
-`get_suspicious_sessions`, `list_segments`, `get_segment`, `list_alerts`,
-`get_alert_history`, `get_alert_stats`, `list_webhooks`,
+**Twenty tools will refuse that same id with "Access denied" — by design.**
+Read from the backend and the MCP source on 2026-09-08. API keys (`sm_…`) can
+only carry the granular scopes `stats:read`, `sites:read`, `accounts:read`;
+an OAuth grant mints a server-side key with exactly the same three. The
+configuration routers — `/channel-groups`, `/bot-stats`, `/alerts`,
+`/segments`, `/webhooks` — require the generic `read` scope, and the scope
+hierarchy is one-way: `read` implies `stats:read`, never the reverse. So no
+API key and no OAuth connection can ever call `get_channels`,
+`get_bot_stats`, `get_suspicious_sessions`, `list_segments`, `get_segment`,
+`list_alerts`, `get_alert_history`, `get_alert_stats`, `list_webhooks`,
 `list_webhook_deliveries`, `get_webhook_stats`, `list_channel_rules`,
-`test_channel_rules`, the four channel-rule write tools, `verify_setup`,
-`get_instrumentation_guide`, `verify_event_instrumented`. Their schema says
-"Site ID (account_id)", which is **not** a second identifier: the MCP sends
-the very same site id, only under the wire name `account_id`, to a different
-backend path (`/channel-groups/…`, `/bot-stats/…`, `/alerts/…`). "Access
-denied" is the MCP's wrapper around an HTTP 403 from that backend. Read from
-the package source on 2026-09-08; do not go looking for another id.
+`test_channel_rules`, the channel-rule write tools, `verify_setup`,
+`get_instrumentation_guide` or `verify_event_instrumented`. Only a dashboard
+session can. The MCP's remote transport hides these tools for that reason
+(decision of 2026-07-02); the local transport still lists them, and they 403.
 
-So when a configuration tool refuses: say so in the "Not checked" line, mark
-anything that depended on it as unvalidated, and carry on with the
-statistics family, which uses the same id and works. Whether the 403 is an
-API-key scope, a plan tier, or an ownership check is a backend question the
-plugin cannot answer.
+**What to do about it:**
+
+- **Never call `get_channels`. Use `get_top_channels`.** It hits
+  `/stats/top-channels`, covered by `stats:read`, returns the same row shape as
+  a bare array, and takes a `period` — so a calendar pair
+  (`this_week` vs `last_week`) works exactly as before. It has no `compare`
+  either, so nothing is lost.
+- **Bot validation is unavailable to the plugin.** Do not call `get_bot_stats`
+  or `get_suspicious_sessions` expecting data; treat every anomaly as
+  "unvalidated for bots" and say so in the "Not checked" line. If a call to
+  either happens to succeed, the key is a legacy one that carries `read` —
+  use the data, and note it in `profile.json`.
+- **Alerts, webhooks, segments, channel rules, event verification** are out
+  of reach the same way. The skills that referenced them (`cost-reduction`
+  patterns 6–7, `setup-audit` steps 6, 8 and the channel-rule write path,
+  `property-explorer` segment scoring, `install-sealmetrics` verification)
+  run without them and report the gap once, without retrying.
+- `agent_analytics_enabled` in the profile is `"unknown"` for every
+  API-key connection, because it cannot be measured. That is correct.
 
 ## Reading responses — the real shapes
 

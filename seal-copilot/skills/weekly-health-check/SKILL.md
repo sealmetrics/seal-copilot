@@ -31,8 +31,8 @@ findings — say why in one line.
    ledger is empty or unreadable.
 1. `get_overview(period=7d, compare=previous)` — KPIs and deltas. For
    seasonal businesses (hotels) also run `compare=yoy` and prefer it.
-2. `get_channels(period=this_week)` and `get_channels(period=last_week)` —
-   which channels moved. `get_channels` does not accept `compare`; diff the
+2. `get_top_channels(period=this_week)` and `get_top_channels(period=last_week)` —
+   which channels moved. `get_top_channels` does not accept `compare`; diff the
    two calendar-pair calls yourself (see `methodology.md`, MCP call rules).
 3. `get_campaigns(period=7d, compare=previous, sort_by=revenue, limit=20)`
    — winners and losers.

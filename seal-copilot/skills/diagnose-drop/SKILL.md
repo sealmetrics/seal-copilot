@@ -39,9 +39,9 @@ stop at the first isolated cause.
    collapsing while others hold is an instrumentation regression, not a
    demand problem. Cross-reference the `cart-watchdog` baseline if AtC is
    the affected metric.
-2. **Channel:** `get_channels(period=this_week)` vs
-   `get_channels(period=last_week)` (or the `this_month`/`last_month` pair for
-   a monthly drop) — `get_channels` has no `compare`, so diff the pair
+2. **Channel:** `get_top_channels(period=this_week)` vs
+   `get_top_channels(period=last_week)` (or the `this_month`/`last_month` pair for
+   a monthly drop) — `get_top_channels` has no `compare`, so diff the pair
    yourself. All channels down evenly → jump to step 7.
 3. **Campaign:** `get_campaigns(compare=previous, utm_source/medium filters)`.
 4. **Landing/term:** `get_landing_pages(compare=previous)` and/or

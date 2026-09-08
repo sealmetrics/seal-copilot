@@ -11,7 +11,8 @@ export const tools = {
   get_conversions: f.conversions([['purchase', 968, 0]]),                              // revenue never passed
   list_channel_rules: { rules: [{ id: 1, channel: 'Paid Search', match: 'utm_medium=cpc' }] },
   get_traffic_sources: f.rows('utm_source', [['google', 9800, 236, 0, 0.51], ['meta-ads', 4100, 88, 0, 0.58]]),
-  get_channels: f.rows('channel', [['Organic Search', 17400, 430, 0, 0.44], ['Referral', 12500, 300, 0, 0.55], ['Direct', 7600, 168, 0, 0.46], ['Paid Search', 3700, 70, 0, 0.51]]),
+  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
+  get_top_channels: f.top('channel', [['Organic Search', 17400, 430, 0, 0.44], ['Referral', 12500, 300, 0, 0.55], ['Direct', 7600, 168, 0, 0.46], ['Paid Search', 3700, 70, 0, 0.51]]),
   get_top_campaigns: f.top('utm_campaign', [['(not set)', 9200, 190, 0, 0.6], ['brand-es', 3900, 142, 0, 0.38]]),
   get_microconversions: f.micro({ product_view: 25600, add_to_cart: 3020 }),
   list_alerts: { alerts: [] },

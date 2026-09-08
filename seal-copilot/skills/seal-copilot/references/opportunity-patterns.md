@@ -104,7 +104,7 @@ silently.
   rate × site AOV.
 
 ## 12. RPE gap across paid channels
-- Detect: `get_channels(period=90d)` plus `get_traffic_mediums(period=90d)`
+- Detect: `get_top_channels(period=90d)` plus `get_traffic_mediums(period=90d)`
   filtered to paid mediums. Compute RPE = revenue / entrances per channel.
   Flag when the strongest paid channel's RPE is ≥2× the weakest's AND both
   have ≥30 conversions.

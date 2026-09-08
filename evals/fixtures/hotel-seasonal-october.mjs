@@ -8,7 +8,7 @@ export const tools = {
   get_overview: (a) => a.compare === 'yoy'
     ? f.overview({ entrances: 18400, conversions: 214, revenue: 96300, prev: { entrances: 18100, conversions: 209, revenue: 94800 } })
     : f.overview({ entrances: 18400, conversions: 214, revenue: 96300, prev: { entrances: 26900, conversions: 311, revenue: 141500 } }),
-  get_channels: f.rows('channel', ch),
+  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
   get_top_channels: f.top('channel', ch),
   get_top_referrers: f.top('domain', [['booking.com', 2600, 31, 13800, 0.49], ['expedia.com', 1100, 9, 4100, 0.55]]),
   list_microconversion_types: f.microTypes(['room_view', 'booking_start', 'booking']),

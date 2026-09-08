@@ -17,8 +17,13 @@ for (const file of readdirSync(here).filter(f => f.endsWith('.mjs') && !f.starts
   let any = false;
   for (const period of ['30d', '7d']) {
     const ov = call('get_overview', { period, compare: 'previous' });
-    const ch = call('get_channels', { period });
-    if (!ov || !ch?.data) continue;
+    // Channel rows come from get_top_channels (a bare array) now that
+    // get_channels is refused for modern keys; fall back to get_channels.data
+    // on the one legacy-key fixture that still serves it.
+    let rows = call('get_top_channels', { period });
+    if (!Array.isArray(rows)) rows = call('get_channels', { period })?.data;
+    if (!ov || !Array.isArray(rows)) continue;
+    const ch = { data: rows };
     any = true; checked++;
     // Real shape: totals live under ov.traffic, and revenue arrives as "1234.56".
     const tr = ov.traffic || ov;

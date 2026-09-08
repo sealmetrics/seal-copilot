@@ -30,7 +30,7 @@ real CPC/CPM from the ad platform to confirm.** Never present RPE as ROAS.
 
 ## Step 1 — Map the paid channels
 
-1. `get_channels(period=90d)` — full channel list.
+1. `get_top_channels(period=90d)` — full channel list.
 2. `list_channel_rules` — confirm which channels the user classifies as
    paid (Paid Search, Paid Social, Display, Affiliates, Paid Email…).
 
@@ -43,8 +43,8 @@ If the user has not configured paid vs organic split well, run
 For each paid channel pull (≤4 calls total via the compact `get_top_*`
 where possible):
 
-- `get_channels(period=this_quarter)` and `get_channels(period=last_quarter)`
-  — volume + trend. `get_channels` has no `compare`; diff the pair yourself.
+- `get_top_channels(period=this_quarter)` and `get_top_channels(period=last_quarter)`
+  — volume + trend. `get_top_channels` has no `compare`; diff the pair yourself.
 - `get_traffic_mediums(period=90d, compare=previous)` — conversions and
   revenue per medium in one call, which is where paid/organic actually splits.
 - AOV per paid channel: `get_conversions(period=90d, utm_medium=<paid medium>)`

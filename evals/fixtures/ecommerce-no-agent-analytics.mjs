@@ -6,7 +6,8 @@ const ch = [['Referral', 18600, 12, 900, 0.92], ['Organic Search', 17300, 429, 3
 export const tools = {
   list_sites: f.site(),
   get_overview: f.overview({ entrances: 57100, conversions: 928, revenue: 71600, bounce: 0.74, prev: { entrances: 40100, conversions: 941, revenue: 72100 } }),
-  get_channels: f.rows('channel', ch),
+  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
+  get_top_channels: f.top('channel', ch),
   get_top_referrers: f.top('domain', [['unknown-source.example', 17900, 8, 610, 0.93]]),
   get_bot_stats: f.botStatsDisabled(),
   get_suspicious_sessions: { data: [] },

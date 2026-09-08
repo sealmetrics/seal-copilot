@@ -34,7 +34,7 @@ Budget: ≤12 tool calls.
    and name the date it was first flagged. Entries marked `discarded` stay
    suppressed for 90 days. See `skills/seal-copilot/references/state-schema.md`.
 1. Baseline (3 calls): `get_overview(30d, compare=previous)`,
-   `get_channels(30d)`, `get_conversions(30d)` — site averages for CR and
+   `get_top_channels(30d)`, `get_conversions(30d)` — site averages for CR and
    AOV, needed by every pattern.
 2. Campaign patterns (1–2 calls): `get_campaigns(30d, sort_by=entrances,
    limit=50)` — screen for patterns 1 (leaky) and 2 (hidden star) in one

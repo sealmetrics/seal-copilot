@@ -6,8 +6,8 @@ const ch = [['Referral', 22600, 9, 700, 0.94], ['Organic Search', 17300, 429, 33
 export const tools = {
   list_sites: f.site(),
   get_overview: f.overview({ entrances: 57100, conversions: 838, revenue: 65100, bounce: 0.79, prev: { entrances: 40100, conversions: 941, revenue: 72100 } }),
-  get_channels: f.rows('channel', ch),
-  get_top_channels: f.top('channel', ch.slice(0, 3)),
+  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
+  get_top_channels: f.top('channel', ch),
   get_top_referrers: f.top('domain', [['cheap-traffic.example', 21900, 5, 380, 0.95], ['news.example', 700, 4, 320, 0.61]]),
   get_pages: f.rows('path', [['/blog/old-post', 1400, 0, 0, 0.9], ['/landing-2023', 1100, 0, 0, 0.88], ['/', 9100, 210, 16800, 0.41]]),
   get_bot_stats: f.botStats({ total: 57100, botShare: 0.41, top: [{ flag: 'headless_user_agent', hits: 19800 }, { flag: 'no_mouse_events', hits: 17400 }] }),

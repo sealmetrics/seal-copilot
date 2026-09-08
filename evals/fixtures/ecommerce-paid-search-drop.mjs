@@ -13,8 +13,8 @@ export const tools = {
   get_overview: (a) => a.compare === 'yoy'
     ? f.overview({ entrances: 45650, conversions: 886, revenue: 68160, bounce: 0.52, prev: { entrances: 44900, conversions: 1085, revenue: 80400 } })
     : f.overview({ entrances: 45650, conversions: 886, revenue: 68160, bounce: 0.52, prev: { entrances: 46200, conversions: 1120, revenue: 83100 } }),
-  get_channels: (a) => f.rows('channel', ['last_week', 'last_month', 'last_quarter', 'last_year'].includes(a.period) ? chPrev : chNow),
-  get_top_channels: f.top('channel', chNow.slice(0, 3)),
+  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
+  get_top_channels: (a) => f.top('channel', ['last_week', 'last_month', 'last_quarter', 'last_year'].includes(a.period) ? chPrev : chNow),
   get_campaigns: (a) => f.rows('utm_campaign', campNow, { prev: a.compare ? campPrev : null }),
   get_top_campaigns: f.top('utm_campaign', campNow),
   get_landing_pages: (a) => f.rows('landing_page',
