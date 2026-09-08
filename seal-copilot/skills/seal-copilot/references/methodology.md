@@ -136,6 +136,30 @@ Below the minimum sample or the minimum volume, label the finding
 **"directional — low sample"**. Do not drop it silently and do not present it
 as fact.
 
+## A successful call can still be a failure
+
+The Sealmetrics MCP reports failures as **ordinary text inside a successful
+response**, not as protocol errors. A call that asks for a site the key cannot
+see comes back looking like any other result, carrying:
+
+```
+Error: site_id is required. Either pass it as a parameter or set the
+SEALMETRICS_SITE_ID environment variable.
+```
+
+Confirmed against the live server on 2026-09-08, on every tool tried.
+
+So: **read what came back before using it.** If a response is a short string
+beginning with "Error", "Failed", "Unauthorized", "Forbidden" or "Not found",
+the call did not work. Say so, apply the matching row of the failure-modes
+table below, and never let that text flow into a report as if it were data. A
+report that lists an error message where a channel name belongs is worse than
+one that says the data could not be fetched.
+
+The common case is a missing or wrong `site_id`. Resolve the site once with
+`list_sites`, cache it in `profile.json`, and pass it explicitly when the
+account has more than one.
+
 ## The bot check has three outcomes, not two
 
 `get_bot_stats(days=N)` is mandatory before reporting any spike, drop, or

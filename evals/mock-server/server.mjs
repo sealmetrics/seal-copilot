@@ -83,6 +83,11 @@ function handle(msg) {
     try { out = typeof handler === 'function' ? handler(args) : handler; }
     catch (e) { return fail(id, e.message); }
     if (out && out.__error) return fail(id, out.__error);
+    // The real server returns failures as ordinary text in a SUCCESSFUL
+    // response, so reproduce that rather than a protocol error — a skill that
+    // only handles protocol errors must fail here, not pass.
+    if (out && out.__textError)
+      return respond(id, { content: [{ type: 'text', text: `Error: ${out.__textError}` }] });
     return respond(id, { content: [{ type: 'text', text: JSON.stringify(out) }] });
   }
   if (method && method.startsWith('notifications/')) return;

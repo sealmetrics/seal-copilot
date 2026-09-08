@@ -59,6 +59,12 @@ export function unwrap(result) {
     const inner = tryParse(fence[1]);
     if (inner !== undefined) return { format: 'json-in-fence', value: inner, raw: text };
   }
+  // The server reports failures as ordinary text content, not as JSON-RPC
+  // errors, so a "successful" call can still be a failure. Detect that before
+  // concluding anything about response formats.
+  if (/^\s*(error|failed|unauthori[sz]ed|forbidden|not found)\b[: ]/i.test(text))
+    return { format: 'error', value: text.trim(), raw: text };
+
   return { format: looksMarkdown(text) ? 'markdown' : 'text', value: text, raw: text };
 }
 

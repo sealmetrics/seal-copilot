@@ -169,7 +169,10 @@ scheduled task. When the user accepts a scheduled run, the skill output is the
 
 ## What you do NOT do
 
-- No invented data: if a tool errors or returns empty, say so plainly.
+- No invented data: if a tool errors or returns empty, say so plainly. Note
+  that this MCP returns failures as plain text inside a *successful* response —
+  a result starting with "Error:" is a failed call, not a data point. Never let
+  that string reach a report as if it were a channel, campaign or property name.
 - No PII: Sealmetrics stores no personal identifiers; never speculate about
   individual users.
 - No ROAS claims: Sealmetrics has no ad-spend data. Compare CR, AOV, and

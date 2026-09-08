@@ -57,6 +57,29 @@ const PROBES = [
 const c = connect('npx', ['-y', '@sealmetrics/mcp'], {});
 await c.init();
 
+// Most tools require site_id. Resolve it rather than making the caller find it.
+let SITE = siteId;
+if (!SITE) {
+  const ls = unwrap(await c.call('list_sites', {}));
+  if (ls.format === 'json' || ls.format === 'json-in-fence') {
+    const v = ls.value;
+    const list = v?.sites || v?.data || (Array.isArray(v) ? v : []);
+    SITE = list[0]?.site_id || list[0]?.id || list[0]?.account_id;
+    if (list.length > 1)
+      console.log(`Account has ${list.length} sites; using the first. Pass --site to choose another.\n`);
+  } else {
+    const m = String(ls.value).match(/\b(acct[_-][A-Za-z0-9]+|[A-Za-z0-9]{16,})\b/);
+    SITE = m?.[1];
+  }
+  if (!SITE) {
+    console.error('Could not work out a site id from list_sites. Pass one explicitly:\n' +
+                  '  node evals/validate-fixtures.mjs --site <your site id>\n\nlist_sites returned:');
+    console.error('  ' + String(ls.value).slice(0, 300));
+    process.exit(2);
+  }
+  console.log(`Site: ${SITE}\n`);
+}
+
 // Fixture shapes to compare against.
 const fixtures = {};
 for (const f of readdirSync(join(here, 'fixtures')).filter(x => x.endsWith('.mjs') && !x.startsWith('_'))) {
@@ -68,10 +91,10 @@ for (const f of readdirSync(join(here, 'fixtures')).filter(x => x.endsWith('.mjs
 }
 
 console.log('Comparing fixture shapes against the live Sealmetrics API.\n');
-const real = {}; const formats = {}; let mismatches = 0, checked = 0, skipped = 0, nonJson = 0;
+const real = {}; const formats = {}; let mismatches = 0, checked = 0, skipped = 0, nonJson = 0, errors = 0;
 
 for (const [tool, args] of PROBES) {
-  if (siteId) args.site_id = siteId;
+  if (SITE) args.site_id = SITE;
   let out;
   try { out = unwrap(await c.call(tool, args)); }
   catch (e) { console.log(`  skip  ${tool.padEnd(28)} ${e.message.slice(0, 70)}`); skipped++; continue; }
@@ -80,6 +103,12 @@ for (const [tool, args] of PROBES) {
 
   // The response is not JSON at all. That is a far bigger finding than a field
   // name mismatch, so report it as such instead of pretending to diff shapes.
+  if (out.format === 'error') {
+    errors++;
+    console.log(`  ERROR    ${tool.padEnd(26)} ${String(out.value).replace(/\s+/g, ' ').slice(0, 100)}`);
+    continue;
+  }
+
   if (out.format !== 'json' && out.format !== 'json-in-fence') {
     nonJson++;
     console.log(`  FORMAT   ${tool.padEnd(26)} returns ${out.format}, not JSON`);
@@ -119,7 +148,8 @@ if (save) {
 }
 
 console.log(`\nResponse formats: ${Object.entries(formats).map(([k, v]) => `${k} ${v}`).join(', ')}`);
-console.log(`${checked} tool(s) shape-compared, ${mismatches} mismatch(es), ${nonJson} non-JSON, ${skipped} skipped.`);
+console.log(`${checked} shape-compared, ${mismatches} mismatch(es), ${nonJson} non-JSON, ${errors} error(s), ${skipped} skipped.`);
+if (errors) console.log('\nErrors above are the server refusing the call, not a shape problem. Fix those first.');
 
 if (nonJson) {
   console.log(`\n${nonJson} tool(s) return formatted text rather than JSON. That is a finding about\n` +
@@ -134,4 +164,4 @@ if (mismatches) {
               'then re-run the suite — some cases should start failing, and those failures\n' +
               'are the real bugs this was built to find.');
 }
-process.exit(mismatches || nonJson ? 1 : 0);
+process.exit(mismatches || nonJson || errors ? 1 : 0);

@@ -282,4 +282,20 @@ export default [
     mustNotMatch: [/^The drop is isolated/im],
     mustCall: ['get_campaigns'],
   },
+  {
+    id: 'text-shaped-error-is-not-data',
+    fixture: 'api-text-error',
+    prompt: 'How did my site do this month?',
+    maxCalls: 6,
+    // It must notice the call failed and say so.
+    mustMatch: [/could not|couldn'?t|failed|error|site[_ ]id/i],
+    mustNotMatch: [
+      // Never present the error text as if it were a result.
+      /entrances[^\n]{0,40}site_id is required/i,
+      /channel[^\n]{0,40}Error:/i,
+      // And never fabricate figures to fill the gap.
+      /\b\d{1,3},\d{3}\s+entrances/i,
+    ],
+    allowRejected: true,
+  },
 ];
