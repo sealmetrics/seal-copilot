@@ -10,8 +10,16 @@
 //
 // Writing assertions: models vary their typography. Match "paid search" with
 // SEP, not a literal space — a model that writes "paid\u2011search" with a
-// non-breaking hyphen is not wrong. And never forbid a bare phrase that could
-// legitimately appear inside a disclaimer: forbid the affirmative *claim*.
+// non-breaking hyphen is not wrong.
+//
+// And prefer behaviour to wording. mustCall / mustNotCall / stateMustContain
+// are unambiguous; a phrase ban is a guess about how a wrong answer will be
+// worded, and five times in this suite it fired on the RIGHT answer instead:
+// "not the same as 0% bots", "not seasonal", "RPE is a proxy for ROAS, not
+// ROAS", "Not checked: channel … Access denied", "nothing has shipped between
+// the two audits". When a ban is unavoidable, forbid the affirmative *claim*
+// or the data-shaped misuse (an error string inside a table cell), never a
+// bare phrase a correct disclaimer would also contain.
 // eslint-disable-next-line no-unused-vars -- kept for future prose assertions
 const SEP = '[\\s\\u2010-\\u2015\\u2212-]?';   // space, any dash, or nothing
 export default [
