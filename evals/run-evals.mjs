@@ -179,6 +179,9 @@ async function runCase(c, siteId) {
            calls, rejected, ms, answer, toolNames };
 }
 
+// No answer, no tool call, no error: the CLI session never really started.
+const isTransient = (r) => !r.error && !r.calls && !(r.answer || '').trim();
+
 const results = [];
 for (const c of selected) {
   process.stdout.write(`· ${c.id} … `);
@@ -187,6 +190,11 @@ for (const c of selected) {
   let r;
   for (let n = 0; n < RUNS; n++) {
     r = await runCase(c, siteId);
+    if (isTransient(r)) {
+      process.stdout.write('↻');
+      r = await runCase(c, siteId);              // one retry, then it counts
+      if (isTransient(r)) r = { ...r, failures: ['session produced nothing twice — transient CLI failure, not a skill result', ...r.failures] };
+    }
     attempts.push(r);
     if (r.error) break;                       // environment failure: do not repeat it
     if (RUNS > 1) process.stdout.write(r.pass ? '✓' : '✗');

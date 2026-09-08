@@ -6,10 +6,6 @@ description: >
   I optimize", "how can I improve my campaigns", "dónde pierdo dinero",
   "what would you change", "audit my marketing", or any open-ended
   optimization request.
-disallowed-tools: Bash, Edit, NotebookEdit, WebFetch, WebSearch
-context: fork
-agent: general-purpose
-background: false
 ---
 
 # Opportunity Scan
@@ -64,13 +60,19 @@ Budget: ≤12 tool calls.
 
 ## Output format
 
-**Max 3 opportunities, ordered by estimated revenue impact.** Each:
+**Max 3 opportunities, ordered by estimated revenue impact.** Each has all
+five parts below; none is optional. Two runs out of three dropped the last one
+when the finding felt obvious — a recommendation without a way to check it is
+an opinion, and it cannot go into the ledger.
 
 - **Name + pattern** (e.g. "Hidden star: campaign summer-sale-es")
 - **Evidence:** the numbers, the period, vs what baseline
 - **Action:** specific and executable this week
 - **Impact:** estimated €/month with the assumption stated
-- **Verify:** tool + metric + when
+- **Verify:** the tool to re-run, the metric that should move, and when
+  (2–4 weeks; one booking cycle for hotels). Write the word "Verify".
+
+Do not report how many tool calls you used.
 
 Then one line listing patterns checked that did NOT fire (transparency
 builds trust), and one line for any pattern suppressed as an already-open

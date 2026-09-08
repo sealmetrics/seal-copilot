@@ -8,10 +8,6 @@ description: >
   "onboarding", "first time", "what can you analyze", "explore my data",
   "what properties do I have", "qué propiedades tengo", "what data is
   there", "discover my setup", or as the first thing to run on a new site.
-disallowed-tools: Bash, Edit, NotebookEdit, WebFetch, WebSearch
-context: fork
-agent: general-purpose
-background: false
 ---
 
 # Property Explorer
