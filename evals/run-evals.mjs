@@ -14,7 +14,7 @@
 //   node evals/run-evals.mjs drop sku        # cases whose id matches a filter
 //   node evals/run-evals.mjs --json out.json
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -28,7 +28,13 @@ const schema = JSON.parse(readFileSync(join(here, 'mcp-schema.json'), 'utf8'));
 const argv = process.argv.slice(2);
 const jsonIdx = argv.indexOf('--json');
 const jsonOut = jsonIdx >= 0 ? argv[jsonIdx + 1] : null;
-const filters = argv.filter((a, i) => !a.startsWith('--') && !(jsonIdx >= 0 && i === jsonIdx + 1));
+const runsIdx = argv.indexOf('--runs');
+const RUNS = runsIdx >= 0 ? Math.max(1, parseInt(argv[runsIdx + 1], 10) || 1) : 1;
+// A case that passes 2 of 3 is flaky, not passing. Model wording varies — we saw
+// the same correct answer phrased two ways — so a case must hold every time.
+const REQUIRED_RATE = 1.0;
+const skipIdx = new Set([jsonIdx + 1, runsIdx + 1].filter(i => i > 0));
+const filters = argv.filter((a, i) => !a.startsWith('--') && !skipIdx.has(i));
 const selected = filters.length ? cases.filter(c => filters.some(f => c.id.includes(f))) : cases;
 
 // Every mock tool is pre-allowed so the run never blocks on a permission prompt.
@@ -48,10 +54,24 @@ async function siteIdFor(fixture) {
   } catch { return ''; }
 }
 
-function runCase(c, siteId) {
+// Read every file under the state directory, so a case can assert on what a
+// skill persisted — the recommendation ledger, the site profile, the baseline.
+function readState(dir) {
+  const out = [];
+  const walk = (d) => {
+    let entries; try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else { try { out.push(`--- ${p}\n` + readFileSync(p, 'utf8')); } catch {} }
+    }
+  };
+  walk(dir);
+  return out.join('\n');
+}
+
+function runStep(c, step, siteId, work, callLog) {
   return new Promise((resolve) => {
-    const work = mkdtempSync(join(tmpdir(), `seal-eval-${c.id}-`));
-    const callLog = join(work, 'calls.jsonl');
     const mcpConfig = JSON.stringify({
       mcpServers: {
         sealmetrics: {
@@ -66,7 +86,7 @@ function runCase(c, siteId) {
     });
 
     const args = [
-      '-p', c.prompt,
+      '-p', step.prompt,
       '--mcp-config', mcpConfig,
       '--strict-mcp-config',
       '--plugin-dir', join(root, 'seal-copilot'),
@@ -112,26 +132,69 @@ function runCase(c, siteId) {
         : [];
       const rejected = calls.filter(c2 => c2.rejected);
 
-      if (cliError) {
-        rmSync(work, { recursive: true, force: true });
-        return resolve({ id: c.id, fixture: c.fixture, pass: false, error: cliError,
-                         failures: [`the CLI never ran the case: ${cliError}`],
-                         calls: calls.length, rejected: 0, ms, answer });
-      }
-      const failures = assess(c, answer, calls);
-
-      rmSync(work, { recursive: true, force: true });
-      resolve({ id: c.id, fixture: c.fixture, pass: failures.length === 0, failures,
-                calls: calls.length, rejected: rejected.length, ms, answer,
+      resolve({ cliError, calls, rejected, ms, answer,
                 toolNames: [...new Set(calls.map(x => x.tool))] });
     });
   });
 }
 
+async function runCase(c, siteId) {
+  const work = mkdtempSync(join(tmpdir(), `seal-eval-${c.id}-`));
+  const callLog = join(work, 'calls.jsonl');
+  const steps = c.steps || [c];
+  const failures = [];
+  let calls = 0, rejected = 0, ms = 0, answer = '', toolNames = [], cliError = null;
+
+  for (const [i, step] of steps.entries()) {
+    const r = await runStep(c, step, siteId, work, callLog);
+    ms += r.ms;
+    calls = r.calls.length;                  // the log is cumulative across steps
+    rejected = r.rejected.length;
+    answer = r.answer;
+    toolNames = r.toolNames;
+    if (r.cliError) { cliError = r.cliError; break; }
+    const label = steps.length > 1 ? `step ${i + 1}: ` : '';
+    for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected }, r.answer, r.calls))
+      failures.push(label + f);
+  }
+
+  // Budget and rejections are judged once, across the whole case.
+  if (!cliError) {
+    if (c.maxCalls !== undefined && calls > c.maxCalls) failures.push(`${calls} calls > budget ${c.maxCalls}`);
+    if (rejected && !c.allowRejected) failures.push(`${rejected} invalid call(s)`);
+    if (c.stateMustContain) {
+      const state = readState(join(work, 'state'));
+      for (const re of c.stateMustContain)
+        if (!re.test(state)) failures.push(`nothing under the state dir matches ${re}`);
+    }
+  }
+
+  rmSync(work, { recursive: true, force: true });
+  return { id: c.id, fixture: c.fixture, error: cliError,
+           pass: !cliError && failures.length === 0,
+           failures: cliError ? [`the CLI never ran the case: ${cliError}`] : failures,
+           calls, rejected, ms, answer, toolNames };
+}
+
 const results = [];
 for (const c of selected) {
   process.stdout.write(`· ${c.id} … `);
-  const r = await runCase(c, await siteIdFor(c.fixture));
+  const siteId = await siteIdFor(c.fixture);
+  const attempts = [];
+  let r;
+  for (let n = 0; n < RUNS; n++) {
+    r = await runCase(c, siteId);
+    attempts.push(r);
+    if (r.error) break;                       // environment failure: do not repeat it
+    if (RUNS > 1) process.stdout.write(r.pass ? '✓' : '✗');
+  }
+  const passes = attempts.filter(a => a.pass).length;
+  const rate = passes / attempts.length;
+  // Report the first failing attempt, since that is the one worth reading.
+  r = attempts.find(a => !a.pass) || attempts[0];
+  r = { ...r, attempts: attempts.length, passes, rate, pass: rate >= REQUIRED_RATE };
+  if (RUNS > 1 && passes > 0 && passes < attempts.length)
+    r.failures = [`FLAKY — passed ${passes}/${attempts.length}`, ...r.failures];
   results.push(r);
   if (r.error && /not logged in|\/login|authentication|unauthoriz/i.test(r.error)) {
     console.log('ENVIRONMENT');
@@ -147,8 +210,9 @@ for (const c of selected) {
       'Everything that needs no model is checked by `bash scripts/check.sh`.\n');
     process.exit(2);
   }
-  console.log(r.pass ? `PASS (${r.calls} calls, ${(r.ms / 1000).toFixed(0)}s)`
-                     : `FAIL (${r.calls} calls) — ${r.failures.join('; ')}`);
+  const runLabel = RUNS > 1 ? ` ${r.passes}/${r.attempts}` : '';
+  console.log(r.pass ? ` PASS${runLabel} (${r.calls} calls, ${(r.ms / 1000).toFixed(0)}s)`
+                     : ` FAIL${runLabel} (${r.calls} calls) — ${r.failures.join('; ')}`);
   if (!r.pass) {
     const called = r.toolNames?.length ? r.toolNames.join(', ') : '(none)';
     console.log(`    tools called: ${called}`);
@@ -165,6 +229,10 @@ for (const c of selected) {
 
 const passed = results.filter(r => r.pass).length;
 const rate = results.length ? passed / results.length : 0;
-console.log(`\n${passed}/${results.length} passed (${(rate * 100).toFixed(0)}%). Target ≥90%.`);
+const flaky = results.filter(r => r.passes > 0 && r.passes < r.attempts);
+console.log(`\n${passed}/${results.length} cases passed (${(rate * 100).toFixed(0)}%)` +
+            (RUNS > 1 ? `, ${RUNS} runs each` : '') + '. Target ≥90%.');
+if (flaky.length) console.log(`${flaky.length} flaky: ${flaky.map(f => `${f.id} (${f.passes}/${f.attempts})`).join(', ')}`);
+if (RUNS === 1) console.log('Single run — model wording varies. Use --runs 3 before trusting a green suite.');
 if (jsonOut) { writeFileSync(jsonOut, JSON.stringify({ ts: new Date().toISOString(), results }, null, 2)); console.log(`→ ${jsonOut}`); }
 process.exit(rate >= 0.9 ? 0 : 1);

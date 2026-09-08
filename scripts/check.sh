@@ -6,4 +6,7 @@ echo "→ Tool-call linter";        node "$ROOT/evals/lint-tool-calls.mjs" "$ROO
 echo "→ Fixture arithmetic";      node "$ROOT/evals/fixtures/_check-coherence.mjs" | tail -1
 echo "→ Eval harness self-test";  node "$ROOT/evals/self-test.mjs" | tail -1
 echo "→ Plugin manifest";         claude plugin validate "$ROOT/seal-copilot" | tail -1
-echo "✔ all offline checks passed"
+if [ "${1:-}" = "--online" ]; then
+  echo "→ MCP schema drift"; node "$ROOT/evals/check-schema-drift.mjs"
+fi
+echo "✔ all offline checks passed${1:+ (plus online checks)}"

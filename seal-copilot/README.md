@@ -34,9 +34,21 @@ markets, booking properties, yoy seasonality, booking watchdog) and
 paths, plan mix by channel). The analyst detects which one applies from your
 tracking and loads it automatically.
 
+## Install
+
+From the marketplace in this repository:
+
+```
+claude plugin marketplace add /path/to/seal-copilot
+claude plugin install seal-copilot@sealmetrics
+```
+
+`claude plugin marketplace add` also accepts a URL or a GitHub repo, so the
+same two commands work once this is published.
+
 ## First run (5 minutes)
 
-1. **Install the plugin.**
+1. **Install the plugin** (above).
 2. **Get a token.** [my.sealmetrics.com](https://my.sealmetrics.com) → Settings
    → API Tokens → generate one (it starts with `sm_`).
 3. **Set the environment variable** `SEALMETRICS_API_KEY`. If your account has
@@ -133,9 +145,24 @@ processed or sent to the model.
 Two checks, from the repository root:
 
 ```
-bash scripts/check.sh          # linter, fixture arithmetic, harness self-test, manifest
-node evals/run-evals.mjs       # the full eval suite against a mock Sealmetrics server
+bash scripts/check.sh              # linter, fixture arithmetic, self-test, manifests
+bash scripts/check.sh --online     # the above plus MCP schema drift
+node evals/run-evals.mjs           # 21 cases against a mock Sealmetrics server
+node evals/run-evals.mjs --runs 3  # each case three times; model wording varies
+node evals/preflight.mjs           # one cheap call: proves the whole chain works
+node scripts/usage-report.mjs      # local metrics from your own state directory
 ```
+
+With a real API key, one more check matters more than all of these:
+
+```
+SEALMETRICS_API_KEY=sm_... node evals/validate-fixtures.mjs
+```
+
+The eval fixtures are reconstructions from documented field names. Until that
+command has run clean, a green suite proves the skills are self-consistent, not
+that they match the real API. It compares response **shapes** only — key names
+and types, never your figures — and writes nothing unless you pass `--save`.
 
 `check.sh` needs no model and no API key — it is what CI should run.
 
