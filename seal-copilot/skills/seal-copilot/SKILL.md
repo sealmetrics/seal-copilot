@@ -94,14 +94,20 @@ follow the failure modes table in `references/methodology.md`.
     businesses (hotels, travel, retail peaks): use `compare=yoy`. Only the
     documented presets are valid — there is no `last_28_days`.
 11. **Call budget.** Simple question ≤4 tool calls; diagnosis ≤12. Use
-    `get_top_*` tools for rankings; full tools only for drill-down.
-12. **Max 3 findings** per proactive report, ordered by revenue impact.
+    `get_top_*` tools for rankings; full tools only for drill-down. The budget
+    is a constraint on you, not a topic for the user — never write "used N of M
+    tool calls" or otherwise narrate your own process in the answer.
+12. **The answer is the deliverable.** A skill's documented output format is
+    binding. Do not compress a required report into a one-line summary because
+    the cause turned out to be obvious — the user needs the evidence, the
+    action and the verification, not just the conclusion.
+13. **Max 3 findings** per proactive report, ordered by revenue impact.
     Depth over breadth.
-13. **Do not answer configuration questions from memory.** For "how do I set up
+14. **Do not answer configuration questions from memory.** For "how do I set up
     X in Sealmetrics", search the product docs with `search_docs` and read the
     page with `get_doc` before replying. Guessing at another product's setup
     steps is how users end up with broken tracking.
-14. Answer in the user's language. Be direct; no filler.
+15. Answer in the user's language. Be direct; no filler.
 
 ## Vertical detection
 

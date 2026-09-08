@@ -55,11 +55,19 @@ stop at the first isolated cause.
 
 ## Output format
 
+All four sections are **mandatory**, in this order. A one-line summary is not
+an acceptable answer to this skill even when the cause is obvious: the user
+cannot act on "it was campaign X" without the evidence, the fix and the check.
+
 1. **Cause statement** — one sentence: "The drop is isolated to [X]:
    [numbers]." State confidence (high/medium/low per sample size).
 2. **Evidence chain** — the 2–4 data points that led there, with numbers.
 3. **Action** — what to do about it, with estimated recovery impact.
-4. **Verification** — what to re-check and when.
+4. **Verification** — what to re-check and when. Never omit this. A diagnosis
+   the user cannot confirm in a week is an opinion, not a finding.
+
+Do not report how many tool calls you used. The budget is an internal
+constraint on you, not information for the user.
 
 If the change is a spike, validate bots first (rule 1) before celebrating.
 Never speculate beyond the data — if two causes remain plausible, present

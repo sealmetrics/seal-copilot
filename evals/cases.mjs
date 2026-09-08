@@ -7,6 +7,12 @@
 //   mustCall       — these tools must have been called
 //   mustNotCall    — these tools must never be called
 //   allowRejected  — set true only for cases that deliberately test error paths
+//
+// Writing assertions: models vary their typography. Match "paid search" with
+// SEP, not a literal space — a model that writes "paid\u2011search" with a
+// non-breaking hyphen is not wrong. And never forbid a bare phrase that could
+// legitimately appear inside a disclaimer: forbid the affirmative *claim*.
+const SEP = '[\\s\\u2010-\\u2015\\u2212-]?';   // space, any dash, or nothing
 export default [
   {
     id: 'healthy-says-so',
@@ -22,7 +28,12 @@ export default [
     fixture: 'ecommerce-paid-search-drop',
     prompt: 'Conversions fell this week. Why?',
     maxCalls: 14,
-    mustMatch: [/generic-es/, /paid search/i],
+    mustMatch: [
+      /generic-es/,
+      new RegExp(`paid${SEP}search`, 'i'),
+      /230/,                          // operating rule 1: always quantify
+      /verify|re-?run|re-?check|check again|in 7 days|next week/i,  // the skill owes a verification plan
+    ],
     mustNotMatch: [/seasonal/i],
     mustCall: ['get_bot_stats', 'get_campaigns'],
   },
@@ -41,7 +52,13 @@ export default [
     prompt: 'Traffic is up a lot. Is this real, and are bots involved?',
     maxCalls: 12,
     mustMatch: [/agent analytics|not enabled|unavailable|unvalidated/i],
-    mustNotMatch: [/\b0\s*%\s*(of\s*)?bots?\b/i, /no bots? (were )?(detected|found)/i],
+    // Forbid the affirmative claim only. "which is not the same as 0% bots" is
+    // the disclaimer we want, and a naive /0% bots/ ban punishes it.
+    mustNotMatch: [
+      /bot share (is|was|:)\s*0/i,
+      /0\s*%\s*(of\s*)?(sessions|traffic|visits)\s*(are|were|was)?\s*bots?/i,
+      /(no|zero)\s+bots?\s+(were\s+)?(detected|found)/i,
+    ],
     mustCall: ['get_bot_stats'],
   },
   {

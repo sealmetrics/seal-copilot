@@ -1,5 +1,45 @@
 # Changelog
 
+## 1.1.1 — 2026-09-08
+
+First full run of the eval suite: 8/10. Both failures were bugs in the
+assertions; one of them exposed a real defect in a skill.
+
+### Fixed — brittle and wrong assertions
+- `drop-isolates-campaign` required a literal "paid search". The model wrote
+  "paid\u2011search" with a non-breaking hyphen and was marked wrong for
+  typography. Assertions now match separators with a `SEP` class rather than a
+  literal space.
+- `empty-bot-stats-is-not-zero-percent` banned the phrase "0% bots" anywhere in
+  the answer. The model produced the ideal response — *"agent analytics is off,
+  so get_bot_stats returned empty, which is not the same as 0% bots"* — and the
+  ban fired on its own disclaimer. The rule now forbids the affirmative claim
+  ("bot share is 0%") and leaves the disclaimer alone. Verified against the real
+  answer and against a genuine violation, so this narrows a false positive
+  rather than weakening the check.
+
+### Fixed — defects the suite surfaced
+- **`diagnose-drop` answered with a one-line summary** instead of the four
+  mandatory sections, dropping the verification plan entirely. The output
+  contract is now binding, and the core skill gains a rule that a documented
+  output format is not optional just because the cause turned out to be obvious.
+- **The call budget leaked into a user-facing answer** — "Used 8 of 12 tool
+  calls". The budget constrains the model, it is not information for the user.
+  Now forbidden globally.
+
+### Added
+- `evals/preflight.mjs`: proves the whole chain — CLI auth, mock server start,
+  tool visibility, response parsing — with one cheap model call, so a broken
+  case is never debugged blind again.
+- A note in `evals/cases.mjs` on writing assertions: match separators, not
+  literal spaces, and forbid affirmative claims rather than bare phrases that
+  can legitimately appear inside a disclaimer.
+
+### Suite status
+8/10 with the old assertions. The bot case passes with the repaired one; the
+drop case now fails on a newly added assertion that the verification plan is
+present — a real gap, now fixed in the skill.
+
 ## 1.1.0 — 2026-09-07
 
 ### Fixed — the eval runner hid environment failures behind assertion failures
