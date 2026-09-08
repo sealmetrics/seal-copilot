@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.4.0 — 2026-09-08
+
+The plugin answered a real question about a real account for the first time.
+The substance was right; three things around it were wrong, and all three are
+now fixed and verified 3/3 against a fixture that reproduces the exact
+condition.
+
+### What the first real run got right
+Nested overview read correctly, the low-volume rule applied (0 conversions →
+KPIs only, no findings), nothing invented, the attribution caveat stated, and
+a genuine insight offered: the site has no macro conversion instrumented, so
+the report is blind to outcomes. It then pointed at the skill that fixes that.
+
+### What it got wrong, and only real data could show
+- **"Profile now initialized" — and no profile.json.** Ownership is explicit
+  now: whichever skill runs discovery first writes it. `agent_analytics_enabled`
+  gains `"unknown"`, so a refused bot call is never recorded as measured-and-off.
+- **A run log with invented field names and no call count**, which made
+  budget compliance unmeasurable. The fields are exact and mandatory, and each
+  report skill states its own budget as the field value.
+- **Silence about refused calls.** With a +35% traffic spike at 84% bounce, the
+  report said nothing about `get_channels` and `get_bot_stats` being refused
+  for the site. Both report skills now carry a "Not checked" line whenever a
+  step's call was refused or skipped, omitted only when every step ran — and
+  the healthy case confirms it is omitted.
+
+### Harness
+- `account-family-denied`: a fixture with the refused-calls condition, and a
+  case asserting the refusal is named, the spike marked unvalidated, the run
+  log measurable and the profile present. 3/3.
+- A failing case now saves its state directory alongside its answer, so a
+  missing field is read rather than guessed.
+- Two assertions were mine to fix: the low-volume pattern missed "no
+  conversions", and a ban on "channel … Access denied" fired on the very
+  disclaimer the skill must write — the forbid-the-disclaimer mistake again,
+  now scoped to a table cell.
+
+### Suite: 23 cases, 14 skills, all 3/3 on their respective trees
+Still open, both outside this repo: the `account_id` the ten refused tools
+expect, and a repeat of the real run to see the "Not checked" line against the
+live API.
+
 ## 1.3.2 — 2026-09-08
 
 The suite holds under repetition. Every case now passes three runs out of
