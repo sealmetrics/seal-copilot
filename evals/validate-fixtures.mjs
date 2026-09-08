@@ -132,18 +132,22 @@ let MICRO = null, PROP = null;
 // Fixture handlers, kept as functions so each can be evaluated with the same
 // arguments the real probe used — a `comparison` block only appears under
 // compare, and comparing it against a compare-less fixture call is noise.
+// Every fixture handler for every tool. A shape is covered if ANY fixture
+// reproduces it under the probe's arguments — "first fixture wins" was wrong,
+// because the first one alphabetically often does not model `compare`.
 const handlers = {};
 for (const f of readdirSync(join(here, 'fixtures')).filter(x => x.endsWith('.mjs') && !x.startsWith('_'))) {
   const m = await import(pathToFileURL(join(here, 'fixtures', f)).href);
   for (const [tool, h] of Object.entries(m.tools || {})) {
-    if (handlers[tool] !== undefined) continue;
     const probe = typeof h === 'function' ? h : () => h;
     let sample; try { sample = probe({ period: '30d', table: 'both' }); } catch { continue; }
     if (sample && (sample.__error || sample.__textError)) continue;
-    handlers[tool] = probe;
+    (handlers[tool] ||= []).push({ file: f, probe });
   }
 }
-const fixtureFor = (tool, args) => { const h = handlers[tool]; if (!h) return undefined; try { return h(args); } catch { return undefined; } };
+const fixturesFor = (tool, args) => (handlers[tool] || []).map(({ file, probe }) => {
+  try { return { file, value: probe(args) }; } catch { return null; }
+}).filter(Boolean);
 
 console.log('Probing the tools the skills depend on:\n');
 const formats = {}; let compared = 0, mismatches = 0, errors = 0, nonJson = 0;
@@ -191,16 +195,21 @@ for (const [tool, rawArgs, label] of probes) {
     PROP = typeof arr[0] === 'string' ? arr[0] : arr[0]?.key;
   }
 
-  const fx = fixtureFor(tool, args);
-  if (fx === undefined) { console.log(`  ok       ${name.padEnd(36)} (no fixture yet) ${shape(res).slice(0, 60)}`); continue; }
+  const candidates = fixturesFor(tool, args);
+  if (!candidates.length) { console.log(`  ok       ${name.padEnd(36)} (no fixture yet) ${shape(res).slice(0, 60)}`); continue; }
   compared++;
-  const rKeys = topKeys(res), fKeys = topKeys(fx);
-  const missing = fKeys.filter(k => !rKeys.includes(k)), extra = rKeys.filter(k => !fKeys.includes(k));
-  if (!missing.length && !extra.length) { console.log(`  ok       ${name}`); continue; }
+  const rKeys = topKeys(res);
+  const scored = candidates.map(({ file, value }) => {
+    const fKeys = topKeys(value);
+    return { file, missing: fKeys.filter(k => !rKeys.includes(k)), extra: rKeys.filter(k => !fKeys.includes(k)) };
+  });
+  const exact = scored.find(s => !s.missing.length && !s.extra.length);
+  if (exact) { console.log(`  ok       ${name.padEnd(36)} (${exact.file.replace('.mjs', '')}${candidates.length > 1 ? ` +${candidates.length - 1}` : ''})`); continue; }
   mismatches++;
-  console.log(`  MISMATCH ${name}`);
-  if (missing.length) console.log(`             fixture keys the API lacks: ${missing.join(', ')}`);
-  if (extra.length)   console.log(`             API keys the fixture lacks: ${extra.join(', ')}`);
+  const best = scored.sort((a, b) => (a.missing.length + a.extra.length) - (b.missing.length + b.extra.length))[0];
+  console.log(`  MISMATCH ${name}  — no fixture matches; closest is ${best.file}`);
+  if (best.missing.length) console.log(`             fixture keys the API lacks: ${best.missing.join(', ')}`);
+  if (best.extra.length)   console.log(`             API keys the fixture lacks: ${best.extra.join(', ')}`);
 }
 c.close();
 
