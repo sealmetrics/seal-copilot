@@ -53,7 +53,7 @@ file is the one thing the first real run got wrong here.
 ```json
 {
   "site_id": "example-com",
-  "account_id": "acct_123",
+  "account_id": "refused",
   "site_name": "example.com",
   "timezone": "Europe/Madrid",
   "currency": "EUR",
@@ -72,9 +72,11 @@ file is the one thing the first real run got wrong here.
 }
 ```
 
-`site_id` and `account_id` are different values used by different tool
-families — see "A successful call can still be a failure" in
-`methodology.md`. Store both; twenty tools reject the site id.
+`account_id` is **not a second identifier**: the configuration tools send the
+same site id under that wire name. Keep the field as a record of whether that
+family answered — `"same-as-site"` when it works, `"refused"` when the backend
+returns 403 — so later skills know without spending a call. See "A successful
+call can still be a failure" in `methodology.md`.
 
 **`discovery_cached_at` is mandatory** — write it whenever you write the
 profile. The first real run omitted it, which left the TTL below with nothing

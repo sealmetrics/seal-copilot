@@ -156,28 +156,28 @@ table below, and never let that text flow into a report as if it were data. A
 report that lists an error message where a channel name belongs is worse than
 one that says the data could not be fetched.
 
-The common case is a missing or wrong `site_id` — and there are **two
-identifiers, not one**. Thirty-four tools take the site id; twenty take the
-**account id** in the very same `site_id` parameter (their schema description
-reads "Site ID (account_id)"). Pass the wrong one and the reply is "Access
-denied to site …" as plain text. Confirmed live on 2026-09-08.
+The common case is a missing `site_id`. Resolve it once with `list_sites`,
+cache it in `profile.json`, and pass it explicitly when the account has more
+than one site.
 
-**Account-id family** — `get_channels`, `get_bot_stats`,
+**Twenty tools may refuse that same id with "Access denied".** They are the
+configuration family — `get_channels`, `get_bot_stats`,
 `get_suspicious_sessions`, `list_segments`, `get_segment`, `list_alerts`,
 `get_alert_history`, `get_alert_stats`, `list_webhooks`,
 `list_webhook_deliveries`, `get_webhook_stats`, `list_channel_rules`,
-`test_channel_rules`, `create_channel_rule`, `update_channel_rule`,
-`delete_channel_rule`, `import_channel_rules`, `verify_setup`,
-`get_instrumentation_guide`, `verify_event_instrumented`.
+`test_channel_rules`, the four channel-rule write tools, `verify_setup`,
+`get_instrumentation_guide`, `verify_event_instrumented`. Their schema says
+"Site ID (account_id)", which is **not** a second identifier: the MCP sends
+the very same site id, only under the wire name `account_id`, to a different
+backend path (`/channel-groups/…`, `/bot-stats/…`, `/alerts/…`). "Access
+denied" is the MCP's wrapper around an HTTP 403 from that backend. Read from
+the package source on 2026-09-08; do not go looking for another id.
 
-**Site-id family** — every other data tool: `get_overview`, `get_campaigns`,
-`get_top_channels`, `get_conversions`, the property tools, the raw tools, and
-so on.
-
-Resolve both once with `list_sites` and `get_site`, store them in
-`profile.json` as `site_id` and `account_id`, and pass the right one
-explicitly. `get_channels` and `get_bot_stats` are called by almost every
-skill, so getting this wrong breaks almost every skill.
+So when a configuration tool refuses: say so in the "Not checked" line, mark
+anything that depended on it as unvalidated, and carry on with the
+statistics family, which uses the same id and works. Whether the 403 is an
+API-key scope, a plan tier, or an ownership check is a backend question the
+plugin cannot answer.
 
 ## Reading responses — the real shapes
 
