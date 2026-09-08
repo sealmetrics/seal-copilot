@@ -35,7 +35,8 @@ Written by `property-explorer`, `setup-audit` and the core skill. Read by all.
 
 ```json
 {
-  "site_id": "acct_123",
+  "site_id": "example-com",
+  "account_id": "acct_123",
   "site_name": "example.com",
   "timezone": "Europe/Madrid",
   "currency": "EUR",
@@ -53,6 +54,10 @@ Written by `property-explorer`, `setup-audit` and the core skill. Read by all.
   "scheduling_offered": { "monday_briefing": true, "cart_watchdog": false }
 }
 ```
+
+`site_id` and `account_id` are different values used by different tool
+families — see "A successful call can still be a failure" in
+`methodology.md`. Store both; twenty tools reject the site id.
 
 **TTL: 7 days** on `discovery_cached_at`. Past that, re-run `list_sites`,
 `list_microconversion_types` and `list_property_keys` and refresh the file.

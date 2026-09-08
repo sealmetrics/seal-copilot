@@ -7,3 +7,4 @@ seal-copilot.plugin
 
 # Eval output
 evals/results/
+evals/real-shapes/

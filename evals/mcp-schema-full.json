@@ -1,0 +1,2716 @@
+{
+  "list_sites": {
+    "description": "List all sites (web properties) accessible with your API key. Returns site IDs, names, and domains. Use this to find the site_id needed for other tools.",
+    "params": {}
+  },
+  "get_site": {
+    "description": "Get detailed information about a specific site: name, domains, timezone, configuration, and tracking status. Use list_sites first to find available site IDs.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      }
+    }
+  },
+  "get_overview": {
+    "description": "Get dashboard KPIs: pageviews, entrances, bounce rate, conversions, revenue. Includes time series data and optional period-over-period comparison. This is the best starting point for understanding a site's performance.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      }
+    }
+  },
+  "get_traffic_sources": {
+    "description": "Get traffic broken down by source (utm_source): google, facebook, twitter, direct, etc. Shows entrances, pageviews, conversions, and revenue per source.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "sort_by": {
+        "type": "string",
+        "description": "Field to sort by.",
+        "enum": [
+          "entrances",
+          "engaged_entrances",
+          "page_views",
+          "conversions",
+          "revenue",
+          "bounce_rate"
+        ]
+      },
+      "sort_order": {
+        "type": "string",
+        "description": "Sort direction: \"asc\" or \"desc\" (default: \"desc\").",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      }
+    }
+  },
+  "get_traffic_mediums": {
+    "description": "Get traffic broken down by medium (utm_medium): organic, cpc, email, referral, social, etc. Useful for understanding which marketing channels drive traffic.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "sort_by": {
+        "type": "string",
+        "description": "Field to sort by.",
+        "enum": [
+          "entrances",
+          "engaged_entrances",
+          "page_views",
+          "conversions",
+          "revenue",
+          "bounce_rate"
+        ]
+      },
+      "sort_order": {
+        "type": "string",
+        "description": "Sort direction: \"asc\" or \"desc\" (default: \"desc\").",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      }
+    }
+  },
+  "get_campaigns": {
+    "description": "Get traffic and conversions broken down by campaign (utm_campaign). Shows performance of individual marketing campaigns including entrances, conversions, and revenue.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "sort_by": {
+        "type": "string",
+        "description": "Field to sort by.",
+        "enum": [
+          "entrances",
+          "engaged_entrances",
+          "page_views",
+          "conversions",
+          "revenue",
+          "bounce_rate"
+        ]
+      },
+      "sort_order": {
+        "type": "string",
+        "description": "Sort direction: \"asc\" or \"desc\" (default: \"desc\").",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by source (e.g. 'google')."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by medium (e.g. 'cpc')."
+      }
+    }
+  },
+  "get_terms": {
+    "description": "Get traffic and conversions broken down by UTM term (keyword). Shows which search keywords or ad terms drive the most traffic. Supports filtering by source, medium, and campaign.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "sort_by": {
+        "type": "string",
+        "description": "Field to sort by.",
+        "enum": [
+          "entrances",
+          "engaged_entrances",
+          "page_views",
+          "conversions",
+          "revenue",
+          "bounce_rate"
+        ]
+      },
+      "sort_order": {
+        "type": "string",
+        "description": "Sort direction: \"asc\" or \"desc\" (default: \"desc\").",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by source (e.g. 'google')."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by medium (e.g. 'cpc')."
+      },
+      "utm_campaign": {
+        "type": "string",
+        "description": "Filter by campaign name."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_top_sources": {
+    "description": "Get top traffic sources ranked by entrances. Returns a compact list of the top N sources (utm_source) without pagination — ideal for quick rankings and summaries.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by medium (e.g. 'cpc')."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_top_campaigns": {
+    "description": "Get top campaigns ranked by entrances. Returns a compact list of the top N campaigns (utm_campaign) — ideal for quick rankings.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by source (e.g. 'google')."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by medium (e.g. 'cpc')."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_top_terms": {
+    "description": "Get top UTM terms (keywords) ranked by entrances. Returns a compact list of the top N terms — ideal for quick keyword rankings.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by source (e.g. 'google')."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by medium (e.g. 'cpc')."
+      },
+      "utm_campaign": {
+        "type": "string",
+        "description": "Filter by campaign name."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_top_referrers": {
+    "description": "Get top referrer domains ranked by entrances. Shows which external sites send the most traffic.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_pages": {
+    "description": "Get metrics per page URL path: pageviews and entrances. Useful for finding most popular pages and content performance. For bounce rate by entry page, use get_landing_pages instead — bounce is not interpretable at page granularity. Supports multi-value filters (country, device_type, browser, os, channel_group, UTMs) as arrays of strings — e.g. device_type=['mobile'] to filter to mobile only. Pass include=['device'] to also break down metrics by device. The two are orthogonal — combine them as needed.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "sort_by": {
+        "type": "string",
+        "description": "Field to sort by.",
+        "enum": [
+          "page_views",
+          "entrances"
+        ]
+      },
+      "sort_order": {
+        "type": "string",
+        "description": "Sort direction: \"asc\" or \"desc\" (default: \"desc\").",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "path_filter": {
+        "type": "string",
+        "description": "Filter pages by URL path pattern (e.g. '/blog')."
+      },
+      "country": {
+        "type": "array",
+        "description": "Filter by country code(s) (e.g. ['ES', 'US'])."
+      },
+      "device_type": {
+        "type": "array",
+        "description": "Filter by device type(s) (e.g. ['mobile', 'desktop'])."
+      },
+      "browser": {
+        "type": "array",
+        "description": "Filter by browser name(s)."
+      },
+      "os": {
+        "type": "array",
+        "description": "Filter by operating system name(s)."
+      },
+      "channel_group": {
+        "type": "array",
+        "description": "Filter by channel group(s)."
+      },
+      "utm_source": {
+        "type": "array",
+        "description": "Filter by UTM source(s)."
+      },
+      "utm_medium": {
+        "type": "array",
+        "description": "Filter by UTM medium(s)."
+      },
+      "utm_campaign": {
+        "type": "array",
+        "description": "Filter by UTM campaign(s)."
+      },
+      "utm_term": {
+        "type": "array",
+        "description": "Filter by UTM term(s)."
+      },
+      "include": {
+        "type": "array",
+        "description": "Add dimension(s) to GROUP BY and response. Allowed values: device, browser, os, channel_group. Empty/absent means no extra grouping."
+      }
+    }
+  },
+  "get_landing_pages": {
+    "description": "Get landing page performance: entrances, bounce rate, conversions. Landing pages are the first page users see when entering the site. High bounce rates indicate poor landing page experience. Supports multi-value filters (country, device_type, browser, os, channel_group, UTMs) as arrays of strings — e.g. country=['ES','PT'] to filter to two countries. Pass include=['channel_group'] to also break down by channel group. The two are orthogonal — combine them as needed.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "sort_by": {
+        "type": "string",
+        "description": "Field to sort by.",
+        "enum": [
+          "entrances",
+          "engaged_entrances",
+          "page_views",
+          "conversions",
+          "revenue",
+          "bounce_rate"
+        ]
+      },
+      "sort_order": {
+        "type": "string",
+        "description": "Sort direction: \"asc\" or \"desc\" (default: \"desc\").",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "path_filter": {
+        "type": "string",
+        "description": "Filter by URL path pattern."
+      },
+      "country": {
+        "type": "array",
+        "description": "Filter by country code(s) (e.g. ['ES', 'US'])."
+      },
+      "device_type": {
+        "type": "array",
+        "description": "Filter by device type(s) (e.g. ['mobile', 'desktop'])."
+      },
+      "browser": {
+        "type": "array",
+        "description": "Filter by browser name(s)."
+      },
+      "os": {
+        "type": "array",
+        "description": "Filter by operating system name(s)."
+      },
+      "channel_group": {
+        "type": "array",
+        "description": "Filter by channel group(s)."
+      },
+      "utm_source": {
+        "type": "array",
+        "description": "Filter by UTM source(s)."
+      },
+      "utm_medium": {
+        "type": "array",
+        "description": "Filter by UTM medium(s)."
+      },
+      "utm_campaign": {
+        "type": "array",
+        "description": "Filter by UTM campaign(s)."
+      },
+      "utm_term": {
+        "type": "array",
+        "description": "Filter by UTM term(s)."
+      },
+      "include": {
+        "type": "array",
+        "description": "Add dimension(s) to GROUP BY and response. Allowed values: device, browser, os, channel_group. Empty/absent means no extra grouping."
+      }
+    }
+  },
+  "get_top_pages": {
+    "description": "Get top pages ranked by page views. Returns a compact list of the top N pages — ideal for quick rankings and summaries.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by UTM source."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by UTM medium."
+      },
+      "utm_campaign": {
+        "type": "string",
+        "description": "Filter by UTM campaign."
+      },
+      "utm_term": {
+        "type": "string",
+        "description": "Filter by UTM term."
+      }
+    }
+  },
+  "get_top_landing_pages": {
+    "description": "Get top landing pages ranked by entrances. Returns a compact list of the top N landing pages — ideal for quick rankings.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by UTM source."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by UTM medium."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      },
+      "content_grouping": {
+        "type": "string",
+        "description": "Filter by content grouping name."
+      }
+    }
+  },
+  "get_landing_pages_by_content_group": {
+    "description": "Get landing page metrics grouped by content grouping. Shows aggregate performance per content group (e.g. blog, product, category).",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by UTM source."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by UTM medium."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_content_groups": {
+    "description": "Get metrics grouped by content group (content_grouping). Shows pageviews and entrances per content group. Useful for understanding which sections of a site get the most traffic.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by UTM source (e.g. 'google')."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by UTM medium (e.g. 'cpc')."
+      },
+      "utm_campaign": {
+        "type": "string",
+        "description": "Filter by UTM campaign name."
+      },
+      "utm_term": {
+        "type": "string",
+        "description": "Filter by UTM term."
+      }
+    }
+  },
+  "get_conversions": {
+    "description": "Get conversions broken down by type (e.g. purchase, signup). Shows count, revenue, and average order value per conversion type. Use for aggregated counts/revenue by conversion type. **For per-event detail or per-product analysis use `get_conversions_raw` or `get_conversion_items_raw`.**",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "sort_by": {
+        "type": "string",
+        "description": "Field to sort by.",
+        "enum": [
+          "count",
+          "revenue",
+          "avg_value"
+        ]
+      },
+      "sort_order": {
+        "type": "string",
+        "description": "Sort direction: \"asc\" or \"desc\" (default: \"desc\").",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by traffic source."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by traffic medium."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_microconversions": {
+    "description": "Get microconversions (smaller engagement events) broken down by type: add_to_cart, newsletter_signup, pdf_download, etc. Shows count and trends per event type. **For per-event detail use `get_microconversions_raw`.**",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "sort_by": {
+        "type": "string",
+        "description": "Field to sort by.",
+        "enum": [
+          "count",
+          "revenue",
+          "avg_value"
+        ]
+      },
+      "sort_order": {
+        "type": "string",
+        "description": "Sort direction: \"asc\" or \"desc\" (default: \"desc\").",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "conversion_type": {
+        "type": "string",
+        "description": "Filter by specific microconversion type."
+      }
+    }
+  },
+  "list_microconversion_types": {
+    "description": "Get the list of available microconversion type names for a site. Use this to discover what microconversion types exist before querying details.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      }
+    }
+  },
+  "get_microconversion_details": {
+    "description": "Get detailed breakdown for a specific microconversion type. Shows metrics segmented by source, medium, campaign, country, device, browser, and OS.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "conversion_type": {
+        "type": "string",
+        "description": "The microconversion type to get details for (e.g. 'add_to_cart', 'newsletter_signup')."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "utm_source": {
+        "type": "string",
+        "description": "Filter by UTM source."
+      },
+      "utm_medium": {
+        "type": "string",
+        "description": "Filter by UTM medium."
+      },
+      "utm_campaign": {
+        "type": "string",
+        "description": "Filter by UTM campaign."
+      },
+      "utm_term": {
+        "type": "string",
+        "description": "Filter by UTM term."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      },
+      "device_type": {
+        "type": "string",
+        "description": "Filter by device type (e.g. 'desktop', 'mobile', 'tablet')."
+      },
+      "browser": {
+        "type": "string",
+        "description": "Filter by browser name."
+      },
+      "os": {
+        "type": "string",
+        "description": "Filter by operating system name."
+      }
+    }
+  },
+  "get_conversions_raw": {
+    "description": "Returns raw conversion rows from /stats/conversions/raw (one row per event, with timestamp_utc and timestamp_local). Use for one-row-per-event detail. **For per-product/SKU analysis prefer `get_conversion_items_raw` (always includes item properties like sku, price, quantity).** Custom `properties` are excluded by default — pass `include_properties=true` to receive them. Date range capped at 31 days; page_size capped at 100 to control token usage.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored. Raw endpoints cap the range at 31 days."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 10, max: 100). MCP-side cap to control token usage."
+      },
+      "include_properties": {
+        "type": "boolean",
+        "description": "If true, include the custom `properties` object in each row. Default false to keep responses compact."
+      },
+      "conversion_type": {
+        "type": "array",
+        "description": "Filter by conversion type (e.g. ['purchase'])."
+      },
+      "country": {
+        "type": "array",
+        "description": "Filter by country code (e.g. ['ES', 'US'])."
+      },
+      "device_type": {
+        "type": "array",
+        "description": "Filter by device type (e.g. ['mobile'])."
+      },
+      "browser": {
+        "type": "array",
+        "description": "Filter by browser."
+      },
+      "os": {
+        "type": "array",
+        "description": "Filter by operating system."
+      },
+      "channel_group": {
+        "type": "array",
+        "description": "Filter by channel group."
+      },
+      "utm_source": {
+        "type": "array",
+        "description": "Filter by UTM source."
+      },
+      "utm_medium": {
+        "type": "array",
+        "description": "Filter by UTM medium."
+      },
+      "utm_campaign": {
+        "type": "array",
+        "description": "Filter by UTM campaign."
+      },
+      "utm_term": {
+        "type": "array",
+        "description": "Filter by UTM term."
+      },
+      "utm_content": {
+        "type": "array",
+        "description": "Filter by UTM content."
+      }
+    }
+  },
+  "get_microconversions_raw": {
+    "description": "Returns raw microconversion rows from /stats/microconversions/raw (one row per event, with timestamp_utc and timestamp_local). Use for one-row-per-event detail of microconversions (add_to_cart, newsletter_signup, etc.). Custom `properties` are excluded by default — pass `include_properties=true` to receive them. Date range capped at 31 days; page_size capped at 100 to control token usage.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored. Raw endpoints cap the range at 31 days."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 10, max: 100). MCP-side cap to control token usage."
+      },
+      "include_properties": {
+        "type": "boolean",
+        "description": "If true, include the custom `properties` object in each row. Default false to keep responses compact."
+      },
+      "conversion_type": {
+        "type": "array",
+        "description": "Filter by conversion type (e.g. ['purchase'])."
+      },
+      "country": {
+        "type": "array",
+        "description": "Filter by country code (e.g. ['ES', 'US'])."
+      },
+      "device_type": {
+        "type": "array",
+        "description": "Filter by device type (e.g. ['mobile'])."
+      },
+      "browser": {
+        "type": "array",
+        "description": "Filter by browser."
+      },
+      "os": {
+        "type": "array",
+        "description": "Filter by operating system."
+      },
+      "channel_group": {
+        "type": "array",
+        "description": "Filter by channel group."
+      },
+      "utm_source": {
+        "type": "array",
+        "description": "Filter by UTM source."
+      },
+      "utm_medium": {
+        "type": "array",
+        "description": "Filter by UTM medium."
+      },
+      "utm_campaign": {
+        "type": "array",
+        "description": "Filter by UTM campaign."
+      },
+      "utm_term": {
+        "type": "array",
+        "description": "Filter by UTM term."
+      },
+      "utm_content": {
+        "type": "array",
+        "description": "Filter by UTM content."
+      }
+    }
+  },
+  "get_conversion_items_raw": {
+    "description": "Returns one row per item inside a conversion (e.g. one row per product in a purchase) from /stats/conversion-items/raw. `properties` always included — that's where product_id, sku, price, quantity live. **Best tool for per-product analytics.** Date range capped at 31 days; page_size capped at 100 to control token usage.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored. Raw endpoints cap the range at 31 days."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 10, max: 100). MCP-side cap to control token usage."
+      },
+      "conversion_type": {
+        "type": "array",
+        "description": "Filter by conversion type (e.g. ['purchase'])."
+      },
+      "country": {
+        "type": "array",
+        "description": "Filter by country code (e.g. ['ES', 'US'])."
+      },
+      "device_type": {
+        "type": "array",
+        "description": "Filter by device type (e.g. ['mobile'])."
+      },
+      "browser": {
+        "type": "array",
+        "description": "Filter by browser."
+      },
+      "os": {
+        "type": "array",
+        "description": "Filter by operating system."
+      },
+      "channel_group": {
+        "type": "array",
+        "description": "Filter by channel group."
+      },
+      "utm_source": {
+        "type": "array",
+        "description": "Filter by UTM source."
+      },
+      "utm_medium": {
+        "type": "array",
+        "description": "Filter by UTM medium."
+      },
+      "utm_campaign": {
+        "type": "array",
+        "description": "Filter by UTM campaign."
+      },
+      "utm_term": {
+        "type": "array",
+        "description": "Filter by UTM term."
+      },
+      "utm_content": {
+        "type": "array",
+        "description": "Filter by UTM content."
+      }
+    }
+  },
+  "get_countries": {
+    "description": "Get traffic broken down by country. Shows entrances, pageviews, conversions, and revenue per country. Country codes follow ISO 3166-1 alpha-2 (e.g. ES=Spain, US=United States).",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "sort_by": {
+        "type": "string",
+        "description": "Field to sort by.",
+        "enum": [
+          "entrances",
+          "engaged_entrances",
+          "page_views",
+          "conversions",
+          "revenue",
+          "bounce_rate"
+        ]
+      },
+      "sort_order": {
+        "type": "string",
+        "description": "Sort direction: \"asc\" or \"desc\" (default: \"desc\").",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      }
+    }
+  },
+  "get_devices": {
+    "description": "Get traffic broken down by device type (desktop/mobile/tablet), browser (Chrome, Safari, Firefox...), and operating system (Windows, macOS, iOS, Android...). Returns all three breakdowns in a single call.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "compare": {
+        "type": "string",
+        "description": "Comparison mode. \"previous\" compares with the prior period of the same length. \"yoy\" compares with the same dates last year.",
+        "enum": [
+          "previous",
+          "yoy"
+        ]
+      }
+    }
+  },
+  "get_device_types": {
+    "description": "Get traffic broken down by device type (desktop, mobile, tablet) with pagination. Shows entrances, pageviews, conversions per device type.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_browsers": {
+    "description": "Get traffic broken down by browser: Chrome, Safari, Firefox, Edge, etc. Shows entrances and pageviews per browser with pagination.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_operating_systems": {
+    "description": "Get traffic broken down by operating system: Windows, macOS, iOS, Android, Linux, etc. Shows entrances and pageviews per OS with pagination.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_channels": {
+    "description": "Get traffic metrics grouped by channel: Paid Search, Organic Search, Social, Direct, Email, Referral, etc. Channels are automatically classified based on UTM parameters and referrer rules.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "get_top_channels": {
+    "description": "Get top channels ranked by entrances. Returns a compact list of the top N channels (Paid Search, Organic, Social, etc.) — ideal for quick rankings.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES', 'US')."
+      }
+    }
+  },
+  "list_channel_rules": {
+    "description": "List channel group rules configured for a site. Shows how traffic is classified into channels (Paid Search, Organic, Social, etc.) based on UTM parameters and referrer patterns.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "include_inactive": {
+        "type": "boolean",
+        "description": "Include inactive rules (default: false)."
+      },
+      "include_defaults": {
+        "type": "boolean",
+        "description": "Include default system rules (default: true)."
+      }
+    }
+  },
+  "test_channel_rules": {
+    "description": "Classify a source/medium/campaign combination exactly like the tracking pixel would (same RE2 semantics, lowercase matching, custom rules before defaults). Returns the resulting channel and the rule that matched. Set include_inactive=true to also evaluate draft (not live) custom rules — use it to verify a draft before a human publishes it in the dashboard.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "source": {
+        "type": "string",
+        "description": "utm_source value to classify (e.g. 'google')."
+      },
+      "medium": {
+        "type": "string",
+        "description": "utm_medium value to classify (e.g. 'cpc')."
+      },
+      "campaign": {
+        "type": "string",
+        "description": "utm_campaign value to classify (optional)."
+      },
+      "include_inactive": {
+        "type": "boolean",
+        "description": "Also evaluate draft (not live) custom rules (default: false)."
+      }
+    }
+  },
+  "list_property_keys": {
+    "description": "Get the list of available custom property keys from conversions and/or microconversions. Use this to discover what property keys exist before querying values or breakdowns.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "table": {
+        "type": "string",
+        "description": "Table to query: \"conversions\", \"microconversions\", \"both\", or \"conversion_items\". Default: \"both\".",
+        "enum": [
+          "conversions",
+          "microconversions",
+          "both",
+          "conversion_items"
+        ]
+      }
+    }
+  },
+  "get_property_values": {
+    "description": "Get property values with counts, grouped by a UTM parameter. Paginated. Use to see which values a specific property key has and how they distribute across traffic sources.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "property_key": {
+        "type": "string",
+        "description": "The property key to analyze (e.g. 'product_name', 'plan_type')."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "group_by": {
+        "type": "string",
+        "description": "Group results by: \"utm_source\", \"utm_medium\", \"utm_campaign\", or \"all\". Default: \"utm_source\".",
+        "enum": [
+          "utm_source",
+          "utm_medium",
+          "utm_campaign",
+          "all"
+        ]
+      },
+      "table": {
+        "type": "string",
+        "description": "Table to query: \"conversions\", \"microconversions\", \"both\", or \"conversion_items\". Default: \"both\".",
+        "enum": [
+          "conversions",
+          "microconversions",
+          "both",
+          "conversion_items"
+        ]
+      },
+      "conversion_type": {
+        "type": "string",
+        "description": "Filter by conversion type."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "page": {
+        "type": "number",
+        "description": "Page number for paginated results (default: 1)."
+      }
+    }
+  },
+  "get_property_breakdown": {
+    "description": "Get a complete property breakdown with pivot-table style data. Shows all values for a property key with their counts and revenue — ideal for analyzing product or category performance.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "property_key": {
+        "type": "string",
+        "description": "The property key to analyze (e.g. 'product_name', 'plan_type')."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "table": {
+        "type": "string",
+        "description": "Table to query: \"conversions\", \"microconversions\", \"both\", or \"conversion_items\". Default: \"both\".",
+        "enum": [
+          "conversions",
+          "microconversions",
+          "both",
+          "conversion_items"
+        ]
+      },
+      "conversion_type": {
+        "type": "string",
+        "description": "Filter by conversion type."
+      }
+    }
+  },
+  "get_funnel": {
+    "description": "Get funnel analysis showing conversion rates between steps. Returns step-by-step data including visitor count, conversion rate, and dropoff at each stage. Useful for finding where users drop off in multi-step flows.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "period": {
+        "type": "string",
+        "description": "Time period for the report. Examples: \"today\", \"yesterday\", \"7d\", \"30d\", \"90d\", \"this_month\", \"last_month\", \"this_year\". Default: \"30d\". For an arbitrary custom range (e.g. a specific past week), use start_date/end_date instead.",
+        "enum": [
+          "today",
+          "yesterday",
+          "7d",
+          "30d",
+          "90d",
+          "12m",
+          "this_week",
+          "wtd",
+          "last_week",
+          "this_month",
+          "mtd",
+          "last_month",
+          "this_quarter",
+          "qtd",
+          "last_quarter",
+          "this_year",
+          "ytd",
+          "last_year"
+        ]
+      },
+      "start_date": {
+        "type": "string",
+        "description": "Custom range start date \"YYYY-MM-DD\" (an account-timezone local day). Provide together with end_date as an alternative to period for arbitrary ranges (e.g. a specific past week). When both dates are given, period is ignored."
+      },
+      "end_date": {
+        "type": "string",
+        "description": "Custom range end date \"YYYY-MM-DD\" (inclusive, account-timezone local day). Provide together with start_date."
+      },
+      "country": {
+        "type": "string",
+        "description": "Filter by country code (e.g. 'ES')."
+      }
+    }
+  },
+  "get_bot_stats": {
+    "description": "Get bot detection overview: score distribution, top suspicion flags, and daily trend of human vs suspected-bot traffic. Requires agent analytics to be enabled on the site.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "days": {
+        "type": "number",
+        "description": "Number of days to analyze (1-90, default: 30)."
+      }
+    }
+  },
+  "get_suspicious_sessions": {
+    "description": "Get sessions with high bot-suspicion scores for investigation. Shows session details, score, and detected flags. Useful for identifying automated traffic patterns.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "min_score": {
+        "type": "number",
+        "description": "Minimum suspicion score threshold (1-100, default: 50)."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      }
+    }
+  },
+  "list_segments": {
+    "description": "List all segments available for a site. Segments are saved filter sets (e.g. 'Mobile users from Spain', 'Organic traffic') that can be applied to stats queries via the segment parameter.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "include_system": {
+        "type": "boolean",
+        "description": "Include system segments like 'All Traffic', 'Direct' (default: true)."
+      }
+    }
+  },
+  "get_segment": {
+    "description": "Get details of a specific segment including its filter definition. The segment_id can be either the segment ID (seg_xxx) or the segment name.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "segment_id": {
+        "type": "string",
+        "description": "Segment ID (seg_xxx) or segment name."
+      }
+    }
+  },
+  "list_alerts": {
+    "description": "List alert rules configured for a site. Shows rule name, metric, condition, threshold, and status (active/paused). Alerts monitor metrics and trigger notifications when thresholds are crossed.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "include_inactive": {
+        "type": "boolean",
+        "description": "Include inactive/paused alert rules (default: false)."
+      }
+    }
+  },
+  "get_alert_history": {
+    "description": "Get history of triggered alerts: when they fired, current status (active/resolved/acknowledged), and which rule triggered them. Useful for reviewing past incidents.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "rule_id": {
+        "type": "number",
+        "description": "Filter by specific alert rule ID."
+      },
+      "status": {
+        "type": "string",
+        "description": "Filter by alert status.",
+        "enum": [
+          "active",
+          "resolved",
+          "acknowledged"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "offset": {
+        "type": "number",
+        "description": "Offset for pagination (default: 0)."
+      }
+    }
+  },
+  "get_alert_stats": {
+    "description": "Get alert statistics for a site: total rules, active alerts, resolved count, and acknowledgement rate. Provides a quick health overview of the alerting system.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      }
+    }
+  },
+  "list_webhooks": {
+    "description": "List webhook endpoints configured for a site. Shows endpoint URL, subscribed event types, and active status. Webhooks send real-time HTTP notifications when events occur.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "include_inactive": {
+        "type": "boolean",
+        "description": "Include inactive webhook endpoints (default: false)."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "offset": {
+        "type": "number",
+        "description": "Offset for pagination (default: 0)."
+      }
+    }
+  },
+  "list_webhook_deliveries": {
+    "description": "List delivery attempts for a specific webhook endpoint. Shows HTTP status, response time, and success/failure for each delivery. Useful for debugging webhook integration issues.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "endpoint_id": {
+        "type": "string",
+        "description": "Webhook endpoint UUID."
+      },
+      "status": {
+        "type": "string",
+        "description": "Filter by delivery status.",
+        "enum": [
+          "pending",
+          "success",
+          "failed"
+        ]
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of rows to return (default: 20, max: 100)."
+      },
+      "offset": {
+        "type": "number",
+        "description": "Offset for pagination (default: 0)."
+      }
+    }
+  },
+  "get_webhook_stats": {
+    "description": "Get delivery statistics for a specific webhook endpoint: total deliveries, success rate, average response time, and failure breakdown. Useful for monitoring webhook reliability.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "endpoint_id": {
+        "type": "string",
+        "description": "Webhook endpoint UUID."
+      },
+      "hours": {
+        "type": "number",
+        "description": "Hours to look back for statistics (1-720, default: 24)."
+      }
+    }
+  },
+  "get_tracking_code": {
+    "description": "Get the tracking pixel code for a site and the full JavaScript API reference for implementing pageviews, conversions, microconversions, and content grouping. Returns the site-specific <script> tag plus implementation guide with examples for e-commerce, SaaS, blog, and React/Next.js.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID. Optional if SEALMETRICS_SITE_ID env var is set."
+      }
+    }
+  },
+  "get_marketing_playbook": {
+    "description": "Call this FIRST whenever the user asks for a marketing report, a weekly/monthly/quarterly performance summary, a channel or campaign analysis, conversion or acquisition insights, or \"how is my marketing doing / why are my sales down / where should I invest\". It returns the STEP-BY-STEP METHOD (a playbook) to analyze SealMetrics marketing performance — not the data itself. After reading it, follow the steps by calling the read-only data tools (get_overview, get_channels, get_traffic_sources, get_conversions, get_landing_pages, …) to fetch the real numbers and produce the report. Diagnose marketing performance for a SealMetrics site and explain *why* the numbers move. Generalist marketing analysis (acquisition, channels, landing pages, conversions, traffic quality) with strong bias toward causal explanation and concrete next actions for Founders, CEOs and CMOs.",
+    "params": {}
+  },
+  "get_troubleshooting_guide": {
+    "description": "Call this FIRST whenever the user reports a SealMetrics problem or asks a setup/data question: console errors (\"sealmetrics is not defined\"), missing conversions or microconversions, tags fired from Google Tag Manager before the tracker loads, duplicate or inflated pageviews (SPAs, virtual pageviews), content grouping doubts, channel rules that never match / traffic stuck in Unassigned, payment-gateway referrer questions, or numbers that don't match another analytics tool (GA4, e-commerce platform). It returns the validated symptom→cause→fix guide; find the matching symptom, apply its answer, and use the verification tools it lists to confirm with the user's real data. Validated symptom→cause→fix answers for the most common SealMetrics setup and data questions - tags firing before the tracker loads, lost conversions/microconversions, duplicate pageviews in SPAs or Tag Manager setups, channel rules that never match (traffic stuck in Unassigned), payment-gateway and login/SSO domains showing up as traffic sources, numbers that do not match another analytics tool, and live browser checks of whether the tag actually loads on a page.",
+    "params": {}
+  },
+  "search_docs": {
+    "description": "Search the official SealMetrics documentation (docs.sealmetrics.com), fetched LIVE so it is never stale. Use it when the user asks how a SealMetrics feature works or how to set something up: tracker installation (WordPress, WooCommerce, Shopify, Magento, PrestaShop, Google Tag Manager, React/Next.js/Vue SPAs), conversion and microconversion tracking, UTM/campaign tagging, reports and metrics definitions, API usage, account settings, or privacy/GDPR/consentless questions. Returns matching pages (title, path, description); then call get_doc with a result's path to read the full page. For problem symptoms (errors, numbers that don't match, tags not firing) call get_troubleshooting_guide FIRST — this tool is for reference/how-to content.",
+    "params": {
+      "query": {
+        "type": "string",
+        "description": "What to look for, e.g. 'install tracker shopify' or 'bounce rate definition'."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Max pages to return (default 8, max 25)."
+      }
+    }
+  },
+  "get_doc": {
+    "description": "Read one page of the official SealMetrics documentation as plain text, fetched live from docs.sealmetrics.com. Pass the `path` returned by search_docs (e.g. 'getting-started/quick-start') or a full docs.sealmetrics.com URL.",
+    "params": {
+      "path": {
+        "type": "string",
+        "description": "Page path from search_docs (e.g. 'getting-started/quick-start') or a full docs URL."
+      }
+    }
+  },
+  "create_channel_rule": {
+    "description": "Create a custom channel classification rule AS A DRAFT for a site. Rules created here are ALWAYS drafts ('not live'): the tracking pixel ignores them until a human switches them live in the dashboard (Site settings → Channels). Channel rules apply to future traffic only — historical data keeps its classification. Patterns are RE2 regular expressions (Go dialect: no lookahead/lookbehind/backreferences), matched in lowercase; empty pattern = matches anything; all non-empty patterns must match (AND). Custom rules are evaluated BEFORE the defaults, so a custom rule with the same patterns as a default 'shadows' it — that is the supported way to redirect a default channel's traffic elsewhere. After creating, verify it with test_channel_rules (include_inactive=true) and tell the user to publish it from the dashboard.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "channel_name": {
+        "type": "string",
+        "description": "Destination channel name (max 50 chars), e.g. 'Paid Social'."
+      },
+      "source_pattern": {
+        "type": "string",
+        "description": "RE2 regex for utm_source (empty/omitted = match any), e.g. '^fb$'."
+      },
+      "medium_pattern": {
+        "type": "string",
+        "description": "RE2 regex for utm_medium (empty/omitted = match any), e.g. '^cpc$'."
+      },
+      "campaign_pattern": {
+        "type": "string",
+        "description": "RE2 regex for utm_campaign (empty/omitted = match any)."
+      },
+      "priority": {
+        "type": "number",
+        "description": "Priority among the site's custom rules, 0-1000 (higher runs first). Default 50."
+      }
+    }
+  },
+  "update_channel_rule": {
+    "description": "Update a DRAFT (not live) custom channel rule. Live rules cannot be modified through the MCP — the user must switch them off in the dashboard first. Rules created here are ALWAYS drafts ('not live'): the tracking pixel ignores them until a human switches them live in the dashboard (Site settings → Channels). Channel rules apply to future traffic only — historical data keeps its classification. Patterns are RE2 regular expressions (Go dialect: no lookahead/lookbehind/backreferences), matched in lowercase; empty pattern = matches anything; all non-empty patterns must match (AND). Custom rules are evaluated BEFORE the defaults, so a custom rule with the same patterns as a default 'shadows' it — that is the supported way to redirect a default channel's traffic elsewhere.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "rule_id": {
+        "type": "number",
+        "description": "ID of the draft rule to update."
+      },
+      "channel_name": {
+        "type": "string",
+        "description": "New destination channel name (max 50 chars)."
+      },
+      "source_pattern": {
+        "type": "string",
+        "description": "New RE2 regex for utm_source."
+      },
+      "medium_pattern": {
+        "type": "string",
+        "description": "New RE2 regex for utm_medium."
+      },
+      "campaign_pattern": {
+        "type": "string",
+        "description": "New RE2 regex for utm_campaign."
+      },
+      "priority": {
+        "type": "number",
+        "description": "New priority (0-1000)."
+      }
+    }
+  },
+  "delete_channel_rule": {
+    "description": "Delete a DRAFT (not live) custom channel rule. Live rules cannot be deleted through the MCP — the user must switch them off in the dashboard first. Default system rules can never be deleted.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "rule_id": {
+        "type": "number",
+        "description": "ID of the draft rule to delete."
+      }
+    }
+  },
+  "import_channel_rules": {
+    "description": "Import a set of channel rules as DRAFTS (bulk). Replaces ONLY the site's existing draft (not live) rules — live rules are never touched — and every imported rule enters as not live, even if the payload says otherwise (the response flags forced_inactive when that happens). By default runs as a dry run (dry_run=true): validates and reports per-rule errors without writing anything; pass dry_run=false to actually replace the drafts. Rules created here are ALWAYS drafts ('not live'): the tracking pixel ignores them until a human switches them live in the dashboard (Site settings → Channels). Channel rules apply to future traffic only — historical data keeps its classification. Patterns are RE2 regular expressions (Go dialect: no lookahead/lookbehind/backreferences), matched in lowercase; empty pattern = matches anything; all non-empty patterns must match (AND). Custom rules are evaluated BEFORE the defaults, so a custom rule with the same patterns as a default 'shadows' it — that is the supported way to redirect a default channel's traffic elsewhere.",
+    "params": {
+      "site_id": {
+        "type": "string",
+        "description": "Site ID (account_id). Optional if SEALMETRICS_SITE_ID env var is set."
+      },
+      "rules": {
+        "type": "array",
+        "description": "Array of rules: {channel_name, source_pattern?, medium_pattern?, campaign_pattern?, priority?}. Patterns are RE2 regexes; at least one pattern per rule is required."
+      },
+      "dry_run": {
+        "type": "boolean",
+        "description": "Default TRUE: validate and report without writing. Set false to import."
+      }
+    }
+  },
+  "provision_site": {
+    "description": "Register a NEW free SealMetrics site from the chat (no terminal needed). Creates the account, returns the tracker snippet to place in your site's <head>, and emails you a claim link to set a password. After this succeeds, the read-only analytics tools are enabled in this session. Does NOT edit your code — you (or the agent, if it has the repo) place the snippet.",
+    "params": {
+      "site_name": {
+        "type": "string",
+        "description": "Human-friendly name for the site (e.g. 'My Shop')."
+      },
+      "domain": {
+        "type": "string",
+        "description": "Primary domain of the site (e.g. 'myshop.com'). Optional."
+      },
+      "email": {
+        "type": "string",
+        "description": "Your email — receives the claim link to set a password."
+      },
+      "name": {
+        "type": "string",
+        "description": "Your name. Optional."
+      },
+      "accept_terms": {
+        "type": "boolean",
+        "description": "Must be true: confirms the user has read and accepts the SealMetrics Terms of Service (https://sealmetrics.com/terms). Show the user this link first; do NOT accept on their behalf."
+      }
+    }
+  },
+  "verify_setup": {
+    "description": "Poll until the SealMetrics pixel is confirmed installed (a real pageview has reached the backend) or it times out. Run this after placing the snippet. Reads only — sends no data.",
+    "params": {
+      "account_id": {
+        "type": "string",
+        "description": "Site/account id to verify. Defaults to the site provisioned in this session."
+      },
+      "timeout_seconds": {
+        "type": "number",
+        "description": "Max seconds to wait for the first hit (default 25)."
+      }
+    }
+  },
+  "get_setup_status": {
+    "description": "Report where the setup flow is: whether a site has been provisioned in this session and whether its pixel has been verified.",
+    "params": {}
+  },
+  "detect_framework": {
+    "description": "Best-effort detect the web framework/CMS of a project so the snippet can be placed correctly. Pass `path` if you have the repo; in a pure chat (no repo) returns 'unknown' plus the manual guide. Read-only — never edits files.",
+    "params": {
+      "path": {
+        "type": "string",
+        "description": "Absolute path to the project root. Optional; omit if you don't have the repo."
+      }
+    }
+  },
+  "get_instrumentation_guide": {
+    "description": "Return the canonical SealMetrics event-instrumentation guide (closed conv/micro taxonomy + privacy rules) with your account_id substituted. Use it before writing sealmetrics.conv()/micro() calls. The MCP does NOT write these calls — the agent does, guided by this.",
+    "params": {
+      "account_id": {
+        "type": "string",
+        "description": "Account id to substitute into the guide. Defaults to the provisioned site."
+      }
+    }
+  },
+  "verify_event_instrumented": {
+    "description": "Close the instrumentation loop (Fase 3 Bloque 4): after you add a sealmetrics.conv()/micro() call AND trigger it (a test visit/action), confirm the event reached the backend with the expected type. ALSO validates the event name against the closed taxonomy and rejects PII in properties before declaring success. Reads only.",
+    "params": {
+      "account_id": {
+        "type": "string",
+        "description": "Site/account id. Defaults to the provisioned site."
+      },
+      "kind": {
+        "type": "string",
+        "description": "Event kind: 'conv' or 'micro'.",
+        "enum": [
+          "conv",
+          "micro"
+        ]
+      },
+      "name": {
+        "type": "string",
+        "description": "Event name (must be in the closed taxonomy, e.g. 'purchase')."
+      },
+      "timeout_seconds": {
+        "type": "number",
+        "description": "Max seconds to wait for the event (default 25)."
+      }
+    }
+  }
+}

@@ -1,16 +1,12 @@
 #!/usr/bin/env node
-// The eval fixtures are reconstructions from documented field names, never
-// captured from a live account. If the real API returns a different shape,
-// every skill breaks in production while every eval stays green. This calls
-// the real server and compares the SHAPE of each response against the
-// fixtures.
+// The eval fixtures were reconstructions from documented field names, never
+// captured from a live account. This calls the real server, records the SHAPE
+// of every response a skill depends on, and compares it with the fixtures.
 //
-//   SEALMETRICS_API_KEY=sm_... node evals/validate-fixtures.mjs
-//   ... --site acct_123        # if the key has several sites
-//   ... --save                 # also write real shapes to evals/real-shapes/
+//   SEALMETRICS_API_KEY=sm_... node evals/validate-fixtures.mjs [--site <id>] [--save]
 //
 // Only shapes are recorded — key names and value types, never the values.
-// Your traffic figures do not end up on disk or in git.
+// --save writes them to evals/real-shapes/shapes.json (gitignored).
 import { readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -18,150 +14,185 @@ import { connect, unwrap, redact } from './mcp-client.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
-const siteId = argv.includes('--site') ? argv[argv.indexOf('--site') + 1] : process.env.SEALMETRICS_SITE_ID;
+const forcedSite = argv.includes('--site') ? argv[argv.indexOf('--site') + 1] : process.env.SEALMETRICS_SITE_ID;
 const save = argv.includes('--save');
 
 if (!process.env.SEALMETRICS_API_KEY) {
-  console.error('SEALMETRICS_API_KEY is not set. This check needs a real key — it is the\n' +
-                'only thing that proves the fixtures match reality.');
+  console.error('SEALMETRICS_API_KEY is not set. This check needs a real key.');
   process.exit(2);
 }
 
-// Describe structure, never values.
+// The schema dump says which tools take the account_id in their site_id
+// parameter. The two families are not interchangeable: the wrong one returns
+// "Access denied" as ordinary text.
+const schema = JSON.parse(await import('node:fs').then(f => f.readFileSync(join(here, 'mcp-schema-full.json'), 'utf8')));
+const ACCOUNT_FAMILY = new Set(Object.entries(schema)
+  .filter(([, t]) => /account_id/i.test(t.params.site_id?.description || '') || t.params.account_id)
+  .map(([n]) => n));
+
 function shape(v, depth = 0) {
   if (v === null) return 'null';
-  if (Array.isArray(v)) return depth > 3 ? 'array' : `array<${v.length ? shape(v[0], depth + 1) : 'empty'}>`;
+  if (Array.isArray(v)) return depth > 5 ? 'array' : `array<${v.length ? shape(v[0], depth + 1) : 'empty'}>`;
   if (typeof v === 'object') {
-    if (depth > 3) return 'object';
+    if (depth > 5) return 'object';
     return '{' + Object.keys(v).sort().map(k => `${k}:${shape(v[k], depth + 1)}`).join(',') + '}';
   }
   return typeof v;
 }
 const topKeys = (v) => Array.isArray(v) ? ['<array>'] : (v && typeof v === 'object' ? Object.keys(v).sort() : ['<scalar>']);
 
-// Read-only calls with conservative parameters.
-const PROBES = [
-  ['get_overview', { period: '30d', compare: 'previous' }],
-  ['get_channels', { period: '30d' }],
-  ['get_campaigns', { period: '30d', limit: 5 }],
-  ['get_conversions', { period: '30d' }],
-  ['get_microconversions', { period: '30d' }],
-  ['list_microconversion_types', {}],
-  ['list_property_keys', { table: 'both' }],
-  ['get_countries', { period: '30d', limit: 5 }],
-  ['get_device_types', { period: '30d' }],
-  ['get_landing_pages', { period: '30d', limit: 5 }],
-  ['get_bot_stats', { days: 30 }],
-];
-
 const c = connect('npx', ['-y', '@sealmetrics/mcp'], {});
 await c.init();
+const real = {};
+const call = async (tool, args) => {
+  const out = unwrap(await c.call(tool, args));
+  return out;
+};
 
-// Most tools require site_id. Resolve it rather than making the caller find it.
-let SITE = siteId;
-if (!SITE) {
-  const ls = unwrap(await c.call('list_sites', {}));
-  if (ls.format === 'json' || ls.format === 'json-in-fence') {
-    const v = ls.value;
-    const list = v?.sites || v?.data || (Array.isArray(v) ? v : []);
-    SITE = list[0]?.site_id || list[0]?.id || list[0]?.account_id;
-    if (list.length > 1)
-      console.log(`Account has ${list.length} sites; using the first. Pass --site to choose another.\n`);
-  } else {
-    const m = String(ls.value).match(/\b(acct[_-][A-Za-z0-9]+|[A-Za-z0-9]{16,})\b/);
-    SITE = m?.[1];
-  }
-  if (!SITE) {
-    console.error('Could not work out a site id from list_sites. Pass one explicitly:\n' +
-                  '  node evals/validate-fixtures.mjs --site <your site id>\n\nlist_sites returned:');
-    console.error('  ' + String(ls.value).slice(0, 300));
-    process.exit(2);
-  }
-  console.log(`Site: ${SITE}\n`);
+// ---- 1. Resolve identifiers from list_sites, and show its shape: we need to
+//         know which field is the site id and which the account id.
+const ls = await call('list_sites', {});
+console.log('list_sites shape:');
+console.log('  ' + (ls.format === 'json' ? shape(ls.value) : `${ls.format}: ${redact(ls.value, 200)}`) + '\n');
+real.list_sites = { format: ls.format, shape: ls.format === 'json' ? shape(ls.value) : undefined };
+
+const v = ls.value;
+const list = v?.sites || v?.data || (Array.isArray(v) ? v : []);
+const first = list[0] || {};
+if (list.length > 1) console.log(`Account has ${list.length} sites; using the first. Pass --site to choose.\n`);
+// Every id-looking field on the first site, so we can try each on the account family.
+const candidates = [...new Set([forcedSite, first.site_id, first.id, first.account_id, first.accountId, first.slug].filter(Boolean))];
+const SITE = forcedSite || first.site_id || first.id;
+console.log(`Site id: ${SITE}   candidate ids for the account family: ${candidates.join(', ')}\n`);
+
+// ---- 2. Find which candidate the account family accepts.
+let ACCOUNT = null;
+for (const cand of candidates) {
+  const r = await call('get_channels', { period: '30d', site_id: cand });
+  if (r.format !== 'error') { ACCOUNT = cand; break; }
 }
+console.log(ACCOUNT
+  ? `Account id accepted by get_channels: ${ACCOUNT}${ACCOUNT === SITE ? ' (same as site id)' : ' (DIFFERENT from site id)'}\n`
+  : `No candidate id was accepted by get_channels — the account family will show errors below.\n`);
+const idFor = (tool) => ACCOUNT_FAMILY.has(tool) ? (ACCOUNT || SITE) : SITE;
 
-// Fixture shapes to compare against.
+// ---- 3. Probe every tool the skills depend on. Later probes borrow values
+//         from earlier ones (a property key, a microconversion type).
+const probes = [
+  ['get_site', {}],
+  ['get_overview', { period: '30d', compare: 'previous' }],
+  ['get_overview', { period: '7d' }, 'get_overview (no compare)'],
+  ['get_channels', { period: '30d' }],
+  ['get_top_channels', { period: '30d' }],
+  ['get_traffic_sources', { period: '30d', limit: 5 }],
+  ['get_traffic_mediums', { period: '30d', compare: 'previous', limit: 5 }],
+  ['get_campaigns', { period: '30d', compare: 'previous', limit: 5 }],
+  ['get_top_campaigns', { period: '30d', limit: 5 }],
+  ['get_terms', { period: '30d', limit: 5 }],
+  ['get_top_referrers', { period: '30d', limit: 5 }],
+  ['get_landing_pages', { period: '30d', compare: 'previous', limit: 5 }],
+  ['get_pages', { period: '30d', limit: 5 }],
+  ['get_content_groups', { period: '30d' }],
+  ['get_landing_pages_by_content_group', { period: '30d' }],
+  ['get_conversions', { period: '90d', compare: 'previous' }],
+  ['get_microconversions', { period: '30d', compare: 'previous' }],
+  ['list_microconversion_types', {}],
+  ['get_microconversion_details', { period: '30d', conversion_type: '$MICRO' }],
+  ['get_conversions_raw', { period: '7d', limit: 3 }],
+  ['get_microconversions_raw', { period: '7d', limit: 3, include_properties: true }],
+  ['get_conversion_items_raw', { period: '30d', limit: 3 }],
+  ['get_countries', { period: '30d', compare: 'previous', limit: 5 }],
+  ['get_devices', { period: '30d', compare: 'previous' }],
+  ['get_device_types', { period: '30d' }],
+  ['get_browsers', { period: '30d', limit: 5 }],
+  ['get_operating_systems', { period: '30d', limit: 5 }],
+  ['list_property_keys', { table: 'both' }],
+  ['list_property_keys', { table: 'conversion_items' }, 'list_property_keys (items)'],
+  ['get_property_breakdown', { period: '90d', property_key: '$PROP' }],
+  ['get_property_values', { period: '90d', property_key: '$PROP', group_by: 'utm_source', limit: 5 }],
+  ['get_funnel', { period: '30d' }],
+  ['get_bot_stats', { days: 30 }],
+  ['get_suspicious_sessions', { limit: 3, min_score: 70 }],
+  ['list_channel_rules', {}],
+  ['list_segments', {}],
+  ['list_alerts', {}],
+  ['get_alert_history', { limit: 5 }],
+  ['get_alert_stats', {}],
+  ['list_webhooks', {}],
+  ['get_webhook_stats', {}],
+  ['get_tracking_code', {}],
+];
+let MICRO = null, PROP = null;
+
+// Fixtures to compare against — skip the ones that only model failures.
 const fixtures = {};
 for (const f of readdirSync(join(here, 'fixtures')).filter(x => x.endsWith('.mjs') && !x.startsWith('_'))) {
   const m = await import(pathToFileURL(join(here, 'fixtures', f)).href);
   for (const [tool, h] of Object.entries(m.tools || {})) {
-    if (fixtures[tool]) continue;
-    try { fixtures[tool] = typeof h === 'function' ? h({ period: '30d' }) : h; } catch {}
+    if (fixtures[tool] !== undefined) continue;
+    let val; try { val = typeof h === 'function' ? h({ period: '30d', table: 'both' }) : h; } catch { continue; }
+    if (val && (val.__error || val.__textError)) continue;
+    fixtures[tool] = val;
   }
 }
 
-console.log('Comparing fixture shapes against the live Sealmetrics API.\n');
-const real = {}; const formats = {}; let mismatches = 0, checked = 0, skipped = 0, nonJson = 0, errors = 0;
+console.log('Probing the tools the skills depend on:\n');
+const formats = {}; let compared = 0, mismatches = 0, errors = 0, nonJson = 0;
 
-for (const [tool, args] of PROBES) {
-  if (SITE) args.site_id = SITE;
+for (const [tool, rawArgs, label] of probes) {
+  const name = label || tool;
+  const args = JSON.parse(JSON.stringify(rawArgs));
+  for (const k of Object.keys(args)) {
+    if (args[k] === '$MICRO') { if (!MICRO) { console.log(`  skip     ${name.padEnd(36)} no microconversion type known`); continue; } args[k] = MICRO; }
+    if (args[k] === '$PROP')  { if (!PROP)  { console.log(`  skip     ${name.padEnd(36)} no property key known`); continue; } args[k] = PROP; }
+  }
+  if (Object.values(args).some(x => x === '$MICRO' || x === '$PROP')) continue;
+  args.site_id = idFor(tool);
+
   let out;
-  try { out = unwrap(await c.call(tool, args)); }
-  catch (e) { console.log(`  skip  ${tool.padEnd(28)} ${e.message.slice(0, 70)}`); skipped++; continue; }
-
+  try { out = await call(tool, args); } catch (e) { console.log(`  skip     ${name.padEnd(36)} ${e.message.slice(0, 60)}`); continue; }
   formats[out.format] = (formats[out.format] || 0) + 1;
 
-  // The response is not JSON at all. That is a far bigger finding than a field
-  // name mismatch, so report it as such instead of pretending to diff shapes.
-  if (out.format === 'error') {
-    errors++;
-    console.log(`  ERROR    ${tool.padEnd(26)} ${String(out.value).replace(/\s+/g, ' ').slice(0, 100)}`);
-    continue;
-  }
-
+  if (out.format === 'error') { errors++; console.log(`  ERROR    ${name.padEnd(36)} ${String(out.value).replace(/\s+/g, ' ').slice(0, 90)}`); real[name] = { format: 'error', message: String(out.value).slice(0, 200) }; continue; }
   if (out.format !== 'json' && out.format !== 'json-in-fence') {
-    nonJson++;
-    console.log(`  FORMAT   ${tool.padEnd(26)} returns ${out.format}, not JSON`);
-    if (nonJson <= 2) {
-      console.log('           structural sketch (all digits masked):');
-      for (const line of redact(out.raw ?? out.value).split('\n').slice(0, 12))
-        console.log('             ' + line);
-    }
-    real[tool] = { format: out.format, sketch: redact(out.raw ?? out.value, 400) };
-    continue;
+    nonJson++; console.log(`  FORMAT   ${name.padEnd(36)} ${out.format}`);
+    real[name] = { format: out.format, sketch: redact(out.raw ?? out.value, 400) }; continue;
   }
 
   const res = out.value;
-  real[tool] = { format: out.format, top_level_keys: topKeys(res), shape: shape(res) };
+  real[name] = { format: out.format, top_level_keys: topKeys(res), shape: shape(res) };
+
+  // Borrow values for dependent probes.
+  if (tool === 'list_microconversion_types' && !MICRO) {
+    const arr = Array.isArray(res) ? res : (res?.types || res?.data || []);
+    MICRO = typeof arr[0] === 'string' ? arr[0] : (arr[0]?.conversion_type || arr[0]?.name || arr[0]?.type);
+  }
+  if (tool === 'list_property_keys' && !PROP) {
+    const arr = Array.isArray(res) ? res : (res?.keys || res?.data || []);
+    PROP = typeof arr[0] === 'string' ? arr[0] : arr[0]?.key;
+  }
+
   const fx = fixtures[tool];
-  if (!fx) { console.log(`  --    ${tool.padEnd(28)} no fixture covers this tool`); continue; }
-
-  checked++;
+  if (fx === undefined) { console.log(`  ok       ${name.padEnd(36)} (no fixture yet) ${shape(res).slice(0, 60)}`); continue; }
+  compared++;
   const rKeys = topKeys(res), fKeys = topKeys(fx);
-  const missing = fKeys.filter(k => !rKeys.includes(k));
-  const extra = rKeys.filter(k => !fKeys.includes(k));
-
-  if (!missing.length && !extra.length) { console.log(`  ok    ${tool}`); continue; }
+  const missing = fKeys.filter(k => !rKeys.includes(k)), extra = rKeys.filter(k => !fKeys.includes(k));
+  if (!missing.length && !extra.length) { console.log(`  ok       ${name}`); continue; }
   mismatches++;
-  console.log(`  MISMATCH ${tool}`);
-  if (missing.length) console.log(`           fixture has keys the API does not return: ${missing.join(', ')}`);
-  if (extra.length)   console.log(`           API returns keys the fixture lacks:       ${extra.join(', ')}`);
-  console.log(`           real shape: ${real[tool].shape.slice(0, 220)}`);
+  console.log(`  MISMATCH ${name}`);
+  if (missing.length) console.log(`             fixture keys the API lacks: ${missing.join(', ')}`);
+  if (extra.length)   console.log(`             API keys the fixture lacks: ${extra.join(', ')}`);
 }
 c.close();
 
 if (save) {
   mkdirSync(join(here, 'real-shapes'), { recursive: true });
   const f = join(here, 'real-shapes', 'shapes.json');
-  writeFileSync(f, JSON.stringify(real, null, 2) + '\n');
-  console.log(`\nShapes written to ${f} (structure only, no values).`);
+  writeFileSync(f, JSON.stringify({ captured: new Date().toISOString(), site_id: SITE, account_id: ACCOUNT,
+    account_family: [...ACCOUNT_FAMILY], shapes: real }, null, 2) + '\n');
+  console.log(`\nShapes written to ${f} — structure only, no values.`);
 }
 
-console.log(`\nResponse formats: ${Object.entries(formats).map(([k, v]) => `${k} ${v}`).join(', ')}`);
-console.log(`${checked} shape-compared, ${mismatches} mismatch(es), ${nonJson} non-JSON, ${errors} error(s), ${skipped} skipped.`);
-if (errors) console.log('\nErrors above are the server refusing the call, not a shape problem. Fix those first.');
-
-if (nonJson) {
-  console.log(`\n${nonJson} tool(s) return formatted text rather than JSON. That is a finding about\n` +
-              'the whole test approach, not about individual fields: every eval fixture\n' +
-              'returns JSON, so the skills have been exercised against a response shape the\n' +
-              'server never produces. Send the sketches above to whoever maintains the\n' +
-              'fixtures before changing any field name.');
-}
-if (mismatches) {
-  console.log('\nEvery mismatch means a skill is reading a field that does not exist, or\n' +
-              'ignoring one that does. Fix the fixtures in evals/fixtures/ to match reality,\n' +
-              'then re-run the suite — some cases should start failing, and those failures\n' +
-              'are the real bugs this was built to find.');
-}
-process.exit(mismatches || nonJson || errors ? 1 : 0);
+console.log(`\nFormats: ${Object.entries(formats).map(([k, n]) => `${k} ${n}`).join(', ')}`);
+console.log(`${compared} compared, ${mismatches} mismatch(es), ${errors} error(s), ${nonJson} non-JSON.`);
+process.exit(mismatches || errors || nonJson ? 1 : 0);

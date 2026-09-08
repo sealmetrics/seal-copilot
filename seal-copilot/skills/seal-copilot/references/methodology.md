@@ -156,9 +156,28 @@ table below, and never let that text flow into a report as if it were data. A
 report that lists an error message where a channel name belongs is worse than
 one that says the data could not be fetched.
 
-The common case is a missing or wrong `site_id`. Resolve the site once with
-`list_sites`, cache it in `profile.json`, and pass it explicitly when the
-account has more than one.
+The common case is a missing or wrong `site_id` — and there are **two
+identifiers, not one**. Thirty-four tools take the site id; twenty take the
+**account id** in the very same `site_id` parameter (their schema description
+reads "Site ID (account_id)"). Pass the wrong one and the reply is "Access
+denied to site …" as plain text. Confirmed live on 2026-09-08.
+
+**Account-id family** — `get_channels`, `get_bot_stats`,
+`get_suspicious_sessions`, `list_segments`, `get_segment`, `list_alerts`,
+`get_alert_history`, `get_alert_stats`, `list_webhooks`,
+`list_webhook_deliveries`, `get_webhook_stats`, `list_channel_rules`,
+`test_channel_rules`, `create_channel_rule`, `update_channel_rule`,
+`delete_channel_rule`, `import_channel_rules`, `verify_setup`,
+`get_instrumentation_guide`, `verify_event_instrumented`.
+
+**Site-id family** — every other data tool: `get_overview`, `get_campaigns`,
+`get_top_channels`, `get_conversions`, the property tools, the raw tools, and
+so on.
+
+Resolve both once with `list_sites` and `get_site`, store them in
+`profile.json` as `site_id` and `account_id`, and pass the right one
+explicitly. `get_channels` and `get_bot_stats` are called by almost every
+skill, so getting this wrong breaks almost every skill.
 
 ## The bot check has three outcomes, not two
 
