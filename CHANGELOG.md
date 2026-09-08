@@ -1,5 +1,61 @@
 # Changelog
 
+## 1.5.0 — 2026-09-08
+
+Two more real-account runs of setup-audit, and the class of defect only an
+interactive session shows: what the model does when asked the same thing
+twice.
+
+### A snippet is fetched or it is not given
+The first real audit spent nine calls on discovery, reached the snippet with
+none left, and wrote one from memory — hedged with "I did not spend a call to
+fetch it" and still presented as copy-pasteable. `get_tracking_code` is now
+call number one of the procedure, a snippet that was not fetched is not given,
+and literal numbers inside code are replaced by visible placeholders. The
+repeat run fetched first, used the site's own `sealmetrics.conv(...)`
+signatures verbatim, wrote `<MRR value in EUR>` where `1200` had been, and
+stored the signatures in the profile unprompted.
+
+### An explicit request to run a skill runs the skill
+Asked for the audit a second time in the same conversation, the model
+declined: same nine calls, same verdict, nothing has shipped — and asked which
+option the user wanted. It could not know nothing had shipped (the skill itself
+had changed between the two requests), and the budget governs how many calls a
+run makes, never whether a requested run happens. Now a rule in the core skill.
+
+### The harness can now test a follow-up
+Each `-p` step had been a fresh session with no memory of the earlier answer,
+so the refusal could not be reproduced. A step can now continue the previous
+step's session via `--resume`, the stream parser surfaces the session id, and
+each step is judged on the calls it made itself. The new case audits twice in
+one conversation and requires the second run to make its own calls and score.
+3/3.
+
+### The call budget resets per turn
+The continued-session run exposed it: the PreToolUse hook counted calls for the
+whole session, so a resumed session that ran one audit and then another was
+told it was past budget halfway through the second and cut it short. Any
+interactive user chaining three skills would hit the same wall. A
+UserPromptSubmit hook resets the counter on every prompt, and the warning text
+tells the model not to surface the budget — "past the session budget" had
+leaked into a visible message. Narration between tool calls is now forbidden
+by the core rule, not only in the final answer.
+
+### Run-log fields exact everywhere
+The real audit logged `calls_used` with a free-text verdict because the footer
+shared by ten skills said "calls used" in prose. The exact field names and each
+skill's budget as a number are stated in all of them.
+
+### On phrase bans
+A ban on "nothing has shipped" fired on the model saying it after a full
+re-run, as a correct observation. Fifth time this suite banned a phrase the
+right answer contains; the lesson is at the top of `cases.mjs`. It also
+survived the commit that claimed to remove it — verified on disk now, with
+grep, not with the script's own print.
+
+### Suite: 24 cases, 14 skills, all 3/3 on their respective trees
+Open outside this repo: the `account_id` the ten refused tools expect.
+
 ## 1.4.0 — 2026-09-08
 
 The plugin answered a real question about a real account for the first time.
