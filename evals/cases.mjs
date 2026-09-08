@@ -333,4 +333,22 @@ export default [
     stateMustContain: [/"calls"\s*:\s*"?\d+/, /"budget"\s*:\s*"?\d+/, /"site_id"\s*:\s*"sealmetricsv2"/, /agent_analytics_enabled/,
                        /discovery_cached_at/],   // the 7-day refresh rule reads it; two real runs omitted it
   },
+  // ---- the second real audit: asked again in the same conversation, the
+  // model declined to re-run and guessed nothing had changed ----
+  {
+    id: 'explicit-rerun-actually-runs',
+    fixture: 'ecommerce-setup-gaps',
+    maxCalls: 26,
+    steps: [
+      { prompt: 'Run a setup audit on this site.',
+        mustMatch: [/\b([0-9]|10)\s*\/\s*10\b/],
+        mustCall: ['list_microconversion_types'] },
+      { prompt: 'Run a setup audit on this site.',
+        continue: true,
+        // The score must appear again, produced by fresh calls in THIS step.
+        mustMatch: [/\b([0-9]|10)\s*\/\s*10\b/],
+        mustNotMatch: [/nothing (has )?(shipped|changed)|same (9|nine|\d+) calls|would produce the same|say the word|which one\?/i],
+        mustCall: ['list_microconversion_types', 'get_tracking_code'] },
+    ],
+  },
 ];

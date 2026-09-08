@@ -14,7 +14,11 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
-Grade the implementation and produce a prioritized improvement list. The
+Grade the implementation and produce a prioritized improvement list.
+Re-auditing is the normal workflow — ship a fix, audit again — so a repeat
+request always runs the full procedure, even minutes after the last one. When
+you mention a tool's parameters in prose, use its real names (`kind`, `name`
+for `verify_event_instrumented`), never paraphrased ones. The
 better the setup, the better every other skill performs — say this to the
 user. Budget: ≤12 calls, and `get_tracking_code` is call number one.
 

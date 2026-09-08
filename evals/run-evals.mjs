@@ -71,7 +71,7 @@ function readState(dir) {
   return out.join('\n');
 }
 
-function runStep(c, step, siteId, work, callLog) {
+function runStep(c, step, siteId, work, callLog, resumeId = null) {
   return new Promise((resolve) => {
     const mcpConfig = JSON.stringify({
       mcpServers: {
@@ -93,8 +93,13 @@ function runStep(c, step, siteId, work, callLog) {
       '--plugin-dir', join(root, 'seal-copilot'),
       '--allowed-tools', allowedTools,
       '--output-format', 'stream-json', '--verbose',
-      '--no-session-persistence',
     ];
+    // A continued step resumes the previous step's session so the model sees
+    // its own earlier answer — the only way to test "run it again" behaviour.
+    // Cases that never continue keep sessions off disk.
+    const continues = (c.steps || []).some(s => s.continue);
+    if (resumeId) args.push('--resume', resumeId);
+    if (!continues) args.push('--no-session-persistence');
 
     const started = Date.now();
     const proc = spawn('claude', args, {
@@ -127,6 +132,7 @@ function runStep(c, step, siteId, work, callLog) {
       // stream. Concatenate every assistant text block instead.
       const parsed = parseStream(out);
       let answer = parsed.text, cliError = null;
+      const sessionId = parsed.sessionId || null;
       if (parsed.isError) cliError = parsed.result || 'unknown CLI error';
       if (!answer.trim() && !cliError && err.trim()) cliError = err.trim().slice(0, 300);
 
@@ -135,7 +141,7 @@ function runStep(c, step, siteId, work, callLog) {
         : [];
       const rejected = calls.filter(c2 => c2.rejected);
 
-      resolve({ cliError, calls, rejected, ms, answer,
+      resolve({ cliError, calls, rejected, ms, answer, sessionId,
                 toolNames: [...new Set(calls.map(x => x.tool))] });
     });
   });
@@ -148,16 +154,21 @@ async function runCase(c, siteId) {
   const failures = [];
   let calls = 0, rejected = 0, ms = 0, answer = '', toolNames = [], cliError = null;
 
+  let seen = 0, lastSession = null;
   for (const [i, step] of steps.entries()) {
-    const r = await runStep(c, step, siteId, work, callLog);
+    const r = await runStep(c, step, siteId, work, callLog, step.continue ? lastSession : null);
     ms += r.ms;
-    calls = r.calls.length;                  // the log is cumulative across steps
+    const stepCalls = r.calls.slice(seen);   // the log is cumulative; judge this step on its own calls
+    seen = r.calls.length;
+    calls = r.calls.length;
     rejected = r.rejected.length;
     answer = r.answer;
     toolNames = r.toolNames;
+    lastSession = r.sessionId || lastSession;
     if (r.cliError) { cliError = r.cliError; break; }
+    if (step.continue && !lastSession) failures.push(`step ${i + 1}: could not resume — no session id from step ${i}`);
     const label = steps.length > 1 ? `step ${i + 1}: ` : '';
-    for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected }, r.answer, r.calls))
+    for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected }, r.answer, stepCalls))
       failures.push(label + f);
   }
 
