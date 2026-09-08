@@ -127,6 +127,11 @@ that's broken, and unused features. Budget: ≤12 calls.
 
 ---
 
-Log the run in `<state-dir>/<site_id>/runs.jsonl` (skill, calls used,
-budget, verdict) so budget compliance is measurable. Skip silently if the
-path is not writable.
+Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
+and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
+Sealmetrics calls you made, counted), `budget` (this skill's documented
+ceiling, a number — `12` here), `verdict` (one of `on_track`, `watch`, `act`,
+`kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
+(boolean), `notes` (one line). The first real audit wrote `calls_used` and a
+free-text verdict because this footer said "calls used" in prose; the field
+names are the contract. Skip silently if the path is not writable.
