@@ -16,10 +16,16 @@ run of this skill looks like.
 
 Grade the implementation and produce a prioritized improvement list. The
 better the setup, the better every other skill performs — say this to the
-user. Budget: ≤10 calls.
+user. Budget: ≤12 calls, and `get_tracking_code` is call number one.
 
 ## Procedure
 
+0. `get_tracking_code` — **first, before anything else.** Its `js_api`
+   signatures are the only source for any snippet you will hand the developer
+   at the end. The first real audit spent nine calls on discovery, reached the
+   snippet with none left, and wrote one from memory — flagged as unfetched,
+   still copy-pasteable, and wrong for the site. A budget squeeze drops the
+   second microconversion pass or the alert check; it never drops this call.
 1. `get_site` — basics: domains, timezone, tracking status.
 2. `get_overview(30d)` — is data flowing at expected volume? If the site has
    **no data at all**, stop auditing and hand off to `install-sealmetrics`:
@@ -61,18 +67,29 @@ user. Budget: ≤10 calls.
 **Then a gap table:** gap → why it matters (which analysis it unlocks) →
 how to fix → effort (S/M/L). Order by value unlocked, not by effort.
 
-For fixes, fetch concrete snippets with `get_tracking_code` and
-`get_instrumentation_guide`, and include the exact event/property call the
-developer needs — copy-pasteable. Do not improvise snippets when the guide has
-one. For each canonical funnel event, confirm it is really arriving with
+For fixes, the snippet comes **verbatim** from the `js_api` signatures you
+fetched in step 0, or from `get_instrumentation_guide`. Rules that are not
+negotiable:
+
+- **Never write a call you did not fetch.** If for any reason you have no
+  fetched signature, give no code — say "run `get_tracking_code` and use its
+  `conversion` signature" and stop. A hedge like "I did not spend a call to
+  fetch it, use it verbatim" attached to invented code is worse than no
+  code: the hedge gets trimmed and the code gets pasted.
+- **No invented numbers inside code.** A value like `1200` presented as
+  "average deal size" will be pasted as-is. Use a visibly non-literal
+  placeholder — `<average deal size in EUR>` — and say the developer replaces it.
+- Name the event with the site's own convention when one exists (the
+  microconversion list shows it); otherwise use the guide's canonical name. For each canonical funnel event, confirm it is really arriving with
 `verify_event_instrumented` rather than inferring it from counts. When a symptom
 looks like a known implementation fault, check `get_troubleshooting_guide`
 before theorising.
 
 **Persist:** update `<state-dir>/<site_id>/profile.json` with what this
 audit established — the real event names, the product identifier and its
-table, and `agent_analytics_enabled` based on whether `get_bot_stats`
-returned data. That last flag is what stops every later skill from reporting
+table, `agent_analytics_enabled` as `true`/`false`/`"unknown"`, and
+`discovery_cached_at` as today's date (the refresh rule reads it; the first
+real audit rewrote the profile and left it out). That last flag is what stops every later skill from reporting
 "0% bots" on a site that simply is not measuring them.
 
 ## Channel rules — the one place this plugin can write

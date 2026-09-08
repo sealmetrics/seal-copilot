@@ -212,15 +212,21 @@ export default [
     id: 'setup-audit-finds-the-blocking-gap',
     fixture: 'ecommerce-setup-gaps',
     prompt: 'Audit my tracking. What am I not measuring?',
-    maxCalls: 14,
     mustMatch: [
       /\b([0-9]|10)\s*\/\s*10\b/,                       // a score, as the format requires
       /sku|product (id|identifier)/i,                     // the gap that blocks per-SKU work
       /revenue|avg_value|aov/i,                           // revenue is not being passed
       /agent analytics|bot/i,                             // detection is off
     ],
-    mustNotMatch: [/\b0\s*%\s*(of\s*)?bots?\b/i],
-    mustCall: ['list_microconversion_types', 'list_property_keys'],
+    mustNotMatch: [
+      /\b0\s*%\s*(of\s*)?bots?\b/i,
+      // The first real audit wrote a snippet from memory and admitted it in
+      // the same breath. Any such hedge means the code that follows is invented.
+      /did not (spend|make|fetch|call)|didn'?t (spend|fetch|call)|without (fetching|calling) get_tracking_code|from memory/i,
+    ],
+    // The snippet must come from the site's own js_api, so the call is mandatory.
+    mustCall: ['list_microconversion_types', 'list_property_keys', 'get_tracking_code'],
+    maxCalls: 13,
   },
   {
     id: 'watchdog-refuses-without-a-baseline',
@@ -324,6 +330,7 @@ export default [
     mustCall: ['get_overview', 'get_channels', 'get_bot_stats'],   // the steps must be attempted
     allowRejected: true,
     // The run log must be measurable, and the profile must actually exist.
-    stateMustContain: [/"calls"\s*:\s*"?\d+/, /"budget"\s*:\s*"?\d+/, /"site_id"\s*:\s*"sealmetricsv2"/, /agent_analytics_enabled/],
+    stateMustContain: [/"calls"\s*:\s*"?\d+/, /"budget"\s*:\s*"?\d+/, /"site_id"\s*:\s*"sealmetricsv2"/, /agent_analytics_enabled/,
+                       /discovery_cached_at/],   // the 7-day refresh rule reads it; two real runs omitted it
   },
 ];
