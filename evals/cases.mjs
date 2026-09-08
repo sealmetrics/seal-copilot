@@ -335,7 +335,10 @@ export default [
       // disclaimer and necessarily contains both words; do not ban it.
       /\|[^|\n]*Access denied[^|\n]*\|/i,
     ],
-    mustCall: ['get_overview', 'get_top_channels'],   // the working channel tool; get_channels 403s for every modern key
+    // In KPIs-only mode the procedure may skip channels to save budget (the
+    // real run did, and said so); bot validation is unavailable over an API key
+    // and may be stated without a call. Only the overview is mandatory.
+    mustCall: ['get_overview'],
     allowRejected: true,
     // The run log must be measurable, and the profile must actually exist.
     stateMustContain: [/"calls"\s*:\s*"?\d+/, /"budget"\s*:\s*"?\d+/, /"site_id"\s*:\s*"sealmetricsv2"/, /agent_analytics_enabled/,

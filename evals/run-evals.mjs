@@ -133,6 +133,7 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
       const parsed = parseStream(out);
       let answer = parsed.text, cliError = null;
       const sessionId = parsed.sessionId || null;
+      const truncated = !parsed.sawResult;        // stream ended before the CLI's result event
       if (parsed.isError) cliError = parsed.result || 'unknown CLI error';
       if (!answer.trim() && !cliError && err.trim()) cliError = err.trim().slice(0, 300);
 
@@ -141,7 +142,7 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
         : [];
       const rejected = calls.filter(c2 => c2.rejected);
 
-      resolve({ cliError, calls, rejected, ms, answer, sessionId,
+      resolve({ cliError, calls, rejected, ms, answer, sessionId, truncated,
                 toolNames: [...new Set(calls.map(x => x.tool))] });
     });
   });
@@ -154,7 +155,7 @@ async function runCase(c, siteId) {
   const failures = [];
   let calls = 0, rejected = 0, ms = 0, answer = '', toolNames = [], cliError = null;
 
-  let seen = 0, lastSession = null;
+  let seen = 0, lastSession = null, truncatedStep = false;
   for (const [i, step] of steps.entries()) {
     const r = await runStep(c, step, siteId, work, callLog, step.continue ? lastSession : null);
     ms += r.ms;
@@ -165,6 +166,7 @@ async function runCase(c, siteId) {
     answer = r.answer;
     toolNames = r.toolNames;
     lastSession = r.sessionId || lastSession;
+    if (r.truncated) truncatedStep = true;
     if (r.cliError) { cliError = r.cliError; break; }
     if (step.continue && !lastSession) failures.push(`step ${i + 1}: could not resume — no session id from step ${i}`);
     const label = steps.length > 1 ? `step ${i + 1}: ` : '';
@@ -185,14 +187,17 @@ async function runCase(c, siteId) {
 
   const state = readState(join(work, 'state'));
   rmSync(work, { recursive: true, force: true });
-  return { id: c.id, fixture: c.fixture, error: cliError, state,
+  return { id: c.id, fixture: c.fixture, error: cliError, state, truncated: truncatedStep,
            pass: !cliError && failures.length === 0,
            failures: cliError ? [`the CLI never ran the case: ${cliError}`] : failures,
            calls, rejected, ms, answer, toolNames };
 }
 
-// No answer, no tool call, no error: the CLI session never really started.
-const isTransient = (r) => !r.error && !r.calls && !(r.answer || '').trim();
+// A session that never really ran: no answer, no tool call and no error — or
+// an error the API itself labels transient (stream idle timeout, overloaded,
+// rate limit). Neither is a verdict on the skill; retry once.
+const TRANSIENT = /stream idle timeout|partial response|overloaded|rate limit|529|503|ECONNRESET|ETIMEDOUT/i;
+const isTransient = (r) => (!r.error && !r.calls && !(r.answer || '').trim()) || (r.error && TRANSIENT.test(r.error));
 
 const results = [];
 for (const c of selected) {

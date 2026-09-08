@@ -3,7 +3,7 @@
 // after its report would leave "profile cached" as the answer. Concatenate
 // every assistant text block instead.
 export function parseStream(out) {
-  const texts = []; let result = null, isError = false, sawStream = false, sessionId = null;
+  const texts = []; let result = null, isError = false, sawStream = false, sessionId = null, sawResult = false;
   for (const line of out.split('\n')) {
     if (!line.trim()) continue;
     let ev; try { ev = JSON.parse(line); } catch { continue; }
@@ -12,7 +12,7 @@ export function parseStream(out) {
     if (ev.type === 'assistant') {
       for (const b of ev.message?.content || []) if (b.type === 'text' && b.text) texts.push(b.text);
     } else if (ev.type === 'result') {
-      result = ev.result ?? null; isError = !!ev.is_error;
+      result = ev.result ?? null; isError = !!ev.is_error; sawResult = true;
     }
   }
   if (!sawStream) return { text: out, result: null, isError: false, sessionId: null };

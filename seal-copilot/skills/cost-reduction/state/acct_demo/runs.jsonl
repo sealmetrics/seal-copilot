@@ -1,1 +1,2 @@
 {"date":"2026-09-08","skill":"cost-reduction","site_id":"acct_demo","calls_used":10,"budget":12,"verdict":"2 patterns firing: bot tax (41%), zombie pages (2 minor)"}
+{"ts":"2026-09-08T00:00:00Z","skill":"cost-reduction","calls":11,"budget":12,"verdict":"act","scheduled":false,"notes":"Bot tax fires: 41% bot share, cheap-traffic.example referrer, country XX (22.6k entrances, 0.04% CR) is same flood. Zombies borderline. Other patterns clean."}
