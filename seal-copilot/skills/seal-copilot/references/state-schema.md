@@ -44,7 +44,11 @@ Scheduled skills can overlap; keep writes small and idempotent.
 
 ## `profile.json`
 
-Written by `property-explorer`, `setup-audit` and the core skill. Read by all.
+Written by **whichever skill runs discovery first** — the core skill's session
+start, `property-explorer`, `setup-audit`, or a report skill on a site with no
+profile yet. Read by all. If you called `list_sites` or `get_site` and there
+was no profile, you write it; saying "profile initialized" without writing the
+file is the one thing the first real run got wrong here.
 
 ```json
 {
@@ -77,8 +81,12 @@ families — see "A successful call can still be a failure" in
 Refresh immediately, regardless of TTL, if any skill finds an event name or
 property key that contradicts the profile — that means tracking changed.
 
-`agent_analytics_enabled: false` is what stops every later skill from
-reporting "0% bots" (see the three-outcome rule in `methodology.md`).
+`agent_analytics_enabled` has **three** values: `true`, `false`, or
+`"unknown"` when `get_bot_stats` could not be called at all (the account-id
+family refused the site, or it was never tried). Never write `false` for a
+call that was refused — `false` means measured and off. This field is what
+stops every later skill from reporting "0% bots" (see the three-outcome rule
+in `methodology.md`).
 
 `scheduling_offered` exists so the plugin offers a schedule **once** and then
 stops asking.
@@ -141,11 +149,23 @@ that case report it as an escalation and say it was already flagged on
 ## `runs.jsonl`
 
 One line per skill execution. Cheap, and it is what makes the call budget
-measurable.
+measurable — **only if the fields are exactly these.** The first real run
+wrote `run_at`, `reason` and `findings_issued` and omitted `calls` and
+`budget`, which made budget compliance unmeasurable and the usage report
+blank. Use these names and no others; add nothing, rename nothing.
 
 ```json
 {"ts":"2026-09-07T08:00:12Z","skill":"monday-briefing","calls":13,"budget":15,"verdict":"watch","scheduled":true,"notes":"bot stats empty"}
 ```
+
+- `ts` — ISO timestamp, UTC.
+- `calls` — the number of Sealmetrics tool calls this run actually made.
+  Count them; do not estimate.
+- `budget` — the ceiling the skill documents for itself.
+- `verdict` — one of `on_track`, `watch`, `act`, `kpis_only`, `refused`,
+  `error`.
+- `notes` — free text, one line, for anything a reader would need: a call
+  that was refused, a step skipped and why.
 
 Read by `cost-reduction` (to spot skills that consistently overrun) and by the
 eval suite. No skill needs to read it to do its own job.

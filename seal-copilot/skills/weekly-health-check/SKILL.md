@@ -52,6 +52,18 @@ findings — say why in one line.
 **Then KPI table:** entrances, CR, conversions, revenue, AOV — each with
 delta vs comparable and a one-word direction.
 
+**Then one line for anything the procedure could not do**, whenever a step's
+call was refused, returned an error as text, or was skipped. The first real
+run had a +35% traffic spike at 84% bounce and said nothing about the fact
+that channel and bot data were refused for the site — a reader cannot tell a
+validated spike from an unvalidated one unless you say so. Format:
+
+> Not checked: channel split and bot validation — the API refused
+> `get_channels` and `get_bot_stats` for this site ("Access denied"). Movers
+> above are unvalidated for bots.
+
+Omit the line only when every step ran.
+
 **Then findings (max 3, ordered by revenue impact).** Each finding:
 evidence (numbers + period) → action → estimated impact → how to verify.
 If nothing fires, say so in one line — do not pad.
@@ -59,8 +71,13 @@ If nothing fires, say so in one line — do not pad.
 **Close with one suggested question** the user could ask next (e.g. "Want
 me to diagnose the Paid Search drop?").
 
-Append every finding you issued to `recommendations.jsonl` with its metric,
-baseline, target and `verify_on` date, and log the run in `runs.jsonl`.
+Before the final message: if no `profile.json` existed, write one with what
+discovery established (site, timezone, vertical, event names,
+`agent_analytics_enabled` as `true`/`false`/`"unknown"`). Append every
+finding you issued to `recommendations.jsonl` with its metric, baseline,
+target and `verify_on` date. Log the run in `runs.jsonl` with exactly the
+fields the state schema lists — `calls` is the number of Sealmetrics calls
+you made, counted, not estimated.
 
 ## Scheduling
 

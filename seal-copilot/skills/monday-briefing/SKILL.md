@@ -104,6 +104,11 @@ returned 403, mark every mover in Block A "unvalidated for bots".
 <only if something was due: one line per recommendation checked, with the
 number that moved and verified/failed. Omit the whole block if nothing was due.>
 
+⛔ NOT CHECKED
+<only if a step's call was refused or skipped: one line naming it, e.g.
+"channel split and bot validation — API refused get_channels / get_bot_stats
+for this site; movers above are unvalidated for bots". Omit if all ran.>
+
 🚨 WATCHDOG
 Add-to-cart: <🟢/⚠️/🔴 + one-line context>
 Tracking decay (microconversions): <🟢/⚠️/🔴>
