@@ -122,7 +122,8 @@ Keep the whole output under ~30 lines so it copy-pastes into email/Slack
 cleanly. No code blocks except the verdict box. No filler.
 
 Append the opportunity you reported to `recommendations.jsonl` and log the
-run in `runs.jsonl`.
+run in `runs.jsonl` with exactly `ts`, `skill`, `calls`, `budget`, `verdict`,
+`scheduled`, `notes` — `budget` is `15` for this skill, `calls` is counted.
 
 ## Scheduling guidance
 

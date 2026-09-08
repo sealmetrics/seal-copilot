@@ -310,17 +310,20 @@ export default [
     prompt: 'Run my weekly health check.',
     maxCalls: 10,
     mustMatch: [
-      /kpis? only|below.*threshold|too low|0 conversions/i,        // low-volume rule
-      /not checked|unavailable|refused|access denied|could not/i,  // the refusal is named
-      /unvalidated|cannot (validate|confirm)|couldn'?t (validate|confirm)/i,  // and its consequence stated
+      /kpis? only|below.*threshold|too low|(0|no|zero) conversions/i,   // low-volume rule
+      /not checked|unavailable|refused|access denied|could not/i,        // the refusal is named
+      /unvalidated|cannot (validate|confirm)|couldn'?t (validate|confirm)|no conversions to validate/i,
     ],
     mustNotMatch: [
       /\b0\s*%\s*(of\s*)?bots?\b/i,
-      /channel[^\n]{0,40}Access denied/i,     // the error string presented as a channel row
+      // The error string presented as DATA — inside a table cell. The
+      // "Not checked: channel split … Access denied" sentence is the required
+      // disclaimer and necessarily contains both words; do not ban it.
+      /\|[^|\n]*Access denied[^|\n]*\|/i,
     ],
     mustCall: ['get_overview', 'get_channels', 'get_bot_stats'],   // the steps must be attempted
     allowRejected: true,
     // The run log must be measurable, and the profile must actually exist.
-    stateMustContain: [/"calls"\s*:\s*\d+/, /"budget"\s*:\s*\d+/, /"site_id"\s*:\s*"sealmetricsv2"/, /agent_analytics_enabled/],
+    stateMustContain: [/"calls"\s*:\s*"?\d+/, /"budget"\s*:\s*"?\d+/, /"site_id"\s*:\s*"sealmetricsv2"/, /agent_analytics_enabled/],
   },
 ];

@@ -76,8 +76,9 @@ discovery established (site, timezone, vertical, event names,
 `agent_analytics_enabled` as `true`/`false`/`"unknown"`). Append every
 finding you issued to `recommendations.jsonl` with its metric, baseline,
 target and `verify_on` date. Log the run in `runs.jsonl` with exactly the
-fields the state schema lists — `calls` is the number of Sealmetrics calls
-you made, counted, not estimated.
+fields the state schema lists: `ts`, `skill`, `calls`, `budget`, `verdict`,
+`scheduled`, `notes`. For this skill `budget` is `8`. `calls` is the number
+of Sealmetrics calls you made, counted, not estimated. Both are numbers.
 
 ## Scheduling
 

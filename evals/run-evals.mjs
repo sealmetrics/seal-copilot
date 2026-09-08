@@ -172,8 +172,9 @@ async function runCase(c, siteId) {
     }
   }
 
+  const state = readState(join(work, 'state'));
   rmSync(work, { recursive: true, force: true });
-  return { id: c.id, fixture: c.fixture, error: cliError,
+  return { id: c.id, fixture: c.fixture, error: cliError, state,
            pass: !cliError && failures.length === 0,
            failures: cliError ? [`the CLI never ran the case: ${cliError}`] : failures,
            calls, rejected, ms, answer, toolNames };
@@ -232,7 +233,8 @@ for (const c of selected) {
       mkdirSync(join(here, 'results'), { recursive: true });
       const f = join(here, 'results', `${r.id}.txt`);
       writeFileSync(f, `# ${r.id} (${r.fixture})\n# failures: ${r.failures.join('; ')}\n` +
-                       `# tools: ${called}\n\n${r.answer || ''}`);
+                       `# tools: ${called}\n\n${r.answer || ''}` +
+                       (r.state ? `\n\n\n===== STATE DIR AFTER RUN =====\n${r.state}` : '\n\n(state dir empty)'));
       console.log(`    full answer: ${f}\n`);
     } catch { console.log(''); }
   }
