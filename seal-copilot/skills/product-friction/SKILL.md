@@ -62,10 +62,11 @@ Two calls, for the chosen property `P` over 30d:
 2. `get_property_breakdown(table=microconversions, conversion_type=<atc-event>,
    property_key=P, period=30d)`
 
-These return the **full pivot** — every value with its count and revenue.
-There is no `limit` and no `sort_by`: rank by view count yourself and work
-with the top 100 SKUs. State that you truncated to the top 100 and that the
-user can ask for more.
+Each response is pivoted **by UTM**: `data: [{ utm_source, utm_medium,
+utm_campaign, total, values: { <sku>: count } }]`. Sum `values` across all
+`data` rows to get one count per SKU. There is no revenue here and no
+`limit`: rank by view count yourself and work with the top 100 SKUs. State
+that you truncated and that the user can ask for more.
 
 ## Step 3 — Join and classify
 

@@ -1,5 +1,60 @@
 # Changelog
 
+## 1.3.0 — 2026-09-08
+
+The first contact with the real API. Every fixture had been a reconstruction;
+now they are copies of captured shapes, and the differences were not cosmetic.
+
+### What the live server actually returns
+- **`get_overview` is nested, not flat**: totals under `traffic` and
+  `conversions`, deltas under `traffic_change` and `conversions_change`, and
+  daily `*_series` with `points: [{ date, value }]` plus `*_series_compare`.
+  The old fixture — and every skill reading `overview.entrances` — was wrong.
+- **Money is a string in some tools and a number in others.** `"12345.67"`
+  from `get_overview`, `get_landing_pages`, `get_countries`; a number from
+  `get_campaigns`, `get_top_*`, `get_devices`. Skills must `Number()` it.
+- **List tools return an envelope** `{ data, has_next, page, page_size, total }`;
+  with `compare`, rows gain `*_prev` twins and a `comparison` block appears.
+  `get_top_*` return bare arrays. `list_microconversion_types` is
+  `array<string>`; `list_property_keys` is objects with counts.
+- **`get_microconversion_details` breaks down by device, source, country and
+  landing page in one call.** Phase 1 had rewritten three skills to make one
+  filtered call per segment; that was working around a limitation that does
+  not exist. `get_devices` likewise returns browser and OS alongside device.
+- **`get_property_breakdown` is pivoted by UTM and carries no revenue**;
+  revenue-per-value lives in `get_property_values`.
+- **Raw rows carry `hour`**, which is what the watchdog needed all along.
+- **`get_funnel` answers `{ error }` as JSON** — a third error style.
+
+### Two identifier families
+Twenty tools take the **account id** in their `site_id` parameter; thirty-four
+take the site id. The wrong one returns "Access denied" as text. `list_sites`
+and `get_site` expose no `account_id`, so the account family — including
+`get_channels` and `get_bot_stats`, which almost every skill calls — could not
+be reached with this key. Documented in the methodology; the site profile now
+stores both ids; the validator tries every identifier `get_site` exposes.
+**Open question for the MCP team:** where does the account id come from?
+
+### Failures arrive as text in a successful response
+"Error: site_id is required" comes back as ordinary content, not a protocol
+error. A skill that only handles protocol errors reads it as data. The
+methodology and core skill now require reading the response before using it;
+the mock reproduces the behaviour; a new eval case fails any skill that
+reports the error string as a result.
+
+### Rewritten
+- All 14 fixtures and every builder in `_lib.mjs`, to the captured shapes.
+- The coherence checker reads the nested overview and numeric-parses revenue.
+- `methodology.md` gains a "Reading responses" field guide.
+- Eight skills had their field references corrected: core, both watchdogs,
+  funnel-analysis, diagnose-drop, product-friction, property-explorer,
+  setup-audit, install-sealmetrics.
+
+### Still unverified
+`get_bot_stats` and `get_suspicious_sessions` shapes, and the semantics of
+`traffic_change` (percentage or absolute) — the validator now reports its
+magnitude class so the next run settles it.
+
 ## 1.2.0 — 2026-09-08
 
 Closes the nine gaps identified after the first green eval run, in priority

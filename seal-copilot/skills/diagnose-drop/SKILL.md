@@ -22,7 +22,9 @@ stop at the first isolated cause.
 ## Procedure
 
 0. Confirm the change: `get_overview` for the affected period with
-   `compare=previous`. If the user's claim is not visible in data, say so
+   `compare=previous`. Totals are under `traffic` / `conversions`; the delta
+   is `traffic_change` / `conversions_change`; the daily `*_series` show
+   exactly which day it broke. If the user's claim is not visible in data, say so
    and show what you see instead.
 1. **Bots/tracking:** `get_bot_stats(days=30)`. Read it with the
    three-outcome rule in `methodology.md` — an empty result means agent
@@ -40,9 +42,10 @@ stop at the first isolated cause.
 3. **Campaign:** `get_campaigns(compare=previous, utm_source/medium filters)`.
 4. **Landing/term:** `get_landing_pages(compare=previous)` and/or
    `get_terms(compare=previous)` filtered to the campaign.
-5. **Device/country/browser:** `get_devices(compare=previous)`,
-   `get_countries(compare=previous)`, `get_browsers(period=30d)` and
-   `get_operating_systems(period=30d)`. A collapse isolated to Safari, or to
+5. **Device/country/browser:** `get_devices(compare=previous)` returns
+   `by_device`, `by_browser` and `by_os` in one response, each row with
+   `*_prev` twins — no separate browser or OS call needed. Add
+   `get_countries(compare=previous)`. A collapse isolated to Safari, or to
    one iOS version, points at ITP or a rendering bug, not at demand.
    Country is timezone-derived — treat a country-only signal as directional.
 6. **Product/SKU** (ecommerce only): if the drop concentrates on

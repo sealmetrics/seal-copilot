@@ -78,8 +78,9 @@ stop — a baseline built on nothing is worse than none.
 
 ## Step 3 — Build the baseline
 
-Read `timestamp_local` from every row (not `timestamp_utc` — the site's own
-day boundaries are what matter).
+Every row carries `date`, `hour` (local, 0–23) and `timestamp_local`. Bucket
+by `date` and `hour` directly — do not parse the timestamp, and never use
+`timestamp_utc`, since the site's own day boundaries are what matter.
 
 **Modes A and B.** Bucket events into day-of-week × hour-of-day. For each of
 the 168 cells store:

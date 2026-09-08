@@ -21,16 +21,19 @@ Vertical playbooks: `skills/seal-copilot/references/ecommerce-playbook.md`
 ## Procedure
 
 1. `get_funnel(period=30d)` — the configured funnel with per-step dropoff.
+   It answers `{ error: "…" }` as JSON when no funnel is configured; check
+   for `error` before reading `steps`, and build the funnel from
+   microconversions instead.
 2. `list_microconversion_types` — map the customer's event names to
    canonical stages (product_view/add_to_cart/start_checkout/purchase for
    stores; search/room_view/booking_start/booking for hotels).
 3. Compute stage-to-stage ratios; identify the **weakest stage** relative
    to the site's own history (`compare=previous` via
    `get_microconversions`).
-4. Segment the weakest stage to isolate cause — pick the 2 most likely
-   axes (≤4 calls). `get_microconversion_details` has no `group_by`: make
-   one filtered call per segment, e.g. `device_type='mobile'` then
-   `device_type='desktop'`.
+4. Segment the weakest stage to isolate cause (1 call).
+   `get_microconversion_details(conversion_type=<stage>)` returns
+   `by_device`, `by_source`, `by_country` and `by_landing_page` together, each
+   with `count` and `percentage`. Read all four from the one response.
 5. Triangulate per the methodology: gap only on mobile → UX; gap
    everywhere → offer/price/shipping; gap in one country → payment or
    language.

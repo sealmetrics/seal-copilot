@@ -57,8 +57,12 @@ the account has no password until they set one.
 repo it returns `unknown` plus the manual guide, which is fine — you will hand
 the snippet to the user instead of placing it.
 
-`get_tracking_code(site_id=…)` returns the site-specific `<script>` tag and the
-JavaScript API reference.
+`get_tracking_code(site_id=…)` returns `script_tag` (the exact tag to place),
+`tracker_url`, a `js_api` block whose `signatures[].call` strings are the
+pageview, conversion and microconversion calls to use verbatim, an
+`implementation_guide` with `spa_support` and `content_grouping`, and worked
+`examples` per vertical. Use those signatures as written — do not paraphrase
+them into a slightly different API.
 
 **Placement rules that matter more than the framework:**
 

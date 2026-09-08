@@ -62,8 +62,9 @@ window is too quiet to judge.
 
 `get_microconversions_raw(conversion_type=[<event>], period=today, limit=100)`
 
-Read `timestamp_local` from the rows to find the most recent event. Page once
-more only if the first page does not contain the latest activity.
+Rows carry `hour` (local, 0–23) and `timestamp_local`. Use `hour` to bucket
+and `timestamp_local` for the most recent event. Page once more only if the
+first page does not contain the latest activity.
 
 Two extra signals from this:
 
@@ -85,16 +86,10 @@ Two extra signals from this:
 
 ## Step 4 — Isolate the cause (≤2 calls, only if 🔴)
 
-`get_microconversion_details` has no `group_by`; make one filtered call per
-segment you want to compare:
-
-1. `get_microconversion_details(conversion_type=<event>, period=today,
-   device_type='mobile')` and the same with `device_type='desktop'`
-
-or, when device looks even:
-
-2. `get_microconversion_details(conversion_type=<event>, period=today,
-   utm_source='<top source>')`
+One call is enough — `get_microconversion_details(conversion_type=<event>,
+period=today)` returns `by_device`, `by_source`, `by_country` and
+`by_landing_page` together, each with `count` and `percentage`. Compare the
+device and source splits against the baseline's usual mix.
 
 Mobile-only drop after a deploy → tracking probably broken on the mobile
 build. One-source drop with no other anomalies → that source paused or

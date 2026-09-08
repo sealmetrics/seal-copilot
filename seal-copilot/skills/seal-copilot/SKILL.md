@@ -42,7 +42,10 @@ precedence.
    writable, carry on and say so once. Full contract in
    `references/state-schema.md`.
 1. Run `list_sites` to resolve the site. If multiple sites, ask which one.
-2. Run `get_overview(period=30d, compare=previous)`.
+2. Run `get_overview(period=30d, compare=previous)`. Read totals from
+   `traffic` and `conversions`, deltas from `traffic_change` and
+   `conversions_change` — the response is nested, and `revenue` is a string.
+   Field guide in `references/methodology.md`, "Reading responses".
 3. If conversions or revenue moved more than 20%, mention it before
    answering anything else — even if the user asked something unrelated.
 4. Run `list_property_keys` and `list_microconversion_types` early in an

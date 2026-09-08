@@ -38,8 +38,9 @@ and belong in the inventory. For up to three that look business-relevant, call
 `get_segment` and record their size and share of conversions: a segment that is
 8% of sessions and 35% of conversions is a finding in itself.
 
-Build a deduped table: property name · which table(s) · which conversion
-or microconversion types it appears on.
+Each call returns `[{ key, conversions_count, microconversions_count,
+total_count }]` — the counts are the coverage signal. Build a deduped table:
+property · table(s) · conversions_count · microconversions_count.
 
 ## Step 2 — Score each property on three dimensions
 
@@ -54,7 +55,10 @@ the whole list:
   - 11–100: enumerated (category, country code, color) — segmentation gold.
   - 100–1,000: long tail (city, sub-category) — useful with aggregation.
   - 1,000+: identifier (sku, product_id, user_id) — needs SKU-style skills.
-- **Revenue concentration** = revenue share of top 3 values ÷ total.
+- **Revenue concentration** = revenue share of top 3 values ÷ total. Revenue
+  per value is **not** in `get_property_breakdown` (counts only, pivoted by
+  UTM); take it from `get_property_values`, which returns one row per
+  (value, source) with `revenue`.
   - ≥60%: Pareto — strong signal, name the top values.
   - 30–60%: spread.
   - <30%: noise or true uniform demand.

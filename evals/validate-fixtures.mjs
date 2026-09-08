@@ -61,8 +61,13 @@ const list = v?.sites || v?.data || (Array.isArray(v) ? v : []);
 const first = list[0] || {};
 if (list.length > 1) console.log(`Account has ${list.length} sites; using the first. Pass --site to choose.\n`);
 // Every id-looking field on the first site, so we can try each on the account family.
-const candidates = [...new Set([forcedSite, first.site_id, first.id, first.account_id, first.accountId, first.slug].filter(Boolean))];
 const SITE = forcedSite || first.site_id || first.id;
+// get_site exposes more identifiers than list_sites; any of them might be the
+// one the account family wants.
+const gs = await call('get_site', { site_id: SITE });
+const detail = gs.format === 'json' ? gs.value : {};
+const candidates = [...new Set([forcedSite, first.site_id, first.id, first.account_id, first.accountId, first.slug,
+  detail.id, detail.account_id, detail.org_slug, detail.org_id, detail.created_by && String(detail.created_by)].filter(Boolean))];
 console.log(`Site id: ${SITE}   candidate ids for the account family: ${candidates.join(', ')}\n`);
 
 // ---- 2. Find which candidate the account family accepts.
@@ -161,6 +166,16 @@ for (const [tool, rawArgs, label] of probes) {
 
   const res = out.value;
   real[name] = { format: out.format, top_level_keys: topKeys(res), shape: shape(res) };
+
+  // Overview *_change fields are numbers, but are they percentages or absolute
+  // deltas? Report magnitude class only: a percent delta has 1–3 integer digits.
+  if (tool === 'get_overview' && res?.traffic_change) {
+    const cls = (v) => { const n = Number(v); if (!isFinite(n)) return typeof v; const d = Math.abs(Math.trunc(n)).toString().length;
+      return `${n < 0 ? '-' : '+'}${n === 0 ? '0' : d + 'digit'}${Number.isInteger(n) ? '' : '.dec'}`; };
+    const peek = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, cls(v)]));
+    real[name].change_magnitudes = { traffic_change: peek(res.traffic_change), conversions_change: peek(res.conversions_change || {}) };
+    console.log(`           traffic_change magnitudes: ${JSON.stringify(peek(res.traffic_change))}`);
+  }
 
   // Borrow values for dependent probes.
   if (tool === 'list_microconversion_types' && !MICRO) {

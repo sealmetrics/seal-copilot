@@ -20,10 +20,12 @@ for (const file of readdirSync(here).filter(f => f.endsWith('.mjs') && !f.starts
     const ch = call('get_channels', { period });
     if (!ov || !ch?.data) continue;
     any = true; checked++;
-    const sum = k => ch.data.reduce((s, r) => s + (r[k] || 0), 0);
-    const fails = [['entrances', sum('entrances'), ov.entrances],
-                   ['conversions', sum('conversions'), ov.conversions],
-                   ['revenue', sum('revenue'), ov.revenue]]
+    // Real shape: totals live under ov.traffic, and revenue arrives as "1234.56".
+    const tr = ov.traffic || ov;
+    const sum = k => ch.data.reduce((s, r) => s + Number(r[k] || 0), 0);
+    const fails = [['entrances', sum('entrances'), Number(tr.entrances)],
+                   ['conversions', sum('conversions'), Number(tr.conversions)],
+                   ['revenue', sum('revenue'), Number(tr.revenue)]]
       .filter(([, g, w]) => !near(g, w));
     for (const [k, g, w] of fails) { console.log(`  FAIL  ${file} (${period}): channels ${k} sum ${g} ≠ overview ${w}`); bad++; }
     if (!fails.length) console.log(`  ok    ${file} (${period})`);

@@ -179,6 +179,84 @@ Resolve both once with `list_sites` and `get_site`, store them in
 explicitly. `get_channels` and `get_bot_stats` are called by almost every
 skill, so getting this wrong breaks almost every skill.
 
+## Reading responses — the real shapes
+
+Captured from the live server on 2026-09-08. Skills that read the wrong field
+silently report nothing or the wrong number, so this is the reference.
+
+**`get_overview` is nested, not flat.** Totals are under `traffic`
+(`entrances`, `engaged_entrances`, `page_views`, `bounce_rate` as a percentage,
+`conversions`, `microconversions`, `pages_per_session`, `revenue`) and under
+`conversions` (`conversions`, `conversion_rate`, `average_order_value`,
+`revenue`). There is no `prev` block: the comparison arrives as
+`traffic_change` and `conversions_change` with the same keys. Daily series are
+included — `entrances_series`, `conversions_series`, `revenue_series` and
+others, each `{ metric, total, average, points: [{ date, value }] }`, plus
+`*_series_compare` for the prior window. Use them for channel drift and
+week-over-week shape instead of extra calls.
+
+**Money is a string in some tools and a number in others.** `revenue` and
+`average_order_value` arrive as `"12345.67"` from `get_overview`,
+`get_landing_pages`, `get_landing_pages_by_content_group` and `get_countries`,
+and as numbers from `get_campaigns`, `get_top_*`, `get_traffic_sources`,
+`get_device_types` and `get_devices`. Always `Number()` a money field before
+arithmetic; never compare a string to a number.
+
+**List tools return an envelope:** `{ data: [...], has_next, page, page_size,
+total }`. With `compare`, each row also carries `*_prev` twins
+(`entrances_prev`, `conversions_prev`, `revenue_prev` …) and the envelope
+gains a `comparison` block with the prior window's totals and `date_range`.
+Rows include `conversion_rate` and `bounce_rate` precomputed — as
+percentages, so 2.4 means 2.4%.
+
+**`get_top_*` tools return a bare array** of the same row shape, no envelope,
+never a comparison.
+
+**`list_microconversion_types` returns `array<string>`.**
+**`list_property_keys` returns `array<{ key, conversions_count,
+microconversions_count, total_count }>`** — the counts are free signal for
+property-explorer's coverage scoring.
+
+**`get_microconversion_details` already breaks down by everything.** One call
+returns `totals.count`, `by_device`, `by_country`, `by_source` (with
+`utm_source`/`utm_medium`) and `by_landing_page`, each `[{ …, count,
+percentage }]`. Do not make one filtered call per segment to rebuild what one
+call already contains; use the filters only to narrow.
+
+**`get_devices` returns three breakdowns at once:** `by_device`, `by_browser`,
+`by_os`, each with `percentage` and, under `compare`, `*_prev` fields. A
+Safari- or iOS-only collapse is visible from this single call.
+
+**`get_microconversions` rows carry `by_source`** — a per-row split by
+`utm_source`/`utm_medium`/`utm_campaign` with `count` and `percentage`.
+
+**Property tools:**
+- `get_property_breakdown` is pivoted **by UTM**: `data: [{ utm_source,
+  utm_medium, utm_campaign, total, values: { <value>: count } }]`, plus
+  `property_values` (the list of values seen) and `total_events`. **There is no
+  revenue here.** Sum across `data[].values` to get a per-value count.
+- `get_property_values` is one row per (value, source): `{ property_value,
+  utm_source, conversions_count, microconversions_count, revenue }`. This is
+  where revenue-per-value lives.
+
+**Raw event rows** include `date`, `hour` (0–23, local), `timestamp_local`,
+`timestamp_utc`, `device_type`, `browser`, `os`, `country`, `channel_group`,
+`landing_page`, all UTMs, and `properties` (only with `include_properties`).
+`hour` is what the watchdog needs; do not parse it out of the timestamp.
+
+**`get_funnel` answers `{ error: "…" }` as JSON** when no funnel is configured
+— a third error style alongside protocol errors and text errors. Check for an
+`error` key before reading `steps`.
+
+**`get_tracking_code` is rich:** `script_tag`, `tracker_url`, `js_api` with
+`signatures[].call` for pageview/conversion/microconversion, an
+`implementation_guide` with `spa_support` and `content_grouping`, and
+`examples` per vertical. Use the signatures verbatim in install-sealmetrics.
+
+**Unverified:** `get_bot_stats` and `get_suspicious_sessions` could not be
+captured — the account-id family refused every identifier the key exposed.
+Read them defensively.
+
 ## The bot check has three outcomes, not two
 
 `get_bot_stats(days=N)` is mandatory before reporting any spike, drop, or

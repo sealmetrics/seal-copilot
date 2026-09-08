@@ -37,8 +37,9 @@ user. Budget: ≤10 calls.
    per-SKU analysis are impossible. Note which identifier is used; if
    the same product carries different identifiers on different events
    (a common integration bug), flag it as a top gap.
-5. `get_conversions(30d)` — are revenue values being passed? AOV = 0 or
-   null means revenue tracking is missing.
+5. `get_conversions(30d)` — are revenue values being passed? Rows carry
+   `avg_value`; 0 or null means revenue tracking is missing. Note
+   `list_property_keys` returns objects with `key` and counts, not names.
 6. `list_channel_rules` — are paid sources classified correctly? Spot-check
    against `get_traffic_sources`: cpc traffic landing in "Referral" means
    missing UTMs or rules.
