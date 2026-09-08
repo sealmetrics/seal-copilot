@@ -100,8 +100,8 @@ language:
    (ecommerce: `category`, `price_range`, `brand`; hotels: `room_type`,
    `rate_plan`, `lead_time`, `stay_length`).
 5. **Persist.** Write the inventory and the top 5 to
-   `~/.seal-copilot/<site_id>/property-map.md`, and update
-   `~/.seal-copilot/<site_id>/profile.json` with the vertical you detected,
+   `<state-dir>/<site_id>/property-map.md`, and update
+   `<state-dir>/<site_id>/profile.json` with the vertical you detected,
    the site's real event names, and the product identifier (key + table) if
    one exists. Every later skill reads these instead of rediscovering them —
    see `skills/seal-copilot/references/state-schema.md`. Tell the user the
@@ -120,6 +120,6 @@ language:
 
 ---
 
-Log the run in `~/.seal-copilot/<site_id>/runs.jsonl` (skill, calls used,
+Log the run in `<state-dir>/<site_id>/runs.jsonl` (skill, calls used,
 budget, verdict) so budget compliance is measurable. Skip silently if the
 path is not writable.

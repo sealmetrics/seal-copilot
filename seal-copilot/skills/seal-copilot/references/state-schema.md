@@ -4,11 +4,17 @@ Seal Copilot remembers what it learned about a site between runs. Without
 this, every scheduled run rediscovers the same facts, every scan re-proposes
 the same finding, and no recommendation is ever verified.
 
-**Location:** `$SEAL_COPILOT_STATE_DIR/<site_id>/` when that environment
-variable is set, otherwise `~/.seal-copilot/<site_id>/`. It lives outside the
-plugin directory, which is read-only after install. Create it on first write.
-The override exists so test runs and sandboxes can be isolated from a real
-account's state — check for it before reading or writing anything below.
+**Location — `<state-dir>`:** the SessionStart hook announces it as
+"State directory: …" at the top of every session. **Use that path, exactly as
+announced.** It is `$SEAL_COPILOT_STATE_DIR` when set, otherwise
+`~/.seal-copilot`. Never write to the literal `~/.seal-copilot` when a
+different directory was announced: the override exists so that test runs and
+sandboxes stay isolated from a real account's state, and ignoring it has
+already put fixture data into a real home directory once. If no directory was
+announced at all, fall back to `~/.seal-copilot`.
+
+Everything below lives under `<state-dir>/<site_id>/`, outside the plugin
+directory (which is read-only after install). Create it on first write.
 
 **Every read is optional.** If a file is missing or the filesystem is not
 writable (some sandboxed environments), run the discovery you would have run

@@ -28,7 +28,11 @@ stop at the first isolated cause.
    and show what you see instead.
 1. **Bots/tracking:** `get_bot_stats(days=30)`. Read it with the
    three-outcome rule in `methodology.md` — an empty result means agent
-   analytics is off, not 0% bots. Sudden near-zero on one page →
+   analytics is off, not 0% bots. **If bots are the cause, do not stop here:**
+   one more call, `get_top_referrers` or `get_channels`, names the source
+   carrying them (a single referrer at 90%+ bounce is the usual shape). "It is
+   bots" is a diagnosis; "it is bots from cheap-traffic.example, block it" is
+   an action. Sudden near-zero on one page →
    check `get_pages(path_filter=...)` for a tag lost in a deploy. For a
    broken microconversion event (cart, checkout), compare
    `get_microconversions(period=30d, compare=previous)` per type — a single type
@@ -78,6 +82,6 @@ both with their evidence.
 
 ---
 
-Log the run in `~/.seal-copilot/<site_id>/runs.jsonl` (skill, calls used,
+Log the run in `<state-dir>/<site_id>/runs.jsonl` (skill, calls used,
 budget, verdict) so budget compliance is measurable. Skip silently if the
 path is not writable.

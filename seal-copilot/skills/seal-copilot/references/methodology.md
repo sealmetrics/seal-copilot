@@ -188,12 +188,18 @@ silently report nothing or the wrong number, so this is the reference.
 (`entrances`, `engaged_entrances`, `page_views`, `bounce_rate` as a percentage,
 `conversions`, `microconversions`, `pages_per_session`, `revenue`) and under
 `conversions` (`conversions`, `conversion_rate`, `average_order_value`,
-`revenue`). There is no `prev` block: the comparison arrives as
-`traffic_change` and `conversions_change` with the same keys. Daily series are
-included — `entrances_series`, `conversions_series`, `revenue_series` and
-others, each `{ metric, total, average, points: [{ date, value }] }`, plus
-`*_series_compare` for the prior window. Use them for channel drift and
-week-over-week shape instead of extra calls.
+`revenue`). There is no `prev` block. `traffic_change` and
+`conversions_change` exist with the same keys, but **do not rely on them for
+the period-over-period delta**: on the live server their values did not
+behave like percentage changes (all zero with `compare=previous` on one
+window, current-sized figures without it on another). The unambiguous source
+is the series: `entrances_series.total` is the current window and
+`entrances_series_compare.total` the prior one — likewise `conversions_series`
+and `page_views_series`. Compute the delta from those. Revenue has
+`revenue_series` but no `_compare` twin; for a prior-window revenue figure,
+call `get_overview` again with explicit `start_date`/`end_date`, or read
+`comparison.revenue` from `get_conversions(compare=previous)`. The series
+points (`{ date, value }`, daily) also show exactly which day a change began.
 
 **Money is a string in some tools and a number in others.** `revenue` and
 `average_order_value` arrive as `"12345.67"` from `get_overview`,

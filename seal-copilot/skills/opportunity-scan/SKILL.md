@@ -32,7 +32,7 @@ Budget: ≤12 tool calls.
 
 ## Procedure
 
-0. **Read the ledger.** Load `~/.seal-copilot/<site_id>/recommendations.jsonl`.
+0. **Read the ledger.** Load `<state-dir>/<site_id>/recommendations.jsonl`.
    Do not re-report a pattern that already has an `open` entry for the same
    subject unless its impact has grown ≥50% — then report it as an escalation
    and name the date it was first flagged. Entries marked `discarded` stay

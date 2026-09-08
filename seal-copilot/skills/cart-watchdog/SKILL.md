@@ -23,7 +23,7 @@ before the daily report does. Budget: ≤6 tool calls. Designed for
 
 ## Step 0 — Load the baseline
 
-Read `~/.seal-copilot/<site_id>/watchdog-baseline.json`.
+Read `<state-dir>/<site_id>/watchdog-baseline.json`.
 
 - **No file** → do not improvise a threshold. Reply in one line: *"No baseline
   yet — run `calibrate-watchdog` once and I can watch this properly."* Stop.
@@ -131,6 +131,6 @@ it will not become noise. Offer the schedule once, after a successful run.
 
 ---
 
-Log the run in `~/.seal-copilot/<site_id>/runs.jsonl` (skill, calls used,
+Log the run in `<state-dir>/<site_id>/runs.jsonl` (skill, calls used,
 budget, verdict) so budget compliance is measurable. Skip silently if the
 path is not writable.

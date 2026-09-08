@@ -101,7 +101,7 @@ returns a day total, not an hourly series.
 
 ## Step 4 — Store it
 
-Write `~/.seal-copilot/<site_id>/watchdog-baseline.json`:
+Write `<state-dir>/<site_id>/watchdog-baseline.json`:
 
 ```json
 {
@@ -150,6 +150,6 @@ Output, in under 15 lines:
 
 ---
 
-Log the run in `~/.seal-copilot/<site_id>/runs.jsonl` (skill, calls used,
+Log the run in `<state-dir>/<site_id>/runs.jsonl` (skill, calls used,
 budget, verdict) so budget compliance is measurable. Skip silently if the
 path is not writable.

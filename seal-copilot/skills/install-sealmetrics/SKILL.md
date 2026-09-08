@@ -135,7 +135,7 @@ because the code looks right.
 ## Step 6 — Hand off
 
 1. Write what you established into
-   `~/.seal-copilot/<site_id>/profile.json` — site id, domain, timezone,
+   `<state-dir>/<site_id>/profile.json` — site id, domain, timezone,
    vertical, the real event names you used and the product identifier key.
    See `skills/seal-copilot/references/state-schema.md`.
 2. Tell the user that data takes a few days to become analyzable, and name the
@@ -158,6 +158,6 @@ because the code looks right.
 
 ---
 
-Log the run in `~/.seal-copilot/<site_id>/runs.jsonl` (skill, calls used,
+Log the run in `<state-dir>/<site_id>/runs.jsonl` (skill, calls used,
 budget, verdict) so budget compliance is measurable. Skip silently if the
 path is not writable.

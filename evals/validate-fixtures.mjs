@@ -129,17 +129,21 @@ const probes = [
 ];
 let MICRO = null, PROP = null;
 
-// Fixtures to compare against — skip the ones that only model failures.
-const fixtures = {};
+// Fixture handlers, kept as functions so each can be evaluated with the same
+// arguments the real probe used — a `comparison` block only appears under
+// compare, and comparing it against a compare-less fixture call is noise.
+const handlers = {};
 for (const f of readdirSync(join(here, 'fixtures')).filter(x => x.endsWith('.mjs') && !x.startsWith('_'))) {
   const m = await import(pathToFileURL(join(here, 'fixtures', f)).href);
   for (const [tool, h] of Object.entries(m.tools || {})) {
-    if (fixtures[tool] !== undefined) continue;
-    let val; try { val = typeof h === 'function' ? h({ period: '30d', table: 'both' }) : h; } catch { continue; }
-    if (val && (val.__error || val.__textError)) continue;
-    fixtures[tool] = val;
+    if (handlers[tool] !== undefined) continue;
+    const probe = typeof h === 'function' ? h : () => h;
+    let sample; try { sample = probe({ period: '30d', table: 'both' }); } catch { continue; }
+    if (sample && (sample.__error || sample.__textError)) continue;
+    handlers[tool] = probe;
   }
 }
+const fixtureFor = (tool, args) => { const h = handlers[tool]; if (!h) return undefined; try { return h(args); } catch { return undefined; } };
 
 console.log('Probing the tools the skills depend on:\n');
 const formats = {}; let compared = 0, mismatches = 0, errors = 0, nonJson = 0;
@@ -187,7 +191,7 @@ for (const [tool, rawArgs, label] of probes) {
     PROP = typeof arr[0] === 'string' ? arr[0] : arr[0]?.key;
   }
 
-  const fx = fixtures[tool];
+  const fx = fixtureFor(tool, args);
   if (fx === undefined) { console.log(`  ok       ${name.padEnd(36)} (no fixture yet) ${shape(res).slice(0, 60)}`); continue; }
   compared++;
   const rKeys = topKeys(res), fKeys = topKeys(fx);

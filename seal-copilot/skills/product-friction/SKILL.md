@@ -28,7 +28,7 @@ have no `limit` or `sort_by`, and the raw tools are capped at 31 days and
 
 ## Step 1 — Discover the product property
 
-Check `~/.seal-copilot/<site_id>/profile.json` first: if
+Check `<state-dir>/<site_id>/profile.json` first: if
 `product_identifier` is set, use it and skip the probing below. Verify it
 still appears in the data on your first breakdown call — if it does not,
 tracking changed, so re-probe and update the profile.
@@ -157,6 +157,6 @@ was too thin to isolate the cause rather than inventing one.
 
 ---
 
-Log the run in `~/.seal-copilot/<site_id>/runs.jsonl` (skill, calls used,
+Log the run in `<state-dir>/<site_id>/runs.jsonl` (skill, calls used,
 budget, verdict) so budget compliance is measurable. Skip silently if the
 path is not writable.

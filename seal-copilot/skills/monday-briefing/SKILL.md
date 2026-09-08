@@ -37,7 +37,7 @@ If any sub-step errors, show "—" for that section, do not abort the rest.
 ## Procedure
 
 ### Block 0 — Follow-up (0–2 calls)
-Read `~/.seal-copilot/<site_id>/recommendations.jsonl`. For entries with
+Read `<state-dir>/<site_id>/recommendations.jsonl`. For entries with
 `status: open` and `verify_on` today or earlier, re-measure and mark them
 verified or failed (see `skills/seal-copilot/references/state-schema.md`).
 At most two re-measurements per briefing — the rest wait a week. If nothing

@@ -23,7 +23,7 @@ findings — say why in one line.
 ## Procedure
 
 0. **Follow up on past recommendations first.** Read
-   `~/.seal-copilot/<site_id>/recommendations.jsonl` and act on entries with
+   `<state-dir>/<site_id>/recommendations.jsonl` and act on entries with
    `status: open` and `verify_on` today or earlier: re-run the one call that
    measures each `metric`, mark them verified/failed, and rewrite the file.
    Report the outcomes in one line each, above the new findings — see

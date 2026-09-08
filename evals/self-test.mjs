@@ -70,6 +70,22 @@ ok('get_bot_stats(period) is rejected', /Invalid parameter/.test(r[2]?.error?.me
 ok('get_bot_stats(days) succeeds', !!r[3]?.result);
 ok('period=last_28_days is rejected', /Invalid value/.test(r[4]?.error?.message || ''), JSON.stringify(r[4]));
 
+console.log('\nstream-json parsing');
+{
+  const { parseStream } = await import('./stream.mjs');
+  const ev = (o) => JSON.stringify(o);
+  const stream = [
+    ev({ type: 'assistant', message: { content: [{ type: 'text', text: '✅ On track — nothing needs action.' }] } }),
+    ev({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Write' }] } }),
+    ev({ type: 'assistant', message: { content: [{ type: 'text', text: 'Site profile cached.' }] } }),
+    ev({ type: 'result', result: 'Site profile cached.', is_error: false }),
+  ].join('\n');
+  const r = parseStream(stream);
+  ok('captures the report, not only the final turn', /On track/.test(r.text) && /cached/.test(r.text));
+  ok('surfaces CLI errors', parseStream(ev({ type: 'result', result: 'Not logged in', is_error: true })).isError);
+  ok('plain output passes through', parseStream('hello').text === 'hello');
+}
+
 console.log('\nassertion logic');
 const c = { mustMatch: [/on track/i], mustNotMatch: [/🔴/], mustCall: ['get_overview'],
             mustNotCall: ['get_channels'], maxCalls: 3 };

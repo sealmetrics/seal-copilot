@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assess } from './assess.mjs';
+import { parseStream } from './stream.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -91,7 +92,7 @@ function runStep(c, step, siteId, work, callLog) {
       '--strict-mcp-config',
       '--plugin-dir', join(root, 'seal-copilot'),
       '--allowed-tools', allowedTools,
-      '--output-format', 'json',
+      '--output-format', 'stream-json', '--verbose',
       '--no-session-persistence',
     ];
 
@@ -120,12 +121,14 @@ function runStep(c, step, siteId, work, callLog) {
     proc.on('close', () => {
       clearTimeout(timer);
       const ms = Date.now() - started;
-      let answer = out, cliError = null;
-      try {
-        const j = JSON.parse(out);
-        answer = j.result ?? j.text ?? out;
-        if (j.is_error) cliError = String(answer || "unknown CLI error");
-      } catch { if (!out.trim() && err.trim()) cliError = err.trim().slice(0, 300); }
+      // stream-json: one event per line. The final "result" event carries only
+      // the last assistant turn; a skill that writes state after its report
+      // leaves "profile cached" as the result and the report earlier in the
+      // stream. Concatenate every assistant text block instead.
+      const parsed = parseStream(out);
+      let answer = parsed.text, cliError = null;
+      if (parsed.isError) cliError = parsed.result || 'unknown CLI error';
+      if (!answer.trim() && !cliError && err.trim()) cliError = err.trim().slice(0, 300);
 
       const calls = existsSync(callLog)
         ? readFileSync(callLog, 'utf8').trim().split('\n').filter(Boolean).map(l => JSON.parse(l))

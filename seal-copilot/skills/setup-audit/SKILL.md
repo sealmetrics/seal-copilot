@@ -69,7 +69,7 @@ one. For each canonical funnel event, confirm it is really arriving with
 looks like a known implementation fault, check `get_troubleshooting_guide`
 before theorising.
 
-**Persist:** update `~/.seal-copilot/<site_id>/profile.json` with what this
+**Persist:** update `<state-dir>/<site_id>/profile.json` with what this
 audit established — the real event names, the product identifier and its
 table, and `agent_analytics_enabled` based on whether `get_bot_stats`
 returned data. That last flag is what stops every later skill from reporting
@@ -103,6 +103,6 @@ once volume grows.
 
 ---
 
-Log the run in `~/.seal-copilot/<site_id>/runs.jsonl` (skill, calls used,
+Log the run in `<state-dir>/<site_id>/runs.jsonl` (skill, calls used,
 budget, verdict) so budget compliance is measurable. Skip silently if the
 path is not writable.
