@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.6.0 — 2026-09-08
+
+The "Access denied" on twenty tools is explained from source, and the plugin
+stops calling the one that mattered most.
+
+### There is no account_id. It is the token's scope, by design.
+Read in the backend (`sealmetrics2/api`) and the MCP source. API keys can only
+carry `stats:read`, `sites:read`, `accounts:read` — enforced by
+`API_KEY_ALLOWED_SCOPES` and also the default; an OAuth grant mints a key with
+the same three. The configuration routers (`/channel-groups`, `/bot-stats`,
+`/alerts`, `/segments`, `/webhooks`) require the generic `read` scope, and the
+hierarchy is one-way: `read` implies `stats:read`, never the reverse. So no API
+key and no OAuth connection can ever reach those twenty tools; only a dashboard
+session can. The MCP's remote transport hides them for exactly this reason
+(`gate.ts`, decision of 2026-07-02). The local transport — the one this plugin
+uses — still lists all sixty-two, and twenty of them 403 for every modern key.
+Earlier releases said there were "two identifiers"; there is one. Corrected.
+
+### Never call get_channels
+It was called in five skills and would have produced "Access denied" in every
+report for every new customer. `get_top_channels` hits `/stats/top-channels`,
+covered by `stats:read`, returns the same rows, and takes a period — so the
+calendar-pair comparison works unchanged. Every call site, the methodology and
+the eval cases now use it. Bot validation, alerts, webhooks, segments and event
+verification are documented as unreachable over an API key: reported once in
+"Not checked", never retried, `agent_analytics_enabled` left as `"unknown"`.
+
+### Fixtures model a modern key
+`get_channels` is refused in every fixture but one (a legacy-key scenario), and
+`get_top_channels` is period-aware and complete — it had been truncated to the
+top three rows when it was only a ranking tool. The coherence checker sums the
+working tool.
+
+### The runner recognises a stream that dies mid-response
+One full run had an explicit "Stream idle timeout" and three cases with the
+same silhouette: a dozen calls, then no text, no state, no result event. The
+transient detector only recognised zero-call sessions, so those were scored
+against the skills. A retest of all five on the same tree passed 5/5. The
+runner now retries an API-labelled transient and a stream with no result event
+and no text.
+
+### Suite: 24 cases, 14 skills, green on this tree
+Open, and not in this repo: the product decision on the local MCP transport —
+apply the same gate as the remote one, so no client is offered tools its key
+can never use.
+
 ## 1.5.0 — 2026-09-08
 
 Two more real-account runs of setup-audit, and the class of defect only an
