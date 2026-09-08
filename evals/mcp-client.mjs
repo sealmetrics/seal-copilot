@@ -43,9 +43,32 @@ export function connect(command, args, env = {}) {
   };
 }
 
-// MCP wraps results as content blocks; unwrap the JSON payload.
+// MCP wraps results in content blocks. The payload may be raw JSON, JSON inside
+// a fenced code block, or human-readable text — reporting *which* matters more
+// than the value, so return both the parsed form and how it arrived.
 export function unwrap(result) {
-  const text = result?.content?.find(c => c.type === 'text')?.text;
-  if (text === undefined) return result;
-  try { return JSON.parse(text); } catch { return text; }
+  const block = result?.content?.find(c => c.type === 'text');
+  const text = block?.text;
+  if (text === undefined) return { format: 'no-text-block', blocks: (result?.content || []).map(c => c.type), value: result };
+
+  const direct = tryParse(text);
+  if (direct !== undefined) return { format: 'json', value: direct, raw: text };
+
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) {
+    const inner = tryParse(fence[1]);
+    if (inner !== undefined) return { format: 'json-in-fence', value: inner, raw: text };
+  }
+  return { format: looksMarkdown(text) ? 'markdown' : 'text', value: text, raw: text };
+}
+
+function tryParse(s) { try { return JSON.parse(String(s).trim()); } catch { return undefined; } }
+const looksMarkdown = (s) => /^\s*[#|]|\n\s*\||^\s*[-*]\s/.test(s);
+
+// A structural sketch: layout and field names kept, every figure masked. Enough
+// to see the shape of a response without putting anyone's revenue on screen.
+export function redact(text, limit = 700) {
+  return String(text).slice(0, limit)
+    .replace(/\d/g, '#')
+    .replace(/[ \t]+/g, ' ');
 }

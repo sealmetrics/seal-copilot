@@ -14,7 +14,7 @@
 import { readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { connect, unwrap } from './mcp-client.mjs';
+import { connect, unwrap, redact } from './mcp-client.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -68,15 +68,32 @@ for (const f of readdirSync(join(here, 'fixtures')).filter(x => x.endsWith('.mjs
 }
 
 console.log('Comparing fixture shapes against the live Sealmetrics API.\n');
-const real = {}; let mismatches = 0, checked = 0, skipped = 0;
+const real = {}; const formats = {}; let mismatches = 0, checked = 0, skipped = 0, nonJson = 0;
 
 for (const [tool, args] of PROBES) {
   if (siteId) args.site_id = siteId;
-  let res;
-  try { res = unwrap(await c.call(tool, args)); }
+  let out;
+  try { out = unwrap(await c.call(tool, args)); }
   catch (e) { console.log(`  skip  ${tool.padEnd(28)} ${e.message.slice(0, 70)}`); skipped++; continue; }
 
-  real[tool] = { top_level_keys: topKeys(res), shape: shape(res) };
+  formats[out.format] = (formats[out.format] || 0) + 1;
+
+  // The response is not JSON at all. That is a far bigger finding than a field
+  // name mismatch, so report it as such instead of pretending to diff shapes.
+  if (out.format !== 'json' && out.format !== 'json-in-fence') {
+    nonJson++;
+    console.log(`  FORMAT   ${tool.padEnd(26)} returns ${out.format}, not JSON`);
+    if (nonJson <= 2) {
+      console.log('           structural sketch (all digits masked):');
+      for (const line of redact(out.raw ?? out.value).split('\n').slice(0, 12))
+        console.log('             ' + line);
+    }
+    real[tool] = { format: out.format, sketch: redact(out.raw ?? out.value, 400) };
+    continue;
+  }
+
+  const res = out.value;
+  real[tool] = { format: out.format, top_level_keys: topKeys(res), shape: shape(res) };
   const fx = fixtures[tool];
   if (!fx) { console.log(`  --    ${tool.padEnd(28)} no fixture covers this tool`); continue; }
 
@@ -101,11 +118,20 @@ if (save) {
   console.log(`\nShapes written to ${f} (structure only, no values).`);
 }
 
-console.log(`\n${checked} tool(s) compared, ${mismatches} mismatch(es), ${skipped} skipped.`);
+console.log(`\nResponse formats: ${Object.entries(formats).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+console.log(`${checked} tool(s) shape-compared, ${mismatches} mismatch(es), ${nonJson} non-JSON, ${skipped} skipped.`);
+
+if (nonJson) {
+  console.log(`\n${nonJson} tool(s) return formatted text rather than JSON. That is a finding about\n` +
+              'the whole test approach, not about individual fields: every eval fixture\n' +
+              'returns JSON, so the skills have been exercised against a response shape the\n' +
+              'server never produces. Send the sketches above to whoever maintains the\n' +
+              'fixtures before changing any field name.');
+}
 if (mismatches) {
   console.log('\nEvery mismatch means a skill is reading a field that does not exist, or\n' +
               'ignoring one that does. Fix the fixtures in evals/fixtures/ to match reality,\n' +
               'then re-run the suite — some cases should start failing, and those failures\n' +
               'are the real bugs this was built to find.');
 }
-process.exit(mismatches ? 1 : 0);
+process.exit(mismatches || nonJson ? 1 : 0);
