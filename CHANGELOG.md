@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.3.2 — 2026-09-08
+
+The suite holds under repetition. Every case now passes three runs out of
+three, and the three that did not have concrete causes, none of them wording.
+
+### Triple run: 22/22
+`--runs 3` over the full suite gave 19/22 with three flaky cases. After the
+fixes below, those three pass 3/3 on the committed tree, and `~/.seal-copilot`
+is untouched after the run.
+
+### A forked skill cannot see the session
+`context: fork` starts a context that never received the SessionStart hook's
+output, so a forked skill has no way to learn the announced state directory
+and falls back to the literal `~/.seal-copilot`. That is how fixture data
+reached the real home directory a second time, and why
+`property-explorer-ranks-and-persists` found nothing under the eval's state
+dir in two runs of three. property-explorer and opportunity-scan — the two
+forked skills whose job includes persisting state — now run in the main
+context. product-friction and cost-reduction stay forked; their only state
+write is the optional run log. Documented in the state schema.
+
+### A contract dropped when the answer feels obvious
+opportunity-scan omitted its Verify line in two runs of three. Same defect
+diagnose-drop had: the output format was a suggestion. It is binding now, and
+the skill is told why — a recommendation without a way to check it cannot go
+into the ledger.
+
+### A session that never started is not a verdict
+One attempt of install-reuses-existing-site produced no answer, no tool call
+and no error. The runner now recognises that shape as a transient CLI failure,
+retries the attempt once, and names it as transient if it repeats, instead of
+scoring it against the skill.
+
+### Caveat
+The 19 stable cases were measured on the tree one commit earlier; the changes
+since are narrow (two skills' frontmatter, one output contract, a runner retry
+path). A full `--runs 3` on this exact tree is the remaining certification
+step and has not been run.
+
 ## 1.3.1 — 2026-09-08
 
 The first suite run that means something: fixtures match the live API, and
