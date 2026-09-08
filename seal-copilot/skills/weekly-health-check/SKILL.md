@@ -73,11 +73,14 @@ me to diagnose the Paid Search drop?").
 
 Before the final message: if no `profile.json` existed, write one with what
 discovery established (site, timezone, vertical, event names,
-`agent_analytics_enabled` as `true`/`false`/`"unknown"`). Append every
+`agent_analytics_enabled` as `true`/`false`/`"unknown"`) **and
+`discovery_cached_at` as today's date** — the 7-day refresh rule reads that
+field, and a profile without it can never be judged fresh or stale. Append every
 finding you issued to `recommendations.jsonl` with its metric, baseline,
 target and `verify_on` date. Log the run in `runs.jsonl` with exactly the
 fields the state schema lists: `ts`, `skill`, `calls`, `budget`, `verdict`,
-`scheduled`, `notes`. For this skill `budget` is `8`. `calls` is the number
+`scheduled`, `notes`. `ts` is a full ISO timestamp in UTC (`2026-09-08T14:02:11Z`),
+not a date. For this skill `budget` is `8`. `calls` is the number
 of Sealmetrics calls you made, counted, not estimated. Both are numbers.
 
 ## Scheduling

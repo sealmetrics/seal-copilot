@@ -76,7 +76,9 @@ file is the one thing the first real run got wrong here.
 families — see "A successful call can still be a failure" in
 `methodology.md`. Store both; twenty tools reject the site id.
 
-**TTL: 7 days** on `discovery_cached_at`. Past that, re-run `list_sites`,
+**`discovery_cached_at` is mandatory** — write it whenever you write the
+profile. The first real run omitted it, which left the TTL below with nothing
+to read. **TTL: 7 days** on `discovery_cached_at`. Past that, re-run `list_sites`,
 `list_microconversion_types` and `list_property_keys` and refresh the file.
 Refresh immediately, regardless of TTL, if any skill finds an event name or
 property key that contradicts the profile — that means tracking changed.

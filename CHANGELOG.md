@@ -37,10 +37,17 @@ the report is blind to outcomes. It then pointed at the skill that fixes that.
   disclaimer the skill must write — the forbid-the-disclaimer mistake again,
   now scoped to a table cell.
 
+### Verified against the live API
+The real run was repeated with these fixes. The "Not checked" line appeared,
+naming `get_bot_stats` as refused and the +36% spike as unvalidated for bots;
+`profile.json` exists with `agent_analytics_enabled: "unknown"` and the
+vertical correctly detected as SaaS; `runs.jsonl` carries numeric `calls` (3)
+and `budget` (8). Two field-level gaps seen only with the real file in hand —
+no `discovery_cached_at`, and `ts` as a date rather than a timestamp — are
+fixed in the skill and the schema.
+
 ### Suite: 23 cases, 14 skills, all 3/3 on their respective trees
-Still open, both outside this repo: the `account_id` the ten refused tools
-expect, and a repeat of the real run to see the "Not checked" line against the
-live API.
+Still open, outside this repo: the `account_id` the ten refused tools expect.
 
 ## 1.3.2 — 2026-09-08
 
