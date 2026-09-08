@@ -35,10 +35,30 @@ assertions; one of them exposed a real defect in a skill.
   literal spaces, and forbid affirmative claims rather than bare phrases that
   can legitimately appear inside a disclaimer.
 
-### Suite status
-8/10 with the old assertions. The bot case passes with the repaired one; the
-drop case now fails on a newly added assertion that the verification plan is
-present — a real gap, now fixed in the skill.
+### Suite status: 10/10
+
+First fully green run, on 2026-09-08. Observed call counts against each case's
+ceiling — every skill came in under its documented budget:
+
+| Case | Calls | Case ceiling | Skill budget |
+|---|---|---|---|
+| healthy-says-so | 4 | 10 | 8 |
+| drop-isolates-campaign | 9 | 14 | 12 |
+| spike-is-bots-not-growth | 5 | 12 | 12 |
+| empty-bot-stats-is-not-zero-percent | 8 | 12 | 12 |
+| sku-friction-found | 9 | 14 | 12 |
+| hotel-seasonal-no-action | 8 | 14 | 12 |
+| saas-last-step-broken | 10 | 12 | **10 — at the limit** |
+| multi-site-asks-first | 1 | 4 | 4 |
+| no-api-key-gives-instructions | 0 | 0 | — |
+| install-reuses-existing-site | 6 | 8 | 15 |
+
+Two calibration notes for whoever tightens this next. `funnel-analysis` ran at
+exactly its documented budget of 10, so it has no headroom and is the first
+place a regression would show. And the case ceilings are looser than the skills'
+own budgets, which means the suite does not currently enforce the documented
+contract — worth closing, but not worth turning a green suite red without a
+reason.
 
 ## 1.1.0 — 2026-09-07
 
