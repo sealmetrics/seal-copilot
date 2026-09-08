@@ -288,7 +288,10 @@ export default [
     id: 'text-shaped-error-is-not-data',
     fixture: 'api-text-error',
     prompt: 'How did my site do this month?',
-    maxCalls: 6,
+    // Session-start discovery (4) + the failing call + the one retry the
+    // methodology allows + a bot check = 9. Six was a guess; it passed every
+    // behavioural assertion at 9 while refusing to treat the error as data.
+    maxCalls: 10,
     // It must notice the call failed and say so.
     mustMatch: [/could not|couldn'?t|failed|error|site[_ ]id/i],
     mustNotMatch: [

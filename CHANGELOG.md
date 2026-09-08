@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.3.1 — 2026-09-08
+
+The first suite run that means something: fixtures match the live API, and
+21 of 22 cases pass against them.
+
+### Fixtures verified against the real server
+`validate-fixtures.mjs` reports **30 tools compared, 0 mismatches** for the
+entire site-id family. Until this run a green suite proved the skills were
+consistent with my guesses; now it proves they read the shapes the server
+actually returns. The ten account-id tools remain unreachable — see 1.3.0.
+
+### Suite: 21/22 (95%)
+Against the realistic fixtures, after the fixes in the previous commit. Cases
+that had failed and now pass: healthy-says-so and saas-last-step-broken (the
+runner captures the whole stream, and skills write state before the final
+message), spike-is-bots (the source is named), property-explorer, both
+watchdog cases and the ledger case (state goes where the session-start hook
+says), hostile-values (the payload sits on the path the drill walks),
+channel-mix (the ROAS caveat is no longer banned).
+
+The one failure was a budget ceiling of 6 on the text-error case; the model
+spent 9 — discovery, the failing call, the one retry the methodology allows,
+a bot check — and refused to treat the error as data, which is the behaviour
+under test. Ceiling set to 10.
+
+### Also
+- The eval run before this one wrote fixture state into the real
+  `~/.seal-copilot`. Those files are quarantined under
+  `evals/results/polluted-home-state-2026-09-08/`, not deleted.
+- The validator counts a shape as covered when any fixture reproduces it.
+- Single-run results are labelled as such; `--runs 3` is the bar for trusting
+  a green suite, and has not yet been run against these fixtures.
+
 ## 1.3.0 — 2026-09-08
 
 The first contact with the real API. Every fixture had been a reconstruction;
