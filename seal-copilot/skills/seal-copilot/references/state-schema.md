@@ -81,6 +81,14 @@ family answered — `"same-as-site"` when it works, `"refused"` when the backend
 returns 403 — so later skills know without spending a call. See "A successful
 call can still be a failure" in `methodology.md`.
 
+**Never spend a Sealmetrics call just to fill the profile.** Write it from
+what the analysis already fetched and leave the rest absent; a field you did
+not need is not worth a call. A diagnosis once spent three of its six calls on
+`get_site`, `list_microconversion_types` and `list_property_keys` to populate
+the profile, and ran out of budget before naming the referrer carrying the
+bots — the one thing that made the finding actionable. The analysis owns the
+budget; the profile gets the leftovers.
+
 **`discovery_cached_at` is mandatory** — write it whenever you write the
 profile. The first real run omitted it, which left the TTL below with nothing
 to read. **TTL: 7 days** on `discovery_cached_at`. Past that, re-run `list_sites`,

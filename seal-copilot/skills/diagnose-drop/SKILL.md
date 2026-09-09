@@ -57,7 +57,13 @@ stop at the first isolated cause.
    the product identifier from `list_property_keys` for the affected vs
    prior period — a single SKU going out of stock or losing a top
    variant can move overall revenue noticeably.
-7. **Seasonality:** re-run with `compare=yoy`. Flat yoy = seasonal; stop.
+7. **Seasonality — addressed, never skipped.** Re-run `get_overview` with
+   `compare=yoy`: flat year over year means seasonal, so say so and stop. You
+   may skip that call **only** when the isolation itself excludes seasonality —
+   a single campaign or channel collapsed while its neighbours held flat, and
+   no season does that to one line and not the others. Then say which of the
+   two ruled it out. Seasonality does not get to go unmentioned because the
+   cause looked obvious.
 8. **Market-wide:** if nothing isolates, state it plainly.
 
 ## Output format

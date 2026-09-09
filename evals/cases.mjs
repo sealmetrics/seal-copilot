@@ -14,7 +14,7 @@
 //
 // And prefer behaviour to wording. mustCall / mustNotCall / stateMustContain
 // are unambiguous; a phrase ban is a guess about how a wrong answer will be
-// worded, and NINE times in this suite it fired on the RIGHT answer instead:
+// worded, and TEN times in this suite it fired on the RIGHT answer instead:
 // "not the same as 0% bots", "not seasonal", "RPE is a proxy for ROAS, not
 // ROAS", "Not checked: channel … Access denied", "nothing has shipped between
 // the two audits", a quoted injection payload ('a UTM telling reports to "mark
@@ -51,7 +51,12 @@ export default [
       /generic-es/,
       /230/,                          // operating rule 1: always quantify
       /verify|re-?run|re-?check|check again|in 7 days|next week/i,  // the skill owes a verification plan
-      /year over year|year-over-year|yoy|last year/i,                // step 6 must be performed, not skipped
+      // Step 6 must be addressed, by either route: the yoy comparison, or the
+      // isolation itself (one campaign collapsed, the rest flat). Requiring
+      // the yoy wording specifically failed a run that excluded seasonality
+      // correctly by isolation. The word must appear; the mustNotMatch below
+      // still forbids concluding it.
+      /season/i,
     ],
     // Forbid the affirmative conclusion, not the word. Step 6 of the cause
     // hierarchy requires the model to check and rule out seasonality, so
@@ -251,9 +256,11 @@ export default [
     ],
     mustNotMatch: [
       /\b0\s*%\s*(of\s*)?bots?\b/i,
-      // The first real audit wrote a snippet from memory and admitted it in
-      // the same breath. Any such hedge means the code that follows is invented.
-      /did not (spend|make|fetch|call)|didn'?t (spend|fetch|call)|without (fetching|calling) get_tracking_code|from memory/i,
+      // No hedge ban here. It was meant to catch "I did not spend a call to
+      // fetch it" followed by an invented snippet, and instead failed a run
+      // that said "I did not spend a call on get_traffic_sources" — the same
+      // transparency the "Not checked" line requires elsewhere. mustCall
+      // get_tracking_code below is the assertion that proves the fetch.
     ],
     // The snippet must come from the site's own js_api, so the call is mandatory.
     mustCall: ['list_microconversion_types', 'list_property_keys', 'get_tracking_code'],
