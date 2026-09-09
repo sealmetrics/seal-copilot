@@ -1,5 +1,65 @@
 # Changelog
 
+## 1.8.0 — 2026-09-09
+
+The full suite, three runs per case, on the 1.7.0 tree: 21/24 with three flaky.
+Chasing those three surfaced two plugin defects, two contradictions between the
+documentation and the tests, a harness bug that would have made the suite lie,
+and the end of prose-based assertions.
+
+### Plugin defects
+- **The bot-source step was advice, not a step.** A diagnosis that found bots
+  recommended the user go and inspect the referrer instead of naming it, and
+  the instruction still offered `get_channels` — retired in 1.6.0 for 403ing.
+  Naming the source is now part of the diagnosis and outranks any call made
+  only to fill the profile.
+- **Profile discovery was eating the analysis's budget.** One run spent three
+  of six calls on `get_site`, `list_microconversion_types` and
+  `list_property_keys`, then had none left for the referrer that made the
+  finding actionable. The profile now takes only what the analysis already
+  fetched.
+- **Seasonality could be skipped when the cause looked obvious.** It may now
+  skip the year-over-year call when the isolation itself excludes seasonality —
+  one campaign collapsed while its neighbours held — but it must say which of
+  the two ruled it out.
+
+### The documentation contradicted the tests, twice
+`/SKU-1007/` was banned to catch a SKU analysed below the sample floor while
+`product-friction`'s golden output instructs the model to write "(SKU-1007 had
+28 views — insufficient sample)". And the methodology said "Do not call
+`get_bot_stats`… expecting data" — meant as "do not expect data", read as a
+prohibition — while four cases required the call. Bot validation now attempts
+once, records a refusal in the profile, and skips it thereafter: an unattempted
+check and a refused one are not the same, and only the attempt tells them apart.
+
+`evals/check-assertion-contradictions.mjs` fails the build in both directions:
+a literal ban that matches a golden output, and a `mustCall` for a tool the
+methodology forbids. Verified by reintroducing each contradiction.
+
+### The harness was about to start lying
+Both cases came back 3/3 while the progress line read `↻✓↻✓↻✓` — every attempt
+retried. `sawResult` was assigned in the stream parser and returned by neither
+exit path, so every session looked unfinished and the suite ran each case twice
+counting only the retry, which would have hidden a genuine failure behind its
+own retry. Fixed, and the self-test now asserts both polarities. Separately, a
+session that emits a fragment and no result event is now retried; requiring the
+fragment to be empty had scored "Let me check remaining diagnostics in
+parallel" against a skill.
+
+### Twelve prose bans, twelve correct answers failed, zero defects caught
+Every phrase ban written in this suite has fired on a right answer: the bot-data
+disclaimer (twice, in both phrasings), ruling out seasonality (twice), the ROAS
+caveat, the "Not checked" line, an honest "nothing has shipped", a quoted
+injection payload, an honest "No baseline for today", the SKU exclusion, and an
+honest "I did not spend a call on get_traffic_sources". Every genuine defect was
+caught by a positive assertion or a `mustCall`. The rule, recorded at the top of
+`cases.mjs`: ban a **position** — a figure inside a table cell, a payload
+re-issued as a bare line — never prose a correct disclaimer could contain.
+
+### Status
+24 cases, 14 skills. Every case that failed the 1.7.0 triple run now passes 3/3
+on this tree. A single full `--runs 3` on this exact tree has not been run.
+
 ## 1.7.0 — 2026-09-09
 
 The full suite run three times per case. 21/24 on the first pass; all three
