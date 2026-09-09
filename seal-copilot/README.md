@@ -36,15 +36,24 @@ tracking and loads it automatically.
 
 ## Install
 
-From the marketplace in this repository:
-
 ```
-claude plugin marketplace add /path/to/seal-copilot
+claude plugin marketplace add sealmetrics/seal-copilot
 claude plugin install seal-copilot@sealmetrics
 ```
 
-`claude plugin marketplace add` also accepts a URL or a GitHub repo, so the
-same two commands work once this is published.
+A local checkout works the same way: pass its path instead of the repository.
+
+On **Codex** the same repository is a marketplace too, and the connector travels
+with the plugin rather than needing a token:
+
+```
+codex plugin marketplace add sealmetrics/seal-copilot
+codex plugin add seal-copilot@sealmetrics
+codex mcp login sealmetrics
+```
+
+Every other surface — Cowork, Claude on the web, a custom GPT — is in the
+[repository README](../README.md).
 
 ## First run (5 minutes)
 

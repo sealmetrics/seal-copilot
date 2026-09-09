@@ -8,11 +8,14 @@
  * hand. Two copies of a methodology diverge; this is the whole reason the export
  * is generated and not written.
  *
- *   node scripts/export-surfaces.mjs        # writes dist/
+ *   node scripts/export-surfaces.mjs        # writes dist/, and the Codex tree
  *
  * Surfaces that read Agent Skills natively (Claude Code, Cowork) take the
  * plugin bundle unchanged. Surfaces that do not (a custom GPT) get the same
  * content as one instructions file plus one knowledge file per procedure.
+ *
+ * One target is not under dist/: Codex installs from a git repository, so its
+ * marketplace has to sit at the root of this one. See exportCodex.
  */
 import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -25,6 +28,10 @@ const plugin = join(root, 'seal-copilot');
 const skillsDir = join(plugin, 'skills');
 const refsDir = join(skillsDir, 'seal-copilot', 'references');
 const dist = join(root, 'dist');
+
+// Where this ships from. Both one-command installs name it, and the Codex
+// manifest carries it so a reviewer can find the source.
+const REPO_URL = 'https://github.com/sealmetrics/seal-copilot';
 
 /**
  * Split frontmatter from body and read one key.
@@ -256,24 +263,36 @@ a Project so every conversation there starts with it.
 }
 
 /**
- * Codex reads the same Agent Skills format — verified against its own bundled
- * plugins, whose SKILL.md files carry the identical `name`/`description`
- * frontmatter. What differs is the wrapper: `.codex-plugin/plugin.json` with an
- * explicit `skills` path, and a local marketplace registered in
- * `~/.codex/config.toml` rather than a bundle file. MCP servers live in that
- * same config, not in `.mcp.json`.
+ * Codex reads the same Agent Skills format — verified against its own plugins,
+ * whose SKILL.md files carry the identical `name`/`description` frontmatter and
+ * whose manifests are `.codex-plugin/plugin.json` with an explicit `skills`
+ * path and an `interface` block. Re-checked against the `openai-bundled` and
+ * `openai-primary-runtime` marketplaces that ship with Codex 0.153: the
+ * portable `plugin.json` the spec now recommends is not what OpenAI's own
+ * plugins use, so this keeps the format that is demonstrably loaded today.
+ *
+ * Unlike the other surfaces this one writes into the repository root, because
+ * that is what makes the one-command install work:
+ *
+ *     codex plugin marketplace add sealmetrics/seal-copilot
+ *
+ * A remote marketplace is a git repository with `.agents/plugins/marketplace.json`
+ * at its root and the plugins beside it. The tree is therefore generated *and*
+ * committed, which is a thing worth doing carefully — `scripts/check.sh` fails
+ * the build when the committed tree and a fresh export disagree.
  */
+const codexMarketRel = ['.agents', 'plugins', 'marketplace.json'];
+const codexPluginDir = join(root, 'plugins', 'seal-copilot');
+
 function exportCodex() {
-  const out = join(dist, 'codex');
-  const market = join(out, 'marketplace');
-  const dest = join(market, 'plugins', 'seal-copilot');
-  mkdirSync(join(dest, '.codex-plugin'), { recursive: true });
+  rmSync(codexPluginDir, { recursive: true, force: true });
+  mkdirSync(join(codexPluginDir, '.codex-plugin'), { recursive: true });
 
   // Skills travel unchanged; the format is shared.
   const skills = readdirSync(skillsDir).filter((s) => existsSync(join(skillsDir, s, 'SKILL.md')));
   for (const skill of skills) {
     const from = join(skillsDir, skill);
-    const to = join(dest, 'skills', skill);
+    const to = join(codexPluginDir, 'skills', skill);
     mkdirSync(to, { recursive: true });
     const walk = (a, b) => {
       for (const e of readdirSync(a, { withFileTypes: true })) {
@@ -292,16 +311,17 @@ function exportCodex() {
   const assets = join(plugin, 'assets');
   const hasIcons = existsSync(join(assets, 'icon.svg'));
   if (hasIcons) {
-    mkdirSync(join(dest, 'assets'), { recursive: true });
-    for (const f of readdirSync(assets)) writeFileSync(join(dest, 'assets', f), readFileSync(join(assets, f)));
+    mkdirSync(join(codexPluginDir, 'assets'), { recursive: true });
+    for (const f of readdirSync(assets)) writeFileSync(join(codexPluginDir, 'assets', f), readFileSync(join(assets, f)));
   }
 
-  writeFileSync(join(dest, '.codex-plugin', 'plugin.json'), JSON.stringify({
+  writeFileSync(join(codexPluginDir, '.codex-plugin', 'plugin.json'), JSON.stringify({
     name: src.name,
     version: src.version,
     description: src.description,
     author: src.author,
     homepage: src.homepage,
+    repository: REPO_URL,
     license: src.license,
     keywords: src.keywords,
     skills: './skills/',
@@ -316,14 +336,31 @@ function exportCodex() {
       category: 'Analytics',
       capabilities: ['Read'],
       websiteURL: 'https://sealmetrics.com',
+      privacyPolicyURL: 'https://sealmetrics.com/privacy/',
+      termsOfServiceURL: 'https://sealmetrics.com/terms/',
+      defaultPrompt: [
+        'How was my traffic this week?',
+        'Why did conversions drop yesterday?',
+        'Where am I leaving money on the table?',
+      ],
+      brandColor: '#CBFF3D',
       ...(hasIcons ? { composerIcon: './assets/icon.svg', logo: './assets/icon.svg', logoDark: './assets/icon.svg' } : {}),
     },
   }, null, 2) + '\n');
 
-  // A local marketplace needs a manifest at `.agents/plugins/marketplace.json`
-  // — the path Codex's own CLI reports when it refuses one without it.
-  mkdirSync(join(market, '.agents', 'plugins'), { recursive: true });
-  writeFileSync(join(market, '.agents', 'plugins', 'marketplace.json'), JSON.stringify({
+  // The connector travels with the plugin here, where on Claude Code it is the
+  // stdio server and a key in the environment. Codex authenticates against
+  // Sealmetrics over OAuth on install, so this is one command and no token to
+  // copy — the difference between "install it" and "install it, then read a
+  // setup page".
+  writeFileSync(join(codexPluginDir, '.mcp.json'), JSON.stringify({
+    mcpServers: {
+      sealmetrics: { type: 'streamable-http', url: 'https://mcp.sealmetrics.com/mcp' },
+    },
+  }, null, 2) + '\n');
+
+  mkdirSync(join(root, '.agents', 'plugins'), { recursive: true });
+  writeFileSync(join(root, ...codexMarketRel), JSON.stringify({
     name: 'sealmetrics',
     interface: { displayName: 'Sealmetrics' },
     plugins: [{
@@ -334,42 +371,6 @@ function exportCodex() {
     }],
   }, null, 2) + '\n');
 
-  writeFileSync(join(out, 'README.md'), `# Codex
-
-Codex reads the same skill format as Claude Code, so the fourteen skills come
-across unchanged. Only the wrapper differs: \`.codex-plugin/plugin.json\` instead
-of \`.claude-plugin/\`, and a local marketplace declared in config rather than a
-bundle file.
-
-## Installing
-
-Copy the marketplace somewhere stable, then add three blocks to
-\`~/.codex/config.toml\`:
-
-    [marketplaces.sealmetrics]
-    source_type = "local"
-    source = "/absolute/path/to/dist/codex/marketplace"
-
-    [plugins."seal-copilot@sealmetrics"]
-    enabled = true
-
-    [mcp_servers.sealmetrics_mcp]
-    url = "https://mcp.sealmetrics.com/mcp"
-
-The MCP entry may already be there — check before adding a second one.
-
-## What you get, and what you do not
-
-The fourteen skills and the methodology, with data through the connector.
-
-Not the hooks: Codex has no equivalent, so the session-start check that warns
-about a missing API key and the call-budget warning do not travel. Nothing
-breaks without them; you simply lose those two guardrails.
-
-Memory is Codex's own — it keeps memories and reads \`AGENTS.md\`. The skills do
-not write to either, so continuity is the \`SEAL-STATE\` block they print, or an
-\`AGENTS.md\` line you keep yourself.
-`);
   return { skills: skills.length };
 }
 
@@ -412,4 +413,4 @@ told you two weeks ago.
 `);
 console.log('dist/cowork — the plugin bundle, unchanged');
 const codex = exportCodex();
-console.log(`dist/codex — ${codex.skills} skills as a local marketplace`);
+console.log(`.agents/ + plugins/ — ${codex.skills} skills as the Codex marketplace (committed)`);

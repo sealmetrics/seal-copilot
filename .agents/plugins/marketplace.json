@@ -1,0 +1,20 @@
+{
+  "name": "sealmetrics",
+  "interface": {
+    "displayName": "Sealmetrics"
+  },
+  "plugins": [
+    {
+      "name": "seal-copilot",
+      "source": {
+        "source": "local",
+        "path": "./plugins/seal-copilot"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Analytics"
+    }
+  ]
+}

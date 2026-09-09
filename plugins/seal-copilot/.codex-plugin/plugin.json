@@ -1,0 +1,56 @@
+{
+  "name": "seal-copilot",
+  "version": "1.10.0",
+  "description": "AI marketing optimization analyst for Sealmetrics consentless analytics. Diagnoses performance, finds revenue opportunities, monitors carts intraday, audits catalog friction per SKU, and surfaces operational waste — all from 100% of your traffic data, no consent sampling.",
+  "author": {
+    "name": "Sealmetrics",
+    "url": "https://sealmetrics.com"
+  },
+  "homepage": "https://sealmetrics.com",
+  "repository": "https://github.com/sealmetrics/seal-copilot",
+  "license": "MIT",
+  "keywords": [
+    "analytics",
+    "web-analytics",
+    "marketing",
+    "optimization",
+    "sealmetrics",
+    "consentless",
+    "ecommerce",
+    "hotels",
+    "cro",
+    "attribution",
+    "product-analytics",
+    "cart-monitoring",
+    "watchdog",
+    "operational-waste",
+    "saas",
+    "lead-gen",
+    "b2b",
+    "onboarding",
+    "instrumentation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Seal Copilot",
+    "shortDescription": "Marketing analyst for Sealmetrics",
+    "longDescription": "Diagnose drops, find revenue left on the table, audit catalog friction per SKU, watch the cart during the day and install tracking from scratch — over 100% of your traffic, consentless and unsampled.",
+    "developerName": "Sealmetrics",
+    "category": "Analytics",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://sealmetrics.com",
+    "privacyPolicyURL": "https://sealmetrics.com/privacy/",
+    "termsOfServiceURL": "https://sealmetrics.com/terms/",
+    "defaultPrompt": [
+      "How was my traffic this week?",
+      "Why did conversions drop yesterday?",
+      "Where am I leaving money on the table?"
+    ],
+    "brandColor": "#CBFF3D",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/icon.svg",
+    "logoDark": "./assets/icon.svg"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sealmetrics": {
+      "type": "streamable-http",
+      "url": "https://mcp.sealmetrics.com/mcp"
+    }
+  }
+}

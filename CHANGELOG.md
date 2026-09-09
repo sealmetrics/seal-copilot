@@ -1,5 +1,60 @@
 # Changelog
 
+## 1.10.0 — 2026-09-09
+
+One command per surface. The distribution stops being a set of instructions and
+becomes two commands a stranger can run.
+
+### Changed — the Codex marketplace lives at the repository root
+It was written to `dist/codex/` and copied somewhere stable by a script. That
+cannot be installed by anyone else: a remote marketplace *is* a git repository,
+and what is not committed does not exist for the person cloning it. So
+`.agents/plugins/marketplace.json` and `plugins/seal-copilot/` now sit at the
+root and are committed.
+
+Generated *and* committed is a thing worth doing carefully, so `scripts/check.sh`
+re-runs the export and fails if git reports a single changed byte. Drift between
+the skills and what a Codex user installs is now a build failure rather than
+something noticed months later.
+
+### Added — the connector travels with the Codex plugin
+The plugin ships `.mcp.json` declaring the remote server over `streamable-http`.
+Install is three commands and no token:
+
+    codex plugin marketplace add sealmetrics/seal-copilot
+    codex plugin add seal-copilot@sealmetrics
+    codex mcp login sealmetrics
+
+Verified, not assumed: installed into an isolated `CODEX_HOME` with the Codex
+0.153 binary, after which `codex mcp list` reports `sealmetrics` at
+`https://mcp.sealmetrics.com/mcp`, enabled, awaiting login. The manifest is read
+too — `codex plugin list` shows the version from it.
+
+### Removed — `scripts/install-codex.sh`
+It copied the export to a stable path, appended three blocks to `config.toml`
+and then re-parsed the file to prove it had not broken it. Every one of those
+steps is now a CLI command that does it properly, including the MCP entry the
+plugin no longer needs.
+
+### Kept, against the spec, on evidence
+The Agent Plugins spec recommends a portable `plugin.json` at the plugin root.
+OpenAI's own plugins shipping in Codex 0.153 — `openai-bundled` and
+`openai-primary-runtime` — use `.codex-plugin/plugin.json` with `skills` and an
+`interface` block, and the portable schema forbids both fields outright. This
+keeps the format that is demonstrably loaded today.
+
+The `interface` block gained what a directory submission asks for anyway:
+privacy and terms URLs, three default prompts, and the brand colour off the
+mark.
+
+### Added — a README at the root
+There was none, which is a strange thing to publish. It carries the install for
+all five surfaces and says plainly which trees are generated.
+
+### Not changed
+No skill content, no methodology, no evals. The fourteen procedures are the same
+ones certified 24/24 in 1.8.0.
+
 ## 1.9.0 — 2026-09-09
 
 The analyst now reaches Cowork, Claude on the web and a custom GPT, without a

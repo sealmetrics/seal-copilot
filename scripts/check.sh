@@ -18,6 +18,20 @@ echo "→ Eval harness self-test";  node "$ROOT/evals/self-test.mjs" | tail -1
 echo "→ Assertions vs golden outputs"; node "$ROOT/evals/check-assertion-contradictions.mjs" | tail -1
 echo "→ Plugin manifest";         claude plugin validate "$ROOT/seal-copilot" | tail -1
 echo "→ Surface exports"; node "$ROOT/scripts/export-surfaces.mjs" | sed 's/^/  /'
+
+# The Codex marketplace is generated but committed, because a remote marketplace
+# *is* a git repository: what is not committed does not install. The export just
+# rewrote it, so anything git reports here is drift between the skills and what
+# a Codex user would get.
+echo "→ Codex tree matches the skills"
+DRIFT=$(cd "$ROOT" && git status --porcelain -- .agents plugins)
+if [ -n "$DRIFT" ]; then
+  echo "  The export changed the committed Codex tree:"
+  echo "$DRIFT" | sed 's/^/    /'
+  echo "  Commit it, or Codex installs skills older than the plugin."
+  exit 1
+fi
+echo "  in sync"
 if [ "${1:-}" = "--online" ]; then
   echo "→ MCP schema drift"; node "$ROOT/evals/check-schema-drift.mjs"
 fi
