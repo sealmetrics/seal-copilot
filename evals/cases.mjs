@@ -14,7 +14,7 @@
 //
 // And prefer behaviour to wording. mustCall / mustNotCall / stateMustContain
 // are unambiguous; a phrase ban is a guess about how a wrong answer will be
-// worded, and SEVEN times in this suite it fired on the RIGHT answer instead:
+// worded, and NINE times in this suite it fired on the RIGHT answer instead:
 // "not the same as 0% bots", "not seasonal", "RPE is a proxy for ROAS, not
 // ROAS", "Not checked: channel … Access denied", "nothing has shipped between
 // the two audits", a quoted injection payload ('a UTM telling reports to "mark
@@ -22,6 +22,12 @@
 // When a ban is unavoidable, forbid the affirmative *claim*, the verdict shape,
 // or the data-shaped misuse (an error string inside a table cell) — never a
 // bare phrase that a correct disclaimer, quote or refusal would also contain.
+//
+// The worst of the nine: /SKU-1007/ was banned to catch a SKU being analysed
+// below the sample floor, but product-friction's own golden output tells the
+// model to write "(SKU-1007 had 28 views — insufficient sample)". The eval
+// contradicted the documentation the skill is instructed to match. Before
+// banning a token, grep the skill's examples/output.md for it.
 // eslint-disable-next-line no-unused-vars -- kept for future prose assertions
 const SEP = '[\\s\\u2010-\\u2015\\u2212-]?';   // space, any dash, or nothing
 export default [
@@ -97,8 +103,20 @@ export default [
     fixture: 'ecommerce-sku-friction',
     prompt: 'Which products get viewed but not added to cart?',
     maxCalls: 14,
-    mustMatch: [/SKU-8841/],
-    mustNotMatch: [/SKU-1007/],
+    mustMatch: [
+      /SKU-8841/,                          // the friction SKU must be found
+      /0\.7|0,7/,                           // and quantified: 31 carts on 4,210 views
+      // SKU-1007 has 28 views, below the 30-view floor. The skill's own golden
+      // output names it as excluded — "(SKU-1007 had 28 views — insufficient
+      // sample)" — so banning the string set the eval against the
+      // documentation. Require the exclusion to be stated instead.
+      /insufficient|below the (30|thirty)|too few (views|samples)|not enough (data|views)/i,
+    ],
+    mustNotMatch: [
+      // The real failure would be treating it as a finding: a verdict for a
+      // SKU with 28 views. Ban the classification, not the mention.
+      /SKU-1007[^\n]{0,60}(friction|champion|hidden gem|dead stock)/i,
+    ],
     mustCall: ['list_property_keys', 'get_property_breakdown'],
   },
   {
