@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.9.0 — 2026-09-09
+
+The analyst now reaches Cowork, Claude on the web and a custom GPT, without a
+line of change in the Sealmetrics API or MCP server.
+
+### Fixed — the plugin was shipping eval state
+Three state directories had been written *inside* the plugin during the eval
+runs, where a skill resolved its state directory to a relative path instead of
+the announced one. They were committed and they shipped in the bundle: 85
+entries where 78 belong. Fixture data only, but a plugin carrying someone
+else's run log is wrong regardless of what is in it. Removed, gitignored, and
+`scripts/check.sh` now fails the build if a state directory reappears under the
+plugin — verified by planting one.
+
+### Added — `scripts/export-surfaces.mjs`
+One source, three renderings, generated rather than maintained, because two
+copies of a methodology diverge.
+
+- **Cowork** reads the plugin format unchanged: same bundle, skills, agent,
+  hooks and MCP server, and it has a filesystem so the recommendation ledger
+  works exactly as in Claude Code.
+- **Claude.ai** takes Skills but not plugins, one ZIP per skill. Fourteen ZIPs,
+  each carrying the references that skill actually cites, since on Claude.ai a
+  skill is uploaded alone and cannot see its siblings.
+- **A custom GPT** takes neither: it gets the methodology and the fourteen
+  procedures as knowledge files plus a short instructions file, with the
+  cross-references rewritten to name uploaded files.
+
+### Added — `short-description` on all 14 skills
+Claude.ai caps a skill description at 200 characters where the Agent Skills
+spec allows 1024, and all fourteen ran between 271 and 570. They are
+hand-written rather than truncated: the trigger phrases are what make a skill
+fire, and a cut sentence loses them. The export fails the build if one is
+missing or too long.
+
+### Fixed — two of my own bugs, found while measuring
+A frontmatter parser using `$` under the `/m` flag stopped at the first newline
+and reported 70-character descriptions for 500-character ones — the first
+measurement of this limit was wrong. And the new `short-description` values
+contain colons, which YAML reads as a mapping unless quoted; the same mistake
+`argument-hint` made in 1.0.0. `claude plugin validate` caught it, as it did
+then.
+
+### Not changed
+Nothing in the Sealmetrics API or MCP server. Every surface here uses the
+existing connector at `mcp.sealmetrics.com` as it stands today.
+
 ## 1.8.0 — 2026-09-09
 
 The full suite, three runs per case, on the 1.7.0 tree: 21/24 with three flaky.

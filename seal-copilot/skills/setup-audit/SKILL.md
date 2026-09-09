@@ -6,6 +6,7 @@ description: >
   Trigger on: "is my tracking set up correctly", "audit my setup", "am I
   measuring everything", "tracking audit", "qué me falta por medir",
   "implementation review", or when another skill finds missing events.
+short-description: 'Score a Sealmetrics implementation and list the gaps by value. Use for "is my tracking correct", "audit my setup", "am I measuring everything", "qué me falta por medir".'
 ---
 
 # Setup Audit

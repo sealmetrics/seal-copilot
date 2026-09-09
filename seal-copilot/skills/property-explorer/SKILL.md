@@ -8,6 +8,7 @@ description: >
   "onboarding", "first time", "what can you analyze", "explore my data",
   "what properties do I have", "qué propiedades tengo", "what data is
   there", "discover my setup", or as the first thing to run on a new site.
+short-description: 'Map which custom properties a Sealmetrics account has and what each unlocks. Use for "what can you analyze", "explore my properties", "qué puedo analizar", "property map".'
 ---
 
 # Property Explorer

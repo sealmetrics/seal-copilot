@@ -9,6 +9,7 @@ description: >
   "audit costs", "limpiar mi cuenta", "dónde estoy gastando de más",
   "operational audit", "tracking waste". NOT for media-spend optimization
   (use channel-mix-optimizer for that).
+short-description: 'Find operational waste: bots, zombie pages, dead campaigns, broken tracking. Use for "reduce costs", "what is wasting money", "reducir costes", "operational audit".'
 ---
 
 # Cost Reduction (Operational Waste)

@@ -6,6 +6,7 @@ description: >
   "cart abandonment", "checkout analysis", "booking funnel", "análisis de
   funnel", "why don't visitors convert", or questions about steps between
   visit and purchase/booking.
+short-description: 'Find where the conversion funnel leaks. Use for "funnel analysis", "where do users drop off", "checkout abandonment", "dónde abandonan", "conversion path".'
 ---
 
 # Funnel Analysis

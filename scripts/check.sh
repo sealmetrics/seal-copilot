@@ -17,6 +17,7 @@ echo "→ Fixture arithmetic";      node "$ROOT/evals/fixtures/_check-coherence.
 echo "→ Eval harness self-test";  node "$ROOT/evals/self-test.mjs" | tail -1
 echo "→ Assertions vs golden outputs"; node "$ROOT/evals/check-assertion-contradictions.mjs" | tail -1
 echo "→ Plugin manifest";         claude plugin validate "$ROOT/seal-copilot" | tail -1
+echo "→ Surface exports"; node "$ROOT/scripts/export-surfaces.mjs" | sed 's/^/  /'
 if [ "${1:-}" = "--online" ]; then
   echo "→ MCP schema drift"; node "$ROOT/evals/check-schema-drift.mjs"
 fi

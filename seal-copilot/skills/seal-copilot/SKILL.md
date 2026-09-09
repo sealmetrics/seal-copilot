@@ -9,6 +9,7 @@ description: >
   "analyze my traffic", or any question answerable with the Sealmetrics MCP
   tools. Also trigger when the user mentions optimizing campaigns, CRO,
   marketing budget, or asks for analytics insights.
+short-description: 'Sealmetrics marketing analyst: traffic, campaigns, conversions, revenue, channels, funnels. Use for "how is my site doing", "analyze my traffic", "which campaign performs best".'
 ---
 
 # Seal Copilot — Marketing Optimization Analyst

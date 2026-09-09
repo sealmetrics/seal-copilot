@@ -6,6 +6,7 @@ description: >
   why", "what happened yesterday/this week", "qué ha pasado con", "revenue
   is down", or any cause-seeking question about a metric change.
 argument-hint: "[metric] [period]"
+short-description: 'Root-cause diagnosis of a drop or spike. Use for "why did conversions drop", "sales fell", "traffic spiked, why", "what happened this week", "qué ha pasado con", "revenue is down".'
 ---
 
 # Diagnose Drop (or Spike)

@@ -9,6 +9,7 @@ description: >
   the recommendation with the caveat that ROAS requires real spend from the
   ad platform.
 argument-hint: "[period]"
+short-description: 'Reallocate paid budget across channels by revenue per entrance. Use for "which channel is best", "where should I spend", "budget allocation", "dónde invierto".'
 ---
 
 # Channel Mix Optimizer

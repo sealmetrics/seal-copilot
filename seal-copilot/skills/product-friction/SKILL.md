@@ -8,6 +8,7 @@ description: >
   "view to cart by product", "productos más vistos", "what to fix in my
   catalog", or any question about per-product performance.
 argument-hint: "[top-N SKUs]"
+short-description: 'Per-SKU analysis of products viewed but not added to cart. Use for "which products underperform", "product friction", "qué productos no se venden", "catalog audit".'
 ---
 
 # Product Friction

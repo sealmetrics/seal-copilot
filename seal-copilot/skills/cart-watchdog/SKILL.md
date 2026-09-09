@@ -9,6 +9,7 @@ description: >
   alert", "checkout watchdog", or when run from a scheduled task. For hotels,
   substitutes `booking_start` for `add_to_cart`.
 disable-model-invocation: true
+short-description: 'Intraday check of add-to-cart against the learned baseline. Silent when healthy. Use for "check the cart", "is the cart working", "cómo va el carrito", or hourly runs.'
 ---
 
 # Cart Watchdog

@@ -9,6 +9,7 @@ description: >
   baseline", "calibrar el vigilante", "prepare the watchdog", or when
   `cart-watchdog` reports that no baseline exists.
 disable-model-invocation: true
+short-description: 'Learn a site''s hourly add-to-cart rhythm so the watchdog has a baseline. Run once before cart-watchdog. Use for "calibrate watchdog", "calibrar", "set up monitoring".'
 ---
 
 # Calibrate Watchdog

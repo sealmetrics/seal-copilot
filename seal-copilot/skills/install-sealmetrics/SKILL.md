@@ -9,6 +9,7 @@ description: >
   tracking yet", "add the tracking code", "instrument my checkout", or when
   another skill finds that a site has no data at all.
 argument-hint: "[domain]"
+short-description: 'Install Sealmetrics from scratch: create the site, place the pixel, verify it, instrument events. Use for "install Sealmetrics", "set up tracking", "instalar Sealmetrics".'
 ---
 
 # Install Sealmetrics

@@ -6,6 +6,7 @@ description: >
   I optimize", "how can I improve my campaigns", "dónde pierdo dinero",
   "what would you change", "audit my marketing", or any open-ended
   optimization request.
+short-description: 'Scan for revenue left on the table. Use for "where am I losing money", "find opportunities", "what should I optimize", "dónde pierdo dinero", "audit my marketing".'
 ---
 
 # Opportunity Scan

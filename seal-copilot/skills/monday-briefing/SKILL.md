@@ -8,6 +8,7 @@ description: >
   do this week", "lunes", "executive briefing", or when run from the
   scheduled Cowork job.
 disable-model-invocation: true
+short-description: 'The one-page Monday briefing: verdict, week vs last, what worked, one opportunity, watchdog. Use for "Monday briefing", "briefing", "resumen del lunes", or a scheduled run.'
 ---
 
 # Monday Briefing

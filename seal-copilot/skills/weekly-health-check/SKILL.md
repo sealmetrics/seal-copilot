@@ -5,6 +5,7 @@ description: >
   with verdict and top findings. Trigger on: "weekly report", "health check",
   "how was this week", "informe semanal", "monday report", "give me my
   marketing report", or when run from a scheduled task.
+short-description: 'Weekly Sealmetrics performance report with a verdict and top findings. Use for "weekly report", "health check", "how was this week", "informe semanal", "Monday report".'
 ---
 
 # Weekly Health Check
