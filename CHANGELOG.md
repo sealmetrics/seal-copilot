@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.7.0 — 2026-09-09
+
+The full suite run three times per case. 21/24 on the first pass; all three
+failures are fixed and re-verified 3/3, and none was a plugin defect that
+survived — one was, and it is gone.
+
+### No skill forks any more
+`product-friction`, running with `context: fork`, skipped `list_property_keys`
+and **guessed** that the product identifier was `sku`. Correct on the fixture,
+silently wrong on any account keyed by `product_id`. A forked subagent receives
+neither the SessionStart context nor `profile.json`, so it cannot look the
+answer up and guesses instead. It and `cost-reduction` now run in the main
+context; after the change the case makes 10-11 calls where it made 6, because
+it discovers rather than assumes. Keeping raw JSON out of the conversation was
+never worth a skill that guesses.
+
+### A fixture that only worked on Tuesdays
+The watchdog fixture served calibration events for one date, 2026-09-01. The
+baseline therefore covered Tuesday cells only, and running on a Wednesday the
+skill correctly refused: it would not invent a Wednesday threshold from
+Tuesday's shape. It had passed 3/3 the day before because that run fell on a
+Tuesday. The fixture now generates four full weeks relative to the run date, so
+every (weekday, hour) cell has four samples whatever day the suite runs.
+
+### The eval suite contradicted its own documentation
+`/SKU-1007/` was banned to catch a SKU analysed below the 30-view floor. But
+`product-friction`'s golden output — which the skill instructs the model to
+match — contains "(SKU-1007 had 28 views — insufficient sample)". The skill
+said write it; the eval said never write it. The case now requires the
+exclusion to be stated and bans only the misclassification.
+
+`evals/check-assertion-contradictions.mjs` fails the build if any literal
+phrase ban matches text a golden output tells the model to write. Wired into
+`scripts/check.sh`.
+
+### Nine phrase bans, nine false positives
+Every one fired on a correct answer: the bot-data disclaimer, ruling out
+seasonality, the ROAS caveat, the "Not checked" line, an honest "nothing has
+shipped", a quoted injection payload, an honest "No baseline for today", and
+the SKU exclusion above. The count and the rule — assert behaviour, and grep
+`examples/output.md` before banning a token — are at the top of `cases.mjs`.
+
+### Suite status
+24 cases, 14 skills. 21 verified 3/3 on the 1.6.0 tree; the three fixed cases
+verified 3/3 on this one. A single full `--runs 3` on this exact tree has not
+been run.
+
 ## 1.6.0 — 2026-09-08
 
 The "Access denied" on twenty tools is explained from source, and the plugin
