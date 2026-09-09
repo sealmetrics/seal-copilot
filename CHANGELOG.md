@@ -43,6 +43,21 @@ contain colons, which YAML reads as a mapping unless quoted; the same mistake
 `argument-hint` made in 1.0.0. `claude plugin validate` caught it, as it did
 then.
 
+### Added — Codex, verified rather than assumed
+Codex reads the **same Agent Skills format**, confirmed against its own bundled
+plugins: `SKILL.md` with identical `name`/`description` frontmatter. Only the
+wrapper differs — `.codex-plugin/plugin.json` with an explicit `skills` path,
+and a local marketplace declared in `~/.codex/config.toml` (`source_type =
+"local"`) rather than a bundle file. The export writes that marketplace.
+
+Two things do not travel and the README says so: the hooks, since Codex has no
+equivalent, so the missing-key warning and the call-budget guardrail are lost;
+and memory, which is Codex's own — the skills write to neither its memories nor
+`AGENTS.md`, so continuity is the `SEAL-STATE` block.
+
+The Sealmetrics MCP was already configured in this machine's Codex, pointing at
+both production and preproduction.
+
 ### Not changed
 Nothing in the Sealmetrics API or MCP server. Every surface here uses the
 existing connector at `mcp.sealmetrics.com` as it stands today.

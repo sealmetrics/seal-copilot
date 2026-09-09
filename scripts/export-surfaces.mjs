@@ -255,6 +255,86 @@ a Project so every conversation there starts with it.
   return { skills: skills.length };
 }
 
+/**
+ * Codex reads the same Agent Skills format — verified against its own bundled
+ * plugins, whose SKILL.md files carry the identical `name`/`description`
+ * frontmatter. What differs is the wrapper: `.codex-plugin/plugin.json` with an
+ * explicit `skills` path, and a local marketplace registered in
+ * `~/.codex/config.toml` rather than a bundle file. MCP servers live in that
+ * same config, not in `.mcp.json`.
+ */
+function exportCodex() {
+  const out = join(dist, 'codex');
+  const market = join(out, 'marketplace');
+  const dest = join(market, 'plugins', 'seal-copilot');
+  mkdirSync(join(dest, '.codex-plugin'), { recursive: true });
+
+  // Skills travel unchanged; the format is shared.
+  const skills = readdirSync(skillsDir).filter((s) => existsSync(join(skillsDir, s, 'SKILL.md')));
+  for (const skill of skills) {
+    const from = join(skillsDir, skill);
+    const to = join(dest, 'skills', skill);
+    mkdirSync(to, { recursive: true });
+    const walk = (a, b) => {
+      for (const e of readdirSync(a, { withFileTypes: true })) {
+        if (e.isDirectory()) { mkdirSync(join(b, e.name), { recursive: true }); walk(join(a, e.name), join(b, e.name)); }
+        else writeFileSync(join(b, e.name), readFileSync(join(a, e.name)));
+      }
+    };
+    walk(from, to);
+  }
+
+  const src = JSON.parse(readFileSync(join(plugin, '.claude-plugin', 'plugin.json'), 'utf8'));
+  writeFileSync(join(dest, '.codex-plugin', 'plugin.json'), JSON.stringify({
+    name: src.name,
+    version: src.version,
+    description: src.description,
+    author: src.author,
+    homepage: src.homepage,
+    license: src.license,
+    keywords: src.keywords,
+    skills: './skills/',
+  }, null, 2) + '\n');
+
+  writeFileSync(join(out, 'README.md'), `# Codex
+
+Codex reads the same skill format as Claude Code, so the fourteen skills come
+across unchanged. Only the wrapper differs: \`.codex-plugin/plugin.json\` instead
+of \`.claude-plugin/\`, and a local marketplace declared in config rather than a
+bundle file.
+
+## Installing
+
+Copy the marketplace somewhere stable, then add three blocks to
+\`~/.codex/config.toml\`:
+
+    [marketplaces.sealmetrics]
+    source_type = "local"
+    source = "/absolute/path/to/dist/codex/marketplace"
+
+    [plugins."seal-copilot@sealmetrics"]
+    enabled = true
+
+    [mcp_servers.sealmetrics_mcp]
+    url = "https://mcp.sealmetrics.com/mcp"
+
+The MCP entry may already be there — check before adding a second one.
+
+## What you get, and what you do not
+
+The fourteen skills and the methodology, with data through the connector.
+
+Not the hooks: Codex has no equivalent, so the session-start check that warns
+about a missing API key and the call-budget warning do not travel. Nothing
+breaks without them; you simply lose those two guardrails.
+
+Memory is Codex's own — it keeps memories and reads \`AGENTS.md\`. The skills do
+not write to either, so continuity is the \`SEAL-STATE\` block they print, or an
+\`AGENTS.md\` line you keep yourself.
+`);
+  return { skills: skills.length };
+}
+
 rmSync(dist, { recursive: true, force: true });
 const gpt = exportCustomGpt();
 console.log(`dist/chatgpt — instructions + ${gpt.files} knowledge files (${gpt.skills} procedures)`);
@@ -293,3 +373,5 @@ recommendation ledger works and the weekly report opens by verifying what it
 told you two weeks ago.
 `);
 console.log('dist/cowork — the plugin bundle, unchanged');
+const codex = exportCodex();
+console.log(`dist/codex — ${codex.skills} skills as a local marketplace`);
