@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "sealmetrics": {
+      "command": "node",
+      "args": [
+        "./server/index.js"
+      ],
+      "env": {
+        "SEALMETRICS_BASE_URL": "https://my.sealmetrics.com/api/v1"
+      },
+      "env_vars": [
+        "SEALMETRICS_API_KEY",
+        "SEALMETRICS_BASE_URL",
+        "SEALMETRICS_SITE_ID"
+      ],
+      "startup_timeout_sec": 10,
+      "tool_timeout_sec": 90
+    }
+  }
+}

@@ -1,0 +1,15 @@
+interface:
+  display_name: "SealMetrics"
+  short_description: "Install tracking and query SealMetrics analytics."
+  icon_small: "assets/icon.png"
+  icon_large: "assets/icon.png"
+  brand_color: "#2563EB"
+  default_prompt: "Use SealMetrics to install tracking and verify analytics."
+policy:
+  allow_implicit_invocation: true
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "sealmetrics"
+      description: "Local SealMetrics MCP server bundled with this plugin."
+      transport: "stdio"

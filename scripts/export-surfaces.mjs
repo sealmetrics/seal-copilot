@@ -285,6 +285,17 @@ function exportCodex() {
   }
 
   const src = JSON.parse(readFileSync(join(plugin, '.claude-plugin', 'plugin.json'), 'utf8'));
+
+  // Codex shows a plugin in its own UI, so it wants an interface block and a
+  // logo where the other surfaces want neither. The icons are the one thing
+  // that could not be regenerated from the 2026-06 Codex plugin this replaces.
+  const assets = join(plugin, 'assets');
+  const hasIcons = existsSync(join(assets, 'icon.svg'));
+  if (hasIcons) {
+    mkdirSync(join(dest, 'assets'), { recursive: true });
+    for (const f of readdirSync(assets)) writeFileSync(join(dest, 'assets', f), readFileSync(join(assets, f)));
+  }
+
   writeFileSync(join(dest, '.codex-plugin', 'plugin.json'), JSON.stringify({
     name: src.name,
     version: src.version,
@@ -294,6 +305,33 @@ function exportCodex() {
     license: src.license,
     keywords: src.keywords,
     skills: './skills/',
+    interface: {
+      displayName: 'Seal Copilot',
+      shortDescription: 'Marketing analyst for Sealmetrics',
+      longDescription:
+        'Diagnose drops, find revenue left on the table, audit catalog friction per SKU, ' +
+        'watch the cart during the day and install tracking from scratch — over 100% of ' +
+        'your traffic, consentless and unsampled.',
+      developerName: 'Sealmetrics',
+      category: 'Analytics',
+      capabilities: ['Read'],
+      websiteURL: 'https://sealmetrics.com',
+      ...(hasIcons ? { composerIcon: './assets/icon.svg', logo: './assets/icon.svg', logoDark: './assets/icon.svg' } : {}),
+    },
+  }, null, 2) + '\n');
+
+  // A local marketplace needs a manifest at `.agents/plugins/marketplace.json`
+  // — the path Codex's own CLI reports when it refuses one without it.
+  mkdirSync(join(market, '.agents', 'plugins'), { recursive: true });
+  writeFileSync(join(market, '.agents', 'plugins', 'marketplace.json'), JSON.stringify({
+    name: 'sealmetrics',
+    interface: { displayName: 'Sealmetrics' },
+    plugins: [{
+      name: 'seal-copilot',
+      source: { source: 'local', path: './plugins/seal-copilot' },
+      policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+      category: 'Analytics',
+    }],
   }, null, 2) + '\n');
 
   writeFileSync(join(out, 'README.md'), `# Codex

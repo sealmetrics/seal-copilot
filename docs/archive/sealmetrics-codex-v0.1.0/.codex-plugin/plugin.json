@@ -1,0 +1,46 @@
+{
+  "name": "sealmetrics-codex",
+  "version": "0.1.0",
+  "description": "SealMetrics analytics MCP tools and implementation workflow for Codex.",
+  "author": {
+    "name": "SealMetrics",
+    "email": "dev@sealmetrics.com",
+    "url": "https://sealmetrics.com"
+  },
+  "homepage": "https://sealmetrics.com",
+  "repository": "https://github.com/adinton/sealmetrics2",
+  "license": "MIT",
+  "keywords": [
+    "analytics",
+    "mcp",
+    "sealmetrics",
+    "privacy",
+    "cookieless",
+    "gdpr"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "SealMetrics Analytics",
+    "shortDescription": "Privacy-first analytics tools and tracking setup for Codex.",
+    "longDescription": "Query SealMetrics analytics, register sites, install the tracking pixel, instrument conversions and microconversions, and verify setup from Codex using a local MCP server.",
+    "developerName": "SealMetrics",
+    "category": "Developer Tools",
+    "capabilities": [
+      "MCP",
+      "Analytics",
+      "Code editing"
+    ],
+    "websiteURL": "https://sealmetrics.com",
+    "privacyPolicyURL": "https://sealmetrics.com/privacy",
+    "termsOfServiceURL": "https://sealmetrics.com/terms",
+    "brandColor": "#2563EB",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png",
+    "defaultPrompt": [
+      "Install SealMetrics tracking in this repo.",
+      "Show my SealMetrics overview for 30d.",
+      "Instrument conversions without tracking PII."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}
