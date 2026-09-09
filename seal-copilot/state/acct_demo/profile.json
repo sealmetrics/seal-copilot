@@ -1,8 +1,0 @@
-{
-  "site_id": "acct_demo",
-  "product_identifier": "sku",
-  "product_identifier_table": "microconversions",
-  "view_event": "product_view",
-  "atc_event": "add_to_cart",
-  "agent_analytics_enabled": "unknown"
-}

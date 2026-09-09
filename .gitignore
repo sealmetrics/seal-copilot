@@ -8,3 +8,10 @@ seal-copilot.plugin
 # Eval output
 evals/results/
 evals/real-shapes/
+
+# Skill state must never live inside the plugin. A skill that resolves its
+# state directory to a relative path writes here, and it then ships in the
+# bundle and lands in git — that happened during the eval runs of 2026-09-08.
+# scripts/check.sh fails the build if any of these reappear.
+state/
+.state/
