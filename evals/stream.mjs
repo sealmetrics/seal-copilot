@@ -15,6 +15,9 @@ export function parseStream(out) {
       result = ev.result ?? null; isError = !!ev.is_error; sawResult = true;
     }
   }
-  if (!sawStream) return { text: out, result: null, isError: false, sessionId: null };
-  return { text: texts.length ? texts.join('\n\n') : (result || ''), result, isError, sessionId };
+  // sawResult must be returned: without it the runner's `truncated` flag reads
+  // undefined, every attempt looks unfinished, and the suite silently retries
+  // each case once — masking real failures behind the retry.
+  if (!sawStream) return { text: out, result: null, isError: false, sessionId: null, sawResult: true };
+  return { text: texts.length ? texts.join('\n\n') : (result || ''), result, isError, sessionId, sawResult };
 }

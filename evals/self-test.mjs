@@ -84,6 +84,12 @@ console.log('\nstream-json parsing');
   ok('captures the report, not only the final turn', /On track/.test(r.text) && /cached/.test(r.text));
   ok('surfaces CLI errors', parseStream(ev({ type: 'result', result: 'Not logged in', is_error: true })).isError);
   ok('plain output passes through', parseStream('hello').text === 'hello');
+  // A missing sawResult reads as undefined -> truncated -> every attempt
+  // retried, which hides real failures. Assert both polarities.
+  ok('a completed stream reports sawResult', parseStream(stream).sawResult === true);
+  ok('a cut-off stream reports !sawResult',
+     parseStream(ev({ type: 'assistant', message: { content: [{ type: 'text', text: 'half' }] } })).sawResult === false);
+  ok('plain output is not treated as truncated', parseStream('hello').sawResult === true);
 }
 
 console.log('\nassertion logic');
