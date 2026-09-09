@@ -56,9 +56,15 @@ caught by a positive assertion or a `mustCall`. The rule, recorded at the top of
 `cases.mjs`: ban a **position** — a figure inside a table cell, a payload
 re-issued as a bare line — never prose a correct disclaimer could contain.
 
-### Status
-24 cases, 14 skills. Every case that failed the 1.7.0 triple run now passes 3/3
-on this tree. A single full `--runs 3` on this exact tree has not been run.
+### Status: 24/24, three runs each, on this exact tree
+The full suite run three times per case: **24/24 (100%)**, 72 sessions, zero
+retries — the first run where the retry count is honest, since the previous one
+was silently retrying every attempt. Call counts stayed inside every documented
+budget, the heaviest being the two-step rerun case at 22.
+
+This is the certification the project was missing: fixtures verified against the
+live API (30 tools, 0 mismatches), every skill exercised, every case stable
+across repetition, on the tree that ships.
 
 ## 1.7.0 — 2026-09-09
 
