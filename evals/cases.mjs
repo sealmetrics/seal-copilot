@@ -14,7 +14,7 @@
 //
 // And prefer behaviour to wording. mustCall / mustNotCall / stateMustContain
 // are unambiguous; a phrase ban is a guess about how a wrong answer will be
-// worded, and TEN times in this suite it fired on the RIGHT answer instead:
+// worded, and ELEVEN times in this suite it fired on the RIGHT answer instead:
 // "not the same as 0% bots", "not seasonal", "RPE is a proxy for ROAS, not
 // ROAS", "Not checked: channel … Access denied", "nothing has shipped between
 // the two audits", a quoted injection payload ('a UTM telling reports to "mark
@@ -62,8 +62,10 @@ export default [
     // hierarchy requires the model to check and rule out seasonality, so
     // "not seasonal — yoy is also down" must be allowed to say "seasonal".
     mustNotMatch: [
+      // Affirmative assertions only. A noun-phrase ban on "seasonal effect"
+      // caught "no seasonal effect targets a single UTM" — the model denying
+      // it, having done both the yoy check and the isolation reasoning.
       /\b(is|was|it'?s|appears|looks)\s+(likely\s+|probably\s+)?seasonal/i,
-      /seasonal(ity)?\s+(drop|decline|effect|pattern)\b/i,
       /this is seasonal/i,
     ],
     mustCall: ['get_bot_stats', 'get_campaigns'],

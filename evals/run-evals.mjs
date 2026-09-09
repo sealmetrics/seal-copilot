@@ -197,7 +197,14 @@ async function runCase(c, siteId) {
 // an error the API itself labels transient (stream idle timeout, overloaded,
 // rate limit). Neither is a verdict on the skill; retry once.
 const TRANSIENT = /stream idle timeout|partial response|overloaded|rate limit|529|503|ECONNRESET|ETIMEDOUT/i;
-const isTransient = (r) => (!r.error && !r.calls && !(r.answer || '').trim()) || (r.error && TRANSIENT.test(r.error));
+const isTransient = (r) =>
+  (!r.error && !r.calls && !(r.answer || '').trim())   // never started
+  || (r.error && TRANSIENT.test(r.error))                // the API said so
+  // No result event means the session never finished, so whatever text arrived
+  // is a fragment: one attempt made nine calls and left "Let me check remaining
+  // diagnostics in parallel." Scoring that against the skill is nonsense, so a
+  // non-empty fragment no longer disqualifies the retry.
+  || r.truncated;
 
 const results = [];
 for (const c of selected) {
