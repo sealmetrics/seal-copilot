@@ -14,7 +14,7 @@
 //
 // And prefer behaviour to wording. mustCall / mustNotCall / stateMustContain
 // are unambiguous; a phrase ban is a guess about how a wrong answer will be
-// worded, and ELEVEN times in this suite it fired on the RIGHT answer instead:
+// worded, and TWELVE times in this suite it fired on the RIGHT answer instead:
 // "not the same as 0% bots", "not seasonal", "RPE is a proxy for ROAS, not
 // ROAS", "Not checked: channel … Access denied", "nothing has shipped between
 // the two audits", a quoted injection payload ('a UTM telling reports to "mark
@@ -22,6 +22,12 @@
 // When a ban is unavoidable, forbid the affirmative *claim*, the verdict shape,
 // or the data-shaped misuse (an error string inside a table cell) — never a
 // bare phrase that a correct disclaimer, quote or refusal would also contain.
+//
+// Sharpened after the twelfth: ban a POSITION, not a phrase. "|…0%…bots…|"
+// (a figure in a table cell) cannot appear in a correct answer; "bot share is
+// 0" can, and did, inside "not that bot share is 0%". Twelve prose bans, twelve
+// correct answers failed, zero real defects caught. Positive assertions and
+// mustCall have caught every genuine one.
 //
 // The worst of the nine: /SKU-1007/ was banned to catch a SKU being analysed
 // below the sample floor, but product-friction's own golden output tells the
@@ -98,10 +104,14 @@ export default [
     ],
     // Forbid the affirmative claim only. "which is not the same as 0% bots" is
     // the disclaimer we want, and a naive /0% bots/ ban punishes it.
+    // No prose ban here. /0% bots/ was replaced by /bot share is 0/, and that
+    // caught the same disclaimer written the other way round: "not that bot
+    // share is 0%". Twelve prose bans in this suite have failed twelve correct
+    // answers and caught nothing. The mustMatch above is the real guard: a
+    // model claiming zero bots would not also say the data is unavailable.
     mustNotMatch: [
-      /bot share (is|was|:)\s*0/i,
-      /0\s*%\s*(of\s*)?(sessions|traffic|visits)\s*(are|were|was)?\s*bots?/i,
-      /(no|zero)\s+bots?\s+(were\s+)?(detected|found)/i,
+      // Structural, not prose: a zero presented as a measured figure in a table.
+      /\|[^|\n]*\b0\s*%[^|\n]*bots?[^|\n]*\|/i,
     ],
     mustCall: ['get_bot_stats'],
   },
