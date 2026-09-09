@@ -16,12 +16,15 @@ announced at all, fall back to `~/.seal-copilot`.
 Everything below lives under `<state-dir>/<site_id>/`, outside the plugin
 directory (which is read-only after install). Create it on first write.
 
-**A forked skill cannot see the announcement.** `context: fork` starts a
-fresh context that never received the SessionStart hook's output, so a forked
-skill has no way to learn `<state-dir>` and falls back to the literal
-`~/.seal-copilot` — which is how fixture data reached a real home directory
-twice. Any skill that must write state runs in the main context; forking is
-reserved for skills whose only state write is the optional run log.
+**No skill forks, and none should.** `context: fork` starts a fresh context
+that never received the SessionStart hook's output. A forked skill therefore
+cannot learn `<state-dir>` (it falls back to the literal `~/.seal-copilot` —
+how fixture data reached a real home directory twice) and cannot read
+`profile.json` before deciding what to do. The second cost is worse than the
+first: `product-friction`, forked, skipped `list_property_keys` and *guessed*
+that the product identifier was `sku`. It was right on the fixture and would
+be silently wrong on any account keyed by `product_id`. Keeping raw JSON out
+of the main conversation is not worth a skill that guesses instead of asking.
 
 **Every read is optional.** If a file is missing or the filesystem is not
 writable (some sandboxed environments), run the discovery you would have run

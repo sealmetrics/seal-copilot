@@ -9,10 +9,6 @@ description: >
   "audit costs", "limpiar mi cuenta", "dónde estoy gastando de más",
   "operational audit", "tracking waste". NOT for media-spend optimization
   (use channel-mix-optimizer for that).
-disallowed-tools: Bash, Edit, NotebookEdit, WebFetch, WebSearch
-context: fork
-agent: general-purpose
-background: false
 ---
 
 # Cost Reduction (Operational Waste)

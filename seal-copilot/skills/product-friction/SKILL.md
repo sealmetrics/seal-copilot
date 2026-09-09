@@ -7,11 +7,7 @@ description: >
   "qué producto vendo poco", "product page friction", "catalog audit",
   "view to cart by product", "productos más vistos", "what to fix in my
   catalog", or any question about per-product performance.
-disallowed-tools: Bash, Edit, NotebookEdit, WebFetch, WebSearch
 argument-hint: "[top-N SKUs]"
-context: fork
-agent: general-purpose
-background: false
 ---
 
 # Product Friction
