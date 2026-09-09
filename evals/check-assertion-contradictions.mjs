@@ -39,7 +39,20 @@ for (const c of cases) {
     }
   }
 }
+// Same class, other direction: a case must not require a call the methodology
+// tells the model not to make. "Do not call get_bot_stats" once sat in the
+// methodology while four cases demanded it via mustCall.
+const method = readFileSync(join(skillsDir, 'seal-copilot', 'references', 'methodology.md'), 'utf8');
+const required = new Set(cases.flatMap((c) => [...(c.mustCall || []), ...(c.steps || []).flatMap((s) => s.mustCall || [])]));
+for (const tool of required) {
+  const forbids = new RegExp(`(do not|don'?t|never)\\s+call\\s+\`?${tool}\`?`, 'i');
+  if (forbids.test(method)) {
+    console.log(`  CONTRADICTION  a case requires ${tool} via mustCall, but methodology.md tells the model not to call it`);
+    bad++;
+  }
+}
+
 console.log(bad
-  ? `\n${bad} assertion(s) contradict a golden output. Fix the assertion, not the output.`
-  : `no assertion contradicts a golden output (${checked} literal ban(s) checked)`);
+  ? `\n${bad} contradiction(s) between the suite and the docs. Fix whichever is wrong — but they cannot both stand.`
+  : `no assertion contradicts a golden output or the methodology (${checked} literal ban(s), ${required.size} required call(s) checked)`);
 process.exit(bad ? 1 : 0);

@@ -185,11 +185,20 @@ session can. The MCP's remote transport hides these tools for that reason
   a bare array, and takes a `period` — so a calendar pair
   (`this_week` vs `last_week`) works exactly as before. It has no `compare`
   either, so nothing is lost.
-- **Bot validation is unavailable to the plugin.** Do not call `get_bot_stats`
-  or `get_suspicious_sessions` expecting data; treat every anomaly as
-  "unvalidated for bots" and say so in the "Not checked" line. If a call to
-  either happens to succeed, the key is a legacy one that carries `read` —
-  use the data, and note it in `profile.json`.
+- **Bot validation: attempt it once, expect it to fail, never retry.** Call
+  `get_bot_stats` the first time a session needs it — that single call is how
+  you learn which of the three outcomes applies, and a legacy key carrying
+  `read` still returns real data. Then:
+  - **Data** → use it.
+  - **Empty** → agent analytics is off. Never "0% bots".
+  - **"Access denied"** → the key cannot reach it. Record
+    `agent_analytics_enabled: "refused"` in `profile.json`, treat the anomaly
+    as "unvalidated for bots", say so in the "Not checked" line, and do not
+    call it again in this session.
+
+  When the profile already says `"refused"`, skip the call and go straight to
+  the disclaimer. Do not skip the first attempt: an unattempted check is not
+  the same as a refused one, and only the attempt tells them apart.
 - **Alerts, webhooks, segments, channel rules, event verification** are out
   of reach the same way. The skills that referenced them (`cost-reduction`
   patterns 6–7, `setup-audit` steps 6, 8 and the channel-rule write path,
