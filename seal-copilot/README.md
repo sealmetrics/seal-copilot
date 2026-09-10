@@ -58,25 +58,28 @@ Every other surface — Cowork, Claude on the web, a custom GPT — is in the
 ## First run (5 minutes)
 
 1. **Install the plugin** (above).
-2. **Get a token.** [my.sealmetrics.com](https://my.sealmetrics.com) → Settings
-   → API Tokens → generate one (it starts with `sm_`).
-3. **Set the environment variable** `SEALMETRICS_API_KEY`. If your account has
-   more than one site, set `SEALMETRICS_SITE_ID` too, or Seal Copilot will ask
-   which site you mean before every analysis.
-4. **Restart the session.** On startup the plugin tells Claude whether it is
-   configured, so a missing key produces setup instructions instead of a wall
-   of failed calls.
-5. **Map the account once:** *"Explore my properties."* This writes a property
+2. **Authorise the connector.** Run `/mcp`, select **sealmetrics**, and sign in
+   with your Sealmetrics account in the browser. Nothing to copy, nothing to
+   put in your environment.
+3. **Name your site**, if your account has more than one: set
+   `SEALMETRICS_SITE_ID`, or Seal Copilot asks which site you mean before every
+   analysis.
+4. **Map the account once:** *"Explore my properties."* This writes a property
    map that every later analysis reads, so nothing rediscovers it.
-6. **Ask for the first report:** *"Run my weekly health check."*
+5. **Ask for the first report:** *"Run my weekly health check."*
 
 For intraday cart monitoring, run *"calibrate the watchdog"* once and then
 schedule `cart-watchdog` hourly with `/schedule`. The watchdog refuses to run
 without that baseline rather than inventing a threshold.
 
-The plugin bundles the Sealmetrics MCP server (runs locally via `npx`,
-requires Node.js 18+). Your API key never leaves your machine except to call
-the Sealmetrics API.
+The plugin bundles the Sealmetrics connector as the remote server at
+`mcp.sealmetrics.com`, authorised per user over OAuth. You hold no token and
+the plugin stores no credential.
+
+Installing tracking on a site from scratch is the one job that needs more than
+the connector offers: `install-sealmetrics` calls provisioning tools the remote
+server does not expose. For that, run the local server instead, with
+`SEALMETRICS_API_KEY` in your environment.
 
 ## What it remembers
 

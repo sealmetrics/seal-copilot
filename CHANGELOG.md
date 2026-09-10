@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.11.0 — 2026-09-10
+
+The person who reads these reports is a marketer. Until now the only way to
+authenticate was an environment variable, which is not a friction for that
+person, it is a wall.
+
+### Changed — the connector authenticates over OAuth, everywhere
+The plugin declared the local server over stdio, which reads
+`SEALMETRICS_API_KEY` from the environment. It now declares the remote server at
+`mcp.sealmetrics.com` as `type: "http"`, which Claude Code and Cowork authorise
+with a browser login from the `/mcp` panel. No token to copy, nothing to export,
+no restart. Codex already worked this way since 1.10.0, with `streamable-http`
+as the type name its own loader expects.
+
+Verified rather than assumed: installed into an isolated `CLAUDE_CONFIG_DIR`,
+after which `claude mcp list` reports the server as HTTP and awaiting
+authentication. The claim that a plugin cannot bundle an OAuth server is wrong,
+and this is the evidence.
+
+### Changed — the session-start hook stops checking for a key
+There is no credential in the environment to check any more. The hook now says
+where the data comes from and what to do when a call fails on authorisation:
+send the user to `/mcp`, never retry, never guess a number.
+
+### The cost, stated plainly
+The remote transport does not announce the provisioning tools, so
+`install-sealmetrics` cannot do its job over the connector. Installing tracking
+on a site from scratch still needs the local server and a key, and the README
+says so in the place where someone would hit it. That trade is deliberate: the
+person installing tracking is technical, the person reading a weekly report is
+not, and the second one is who the default should serve.
+
+### Removed — the custom GPT export
+OpenAI replaced custom GPTs with workspace agents, and business accounts had a
+reported shutdown date in August 2026. `dist/chatgpt/` rendered the methodology
+for a surface nobody can install it on. The road to ChatGPT is the plugin
+itself, since ChatGPT and Codex share one public catalog, and that package
+already exists.
+
+### Not changed
+No skill content, no methodology, no evals.
+
 ## 1.10.0 — 2026-09-09
 
 One command per surface. The distribution stops being a set of instructions and

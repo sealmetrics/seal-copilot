@@ -18,9 +18,9 @@ Full description of what each one does: [`seal-copilot/README.md`](seal-copilot/
 claude plugin marketplace add sealmetrics/seal-copilot
 ```
 
-Then `claude plugin install seal-copilot@sealmetrics`. The bundled MCP server
-runs locally and reads `SEALMETRICS_API_KEY` from your environment; get a token
-at [my.sealmetrics.com](https://my.sealmetrics.com) under Settings → API Tokens.
+Then `claude plugin install seal-copilot@sealmetrics`, and authorise the
+connector: run `/mcp`, pick **sealmetrics**, and sign in with your Sealmetrics
+account in the browser. No token to copy.
 
 **Codex**
 
@@ -33,8 +33,9 @@ sealmetrics`. There is no token to copy here: the plugin carries the remote
 connector and you authorise it with your own Sealmetrics account.
 
 **Cowork** — Customize → Plugins in the sidebar, then add the
-`seal-copilot.plugin` bundle from `scripts/build-plugin.sh`. Same credentials as
-Claude Code.
+`seal-copilot.plugin` bundle from `scripts/build-plugin.sh`. It carries the same
+connector, so the sign-in is the same browser login and there is nothing to put
+in the environment.
 
 **Claude on the web or desktop** — Settings → Capabilities → Skills takes one
 ZIP at a time. Run `node scripts/export-surfaces.mjs` and upload from
@@ -42,9 +43,8 @@ ZIP at a time. Run `node scripts/export-surfaces.mjs` and upload from
 `diagnose-drop` rather than all fourteen: every enabled skill is weighed on
 every message. Then add `https://mcp.sealmetrics.com/mcp` as a connector.
 
-**A custom GPT** — `dist/chatgpt/` holds the instructions and the knowledge
-files, generated from the same skills. Its README says what does and does not
-survive the trip.
+**ChatGPT** — the plugin itself, once it is in the public directory that
+ChatGPT and Codex share. Chat and Work both read it.
 
 ## Layout
 

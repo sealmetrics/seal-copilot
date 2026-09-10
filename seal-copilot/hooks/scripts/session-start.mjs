@@ -6,21 +6,20 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
-let ctx;
-const key = process.env.SEALMETRICS_API_KEY;
-
-if (!key) {
-  ctx = [
-    'Seal Copilot is installed but SEALMETRICS_API_KEY is not set, so no Sealmetrics',
-    'tool can succeed. Do not call them and do not retry. If the user asks for any',
-    'analytics work, give them these steps instead:',
-    '  1. Open my.sealmetrics.com → Settings → API Tokens and generate a token (starts with sm_).',
-    '  2. Export SEALMETRICS_API_KEY with that value, and optionally SEALMETRICS_SITE_ID.',
-    '  3. Restart the session.',
-  ].join('\n');
-} else {
+// The connector is the remote Sealmetrics server and it authenticates over
+// OAuth, so there is no credential in the environment to check any more. What
+// the hook can still do is spare the model a wall of failed calls: an
+// unauthenticated session shows up as a tool error on the first call, and the
+// remedy is a browser login, not a token to paste.
+const lines = [
+  'Seal Copilot is installed. Its data comes from the Sealmetrics connector,',
+  'which each user authorises with their own Sealmetrics account.',
+  'If a Sealmetrics tool fails with an authentication or authorisation error,',
+  'stop calling them and tell the user to open the /mcp panel and authenticate',
+  'the sealmetrics server. Never retry the call, and never guess the numbers.',
+];
+{
   const stateRoot = process.env.SEAL_COPILOT_STATE_DIR || join(homedir(), '.seal-copilot');
-  const lines = ['Seal Copilot is configured (SEALMETRICS_API_KEY is set).'];
   if (process.env.SEALMETRICS_SITE_ID) lines.push(`Default site: ${process.env.SEALMETRICS_SITE_ID}.`);
   lines.push(`State directory: ${stateRoot}`);
   try {
@@ -42,8 +41,8 @@ if (!key) {
       }
     }
   } catch { /* state is optional; never block the session on it */ }
-  ctx = lines.join('\n');
 }
+const ctx = lines.join('\n');
 
 process.stdout.write(JSON.stringify({
   hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: ctx },
