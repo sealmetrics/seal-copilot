@@ -134,8 +134,16 @@ prompt:
 ```
 Run the check-alerts skill for this rule and output only its result.
 
+Fired at: <the scheduler's local time, ISO 8601 with offset>
+
 <the rule, as JSON>
 ```
+
+**The firing time is not optional.** The verdict is a comparison against the
+hours elapsed so far today, so a check that has to guess the hour guesses the
+verdict. Where the scheduler can substitute the time, have it do so. Where it
+cannot, say in the rule's `notes` that the time is not supplied, so the check
+knows to derive it rather than assume it.
 
 ### 5. Register it
 

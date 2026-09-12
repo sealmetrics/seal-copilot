@@ -25,8 +25,14 @@ The rule arrives as JSON in the prompt. If it did not, say in one line that
 this skill runs from a rule and point at `create-alert`. Do not invent a rule,
 and do not fall back to a general health check.
 
-Work out the local time in `rule.timezone`. **If now is outside
-`active_hours`, stop.** Answer `⏸ <id>: outside watch hours` and make zero
+**Take the current time from the `Fired at:` line in this prompt** and convert
+it to `rule.timezone`. That line is what the scheduler stamps when it runs you;
+it is the only clock you have and you should not try to obtain one any other
+way. If it is absent, derive what you can from the data — the latest `date` in
+a `period=today` response bounds the day — and treat the hour as unknown rather
+than assuming one.
+
+**If now is outside `active_hours`, stop.** Answer `⏸ <id>: outside watch hours` and make zero
 calls. **Not 🟢** — a green tick means you looked and the site is fine, and here
 you did not look. An operations log full of green ticks for hours nobody watched
 is how a watchdog stops being believed. Say which window the rule watches and

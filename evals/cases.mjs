@@ -54,7 +54,17 @@ const rule = (over) => JSON.stringify({
 }, null, 2);
 
 const ALL_DAYS = DAYS.slice();
-const ask = (r) => `Run the check-alerts skill for this rule and output only its result.\n\n${r}`;
+// A real scheduler stamps the time it fired; so does this. Without it the check
+// has no clock, and the case that had to compute a five-hour gap retried in
+// every single run — fast when it worked, killed at the timeout when it did not.
+const firedAt = () => {
+  const d = new Date();
+  const off = -d.getTimezoneOffset();
+  const pad = (n) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+  return `${local}${off < 0 ? '-' : '+'}${pad(off / 60)}:${pad(off % 60)}`;
+};
+const ask = (r) => `Run the check-alerts skill for this rule and output only its result.\n\nFired at: ${firedAt()}\n\n${r}`;
 
 export const RULE_PROMPT = {
   silence: ({ hours, from, to }) => ask(rule({

@@ -131,7 +131,10 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
     proc.stdout.on('data', d => out += d);
     proc.stderr.on('data', d => err += d);
 
-    const timer = setTimeout(() => { proc.kill('SIGKILL'); }, 240000);
+    // 240s killed a case that reasons about clock arithmetic often enough to
+    // retry in every run. The budget assertions are what bound a slow skill;
+    // this only bounds a hung process.
+    const timer = setTimeout(() => { proc.kill('SIGKILL'); }, 360000);
 
     proc.on('close', () => {
       clearTimeout(timer);
