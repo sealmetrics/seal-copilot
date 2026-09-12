@@ -510,17 +510,23 @@ export default [
   {
     id: 'create-alert-refuses-noisy-rule',
     fixture: 'saas-demo-drop',
-    // demo_request runs at roughly two a day in this fixture, so four quiet
-    // hours is the normal afternoon, not a signal.
+    // demo_request is a CONVERSION here, 41 of them in 30 days — under a day and
+    // a half apart. Four quiet hours is a normal afternoon, not a signal. The
+    // skill has to measure that before agreeing to watch it.
     prompt: 'Alert me if four hours go by with no demo requests.',
     maxCalls: 4,
     mustMatch: [
-      // It must say why, with the number, and offer something concrete.
+      // Why it refused.
       new RegExp(['too noisy', 'would fire', 'most (days|afternoons)', 'every day',
-                  'not enough volume', 'too (few|low)', 'normal'].join('|'), 'i'),
-      /12\s*hours?|twelve hours|daily|per day|a day/i,
+                  'not enough volume', 'too (few|low)', 'normal', 'fire.{0,20}often'].join('|'), 'i'),
+      // That it measured rather than guessed: the 30-day count or the rate.
+      /\b41\b|per day|a day|daily|each day/i,
+      // And a concrete alternative, not a bare refusal.
+      /\b(12|twelve|24|a day|daily|threshold)\b/i,
     ],
-    mustCall: ['list_microconversion_types'],
+    // No mustCall: whether the volume comes from get_conversions or from the
+    // microconversion list depends on how the model reads "demo request", and
+    // both are correct routes to the same number. Assert the behaviour instead.
   },
   {
     id: 'check-alerts-fires-with-start-time',
@@ -538,7 +544,7 @@ export default [
   },
   {
     id: 'check-alerts-silent-when-healthy',
-    fixture: 'ecommerce-healthy',
+    fixture: 'alerts-silence-healthy',
     prompt: RULE_PROMPT.silence({ hours: 4, from: 0, to: 24 }),
     maxCalls: 3,
     mustMatch: [/🟢/],
