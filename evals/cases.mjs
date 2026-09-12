@@ -577,13 +577,15 @@ export default [
     // The same silence as the firing case, on a rule that is not watching now.
     prompt: RULE_PROMPT.outsideActiveHours(),
     maxCalls: 0,
-    // Assert the meaning, not the symbol. Two correct answers failed this case
-    // for lacking a green tick while saying "Outside active hours — rule active
-    // only on Tuesdays 03:00–05:00, and today is Saturday. No check performed,
-    // no alert." That is the behaviour under test, and it is better than the
-    // format the skill used to ask for: nothing was checked, so nothing is green.
-    mustMatch: [new RegExp(['outside (its )?(active|watch) hours', 'not watching',
-                            'no check performed', 'outside the window'].join('|'), 'i')],
+    // No prose assertion at all, deliberately. "Respects active hours" IS
+    // maxCalls: 0 plus raising nothing, and both are asserted structurally
+    // below. Two correct answers died here first: "Outside active hours — ...
+    // No check performed, no alert" for lacking a green tick my own spec
+    // demanded, then "Skipped: outside active_hours window" for spelling the
+    // field name with an underscore where the regex wanted a space. Fourteenth
+    // and fifteenth times this suite has failed a right answer over a token.
+    // The two bans below are claims, not wording: a run that raises an alert
+    // or calls the site healthy did the wrong thing whatever words it used.
     mustNotMatch: [/🔴/, /🟢/],
     maxAnswerChars: 400,
   },
