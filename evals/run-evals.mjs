@@ -210,7 +210,9 @@ async function runCase(c, siteId) {
 // rate limit). Neither is a verdict on the skill; retry once.
 const TRANSIENT = /stream idle timeout|partial response|overloaded|rate limit|529|503|ECONNRESET|ETIMEDOUT/i;
 const isTransient = (r) =>
-  (!r.error && !r.calls && !(r.answer || '').trim())   // never started
+  // Empty is empty, whether or not it got as far as calling anything. Every
+  // skill here owes an answer, including the ones whose answer is one line.
+  (!r.error && !(r.answer || '').trim())               // said nothing at all
   || (r.error && TRANSIENT.test(r.error))                // the API said so
   // No result event means the session never finished, so whatever text arrived
   // is a fragment: one attempt made nine calls and left "Let me check remaining

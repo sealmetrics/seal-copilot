@@ -45,6 +45,15 @@ This returns the day total, not an hourly series. Compare it against the
 baseline's `cumulative[day_of_week][current_hour]` — the expected count for
 the hours elapsed so far today, in the site's timezone.
 
+**Establish the current local hour before you compare, and say it in the
+answer.** The whole verdict hangs on it: guess an hour too early and the
+expectation shrinks to almost nothing, so a cart that has been dead since noon
+reads as healthy. A run did exactly that — "2 add-to-carts by ~09:00 matches the
+baseline" — hours after 09:00 had passed. **If you cannot establish the current
+hour with confidence, do not answer 🟢.** Say which figure you are missing. A
+watchdog that cannot tell the time and reports all-clear is worse than one that
+admits it, because the user stops checking.
+
 **Status from the ratio** `actual / expected_to_date`:
 
 - 🟢 **Healthy** — ratio ≥ 0.5

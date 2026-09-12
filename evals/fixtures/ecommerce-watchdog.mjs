@@ -7,8 +7,13 @@ export const meta = { name: 'ecommerce-watchdog',
 const iso = (d) => d.toISOString().slice(0, 10);
 const daysAgo = (n) => { const d = new Date(); d.setUTCHours(12, 0, 0, 0); d.setUTCDate(d.getUTCDate() - n); return d; };
 
-const CURVE = [[9, 2], [11, 3], [13, 3], [15, 3], [17, 4], [19, 4], [21, 2]];   // ~21/day, mode A
-const TODAY = [[8, 2]];                                                          // then silence
+// Spread across the whole clock, not just business hours. The earlier curve
+// started at 09:00, so a run before then compared today's 2 add-to-carts
+// against an expectation of 2 and called it healthy — correctly. The case could
+// only fail in the afternoon, which is the hour-of-day version of the fixture
+// that only worked on Tuesdays. Now every hour carries enough signal to judge.
+const CURVE = Array.from({ length: 24 }, (_, h) => [h, 3]);                      // 72/day, mode A
+const TODAY = [[0, 2]];                                                          // then silence all day
 
 const eventsFor = (dateStr, hours) => hours.flatMap(([h, n]) =>
   Array.from({ length: n }, (_, i) => ({

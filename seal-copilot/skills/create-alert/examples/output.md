@@ -1,6 +1,11 @@
 > Reference output. Two runs: one that creates the rule the user asked for, and
 > one that refuses a rule that would have fired most afternoons. Both are short.
 > Note that the refusal names the arithmetic and offers a specific alternative.
+>
+> **These two happen to be in Spanish because those users wrote in Spanish.**
+> Match the density, the structure and the brevity — never the language. You
+> answer in whatever language the user used, per operating rule 18. A run once
+> replied in Spanish to an English request because this page is in Spanish.
 
 **Run 1 — "avísame si paso 4 horas seguidas sin ventas"**
 

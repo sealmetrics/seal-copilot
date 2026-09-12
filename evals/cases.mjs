@@ -188,8 +188,13 @@ export default [
       // SKU-1007 has 28 views, below the 30-view floor. The skill's own golden
       // output names it as excluded — "(SKU-1007 had 28 views — insufficient
       // sample)" — so banning the string set the eval against the
-      // documentation. Require the exclusion to be stated instead.
-      /insufficient|below the (30|thirty)|too few (views|samples)|not enough (data|views)/i,
+      // documentation. Requiring one of four phrasings was the same mistake
+      // wearing the other hat: a run wrote "SKU-1007 dropped (28 views, <30)",
+      // which is the exclusion, and failed for using the symbol. Require the
+      // SKU and its view count — a run that excluded it says both, a run that
+      // scored it anyway trips the ban below.
+      /SKU-1007/,
+      /\b28\b/,
     ],
     mustNotMatch: [
       // The real failure would be treating it as a finding: a verdict for a
@@ -213,7 +218,13 @@ export default [
     prompt: 'Demo requests halved but traffic is the same. Where is the leak?',
     maxCalls: 12,
     mustMatch: [/form|last step|final step|submission/i],
-    mustNotMatch: [/traffic (is )?the problem|acquisition problem/i],
+    // Affirmative claims only. A correct answer rules acquisition out in so
+    // many words — "not a media or acquisition problem" — and a bare noun ban
+    // fails it, as it did. Same fix seasonality got in 1.8.0.
+    mustNotMatch: [
+      /\b(it'?s|this is|the (leak|cause|problem) is)\s+(an?\s+|the\s+)?(traffic|acquisition)\b/i,
+      /\btraffic is the problem\b/i,
+    ],
   },
   {
     id: 'multi-site-asks-first',
@@ -442,7 +453,7 @@ export default [
     prompt: 'Run my weekly health check.',
     maxCalls: 10,
     mustMatch: [
-      /kpis? only|below.*threshold|too low|(0|no|zero) conversions/i,   // low-volume rule
+      /kpis? only|below.*threshold|too low|(0|no|zero)\s+(\w+\s+)?conversions/i,   // low-volume rule
       /not checked|unavailable|refused|access denied|could not|cannot (be )?(validated|checked)/i,  // the gap is named
       /unvalidated|cannot (validate|confirm)|couldn'?t (validate|confirm)|no conversions to validate/i,
     ],
@@ -518,7 +529,10 @@ export default [
     // suite has gone wrong before.
     maxCalls: 6,
     // The rule has to reach the state file, and it has to name the real event.
-    mustMatch: [/4\s*hours?|four hours|4h/i, /purchase/i],
+    // The window, in any language the user might have written in: "4 hours",
+    // "4 horas", "4h". Asking for the English word failed a run that answered
+    // a Spanish-speaking user correctly.
+    mustMatch: [/4\s*(h\b|hours?|horas?)|four hours|cuatro horas/i, /purchase/i],
     mustCall: ['get_conversions'],
     stateMustContain: [/"family"\s*:\s*"silence"/, /"hours"\s*:\s*4/, /"active_hours"/],
   },

@@ -4,6 +4,7 @@
 //  2. the mock rejects invalid parameters over real JSON-RPC
 //  3. the assertion logic passes what it should and fails what it should
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assess, GLOBAL_MUST_NOT_CALL } from './assess.mjs';
@@ -24,6 +25,19 @@ try {
   ok('all fixture windows reconcile', true);
 } catch (e) {
   ok('all fixture windows reconcile', false, String(e.stdout || e).slice(0, 400));
+}
+
+// A regex carrying a control character matches nothing and says nothing about
+// it. Four of them reached cases.mjs when a \b meant for a word boundary was
+// written through a language that reads it as backspace: /traffic is the
+// problem/i stopped matching "Traffic is the problem" and the case went quietly
+// green. Source files hold no control characters but newline and tab.
+console.log('\neval sources are free of control characters');
+for (const f of ['cases.mjs', 'assess.mjs', 'run-evals.mjs', 'stream.mjs']) {
+  const text = readFileSync(join(here, f), 'utf8');
+  const bad = [...new Set([...text].filter(ch => ch.charCodeAt(0) < 32 && ch !== '\n' && ch !== '\t'))];
+  ok(`${f} has none`, bad.length === 0,
+     bad.map(c => 'U+' + c.charCodeAt(0).toString(16).padStart(4, '0')).join(' '));
 }
 
 console.log('\nfixtures serve their cases');
