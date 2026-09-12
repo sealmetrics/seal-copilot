@@ -265,8 +265,10 @@ console.log(`dist/claude-ai — ${ai.skills} skills as ZIPs`);
 // Cowork reads the plugin format unchanged; there is nothing to convert.
 const cowork = join(dist, 'cowork');
 mkdirSync(cowork, { recursive: true });
-const bundle = join(root, 'seal-copilot.plugin');
-if (existsSync(bundle)) writeFileSync(join(cowork, 'seal-copilot.plugin'), readFileSync(bundle));
+for (const name of ['seal-copilot.plugin', 'seal-install.plugin']) {
+  const bundle = join(root, name);
+  if (existsSync(bundle)) writeFileSync(join(cowork, name), readFileSync(bundle));
+}
 writeFileSync(join(cowork, 'README.md'), `# Cowork
 
 Cowork reads the same plugin format as Claude Code, so nothing here is

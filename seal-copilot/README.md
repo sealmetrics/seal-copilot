@@ -15,7 +15,7 @@ on **all** of your traffic — not the fraction that accepted cookies.
 | "How was this week?" / "Weekly report" | weekly-health-check — verdict + top 3 findings |
 | "Monday briefing" / scheduled one-pager | monday-briefing — email-shareable Monday report |
 | "Why did conversions drop?" | diagnose-drop — root-cause isolation, step by step |
-| "Where am I losing money?" | opportunity-scan — 13-pattern revenue scan |
+| "Where am I losing money?" | opportunity-scan — 14-pattern revenue scan |
 | "Where do users drop off?" | funnel-analysis — weakest stage + why |
 | "Which products convert worst?" | product-friction — per-SKU view→cart audit |
 | "Set up cart monitoring" (once per site) | calibrate-watchdog — learns the site's hour-of-week rhythm |

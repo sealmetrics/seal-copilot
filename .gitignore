@@ -2,8 +2,9 @@
 node_modules/
 *.log
 
-# Built artifact — regenerate with scripts/build-plugin.sh
+# Built artifacts — regenerate with scripts/build-plugin.sh
 seal-copilot.plugin
+seal-install.plugin
 
 # Eval output
 evals/results/

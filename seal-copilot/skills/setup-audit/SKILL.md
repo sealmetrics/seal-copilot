@@ -39,8 +39,9 @@ connector decides which tools exist" in
    second microconversion pass or the alert check; it never drops this call.
 1. `get_site` — basics: domains, timezone, tracking status.
 2. `get_overview(30d)` — is data flowing at expected volume? If the site has
-   **no data at all**, stop auditing and hand off to `install-sealmetrics`:
-   there is nothing to score until the pixel is live.
+   **no data at all**, stop auditing: there is nothing to score until the pixel
+   is live. Name the `seal-install` plugin, which is where installing lives, and
+   say it needs `SEALMETRICS_API_KEY` in the environment.
 3. `list_microconversion_types` — which funnel stages are instrumented?
    Compare against the canonical funnel for the vertical (stores:
    product_view/add_to_cart/start_checkout; hotels: search/room_view/
@@ -98,8 +99,10 @@ Rules that are not negotiable:
   "average deal size" will be pasted as-is. Use a visibly non-literal
   placeholder — `<average deal size in EUR>` — and say the developer replaces it.
 - Name the event with the site's own convention when one exists (the
-  microconversion list shows it); otherwise use the canonical name from the
-  vertical table in `install-sealmetrics`.
+  microconversion list shows it); otherwise use the canonical name for the
+  vertical: stores fire `product_view`, `add_to_cart`, `start_checkout` and
+  `purchase`; hotels `room_view`, `booking_start` and `booking`; SaaS
+  `pricing_view`, `form_view` and `signup` / `demo_request` / `trial_start`.
 
 Confirm each canonical funnel event is really arriving by its volume in step 9:
 an event declared in the tracker and firing zero times is the finding, and

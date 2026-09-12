@@ -309,7 +309,8 @@ Safari- or iOS-only collapse is visible from this single call.
 **`get_tracking_code` is rich:** `script_tag`, `tracker_url`, `js_api` with
 `signatures[].call` for pageview/conversion/microconversion, an
 `implementation_guide` with `spa_support` and `content_grouping`, and
-`examples` per vertical. Use the signatures verbatim in install-sealmetrics.
+`examples` per vertical. Use the signatures verbatim whenever you hand a
+developer a snippet — never a call you did not fetch.
 
 **Unverified:** `get_bot_stats` and `get_suspicious_sessions` could not be
 captured — the account-id family refused every identifier the key exposed, and
