@@ -95,6 +95,12 @@ budget decisions need their cost reality. Provide the **ratio** and the
 
 ## Output format
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 1. **Channel scorecard table** (paid channels only): entrances · CR · AOV
    · RPE · RPE vs site avg · 90d trend.
 2. **Top 3 scale candidates** (campaign level): name · entrances · CR ·

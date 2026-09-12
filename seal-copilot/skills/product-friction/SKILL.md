@@ -127,6 +127,12 @@ was too thin to isolate the cause rather than inventing one.
 
 ## Output format
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 1. **Catalog summary line:** "Analyzed N SKUs (≥30 views). Site median
    view→AtC = X%. Champions: A. Friction: B. Hidden gems: C. Dead: D."
 2. **Top 3 friction SKUs table:** SKU/name · views · AtCs · ratio · vs

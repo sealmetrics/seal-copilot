@@ -93,6 +93,12 @@ marking by default and the "Not checked" line says so once.
 
 ## Output format (the one-pager)
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 ```
 🦭 Seal Copilot — Monday Briefing · <site> · <week dates>
 

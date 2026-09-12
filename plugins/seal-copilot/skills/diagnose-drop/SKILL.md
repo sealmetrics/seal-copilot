@@ -83,6 +83,12 @@ stop at the first isolated cause.
 
 ## Output format
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 All four sections are **mandatory**, in this order. A one-line summary is not
 an acceptable answer to this skill even when the cause is obvious: the user
 cannot act on "it was campaign X" without the evidence, the fix and the check.
@@ -94,7 +100,7 @@ cannot act on "it was campaign X" without the evidence, the fix and the check.
 4. **Verification** — what to re-check and when. Never omit this. A diagnosis
    the user cannot confirm in a week is an opinion, not a finding.
 
-Do not report how many tool calls you used. The budget is an internal
+Do not report how many tool calls you used either. The budget is an internal
 constraint on you, not information for the user.
 
 If the change is a spike, validate bots first (rule 1) before celebrating.

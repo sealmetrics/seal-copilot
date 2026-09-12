@@ -113,6 +113,12 @@ not be screened is not a pattern that came back empty.
 
 ## Output format
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 1. **Waste scorecard line:** "Found N patterns firing. Estimated monthly
    saving: €X (variable cost) + Y dev hours/month."
 2. **Top 3 wastes, each:** name · evidence (numbers + period) · action ·
