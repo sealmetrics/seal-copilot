@@ -22,8 +22,9 @@ on **all** of your traffic — not the fraction that accepted cookies.
 | "Is my cart alive?" (hourly watchdog) | cart-watchdog — intraday anomaly vs that learned baseline |
 | "Where should I invest?" / "scale or cut" | channel-mix-optimizer — paid-channel RPE reallocation |
 | "What can you analyze?" (first run on a new site) | property-explorer — maps your custom properties |
-| "Reduce expenses" / operational waste | cost-reduction — bots, zombie pages, dead UTMs, stale alerts |
-| "Install Sealmetrics on this site" | install-sealmetrics — snippet, verification, event instrumentation |
+| "Reduce expenses" / operational waste | cost-reduction — zombie pages, dead UTMs, tracking decay |
+| "Alert me if four hours pass with no sales" | create-alert — turns the sentence into a scheduled check |
+| (the scheduled check itself, hourly) | check-alerts — one line while healthy, evidence when not |
 | "Is my tracking set up right?" | setup-audit — implementation score + fixes |
 | Anything else about your traffic | seal-copilot — the core analyst |
 
@@ -33,6 +34,35 @@ markets, booking properties, yoy seasonality, booking watchdog) and
 **SaaS / lead-gen** (submit-rate breaks, brand vs non-brand paid, blog-to-product
 paths, plan mix by channel). The analyst detects which one applies from your
 tracking and loads it automatically.
+
+**Installing tracking from scratch is a different plugin.**
+[`seal-install`](../seal-install/README.md) carries the local connector and the
+provisioning tools, which the connector here deliberately does not expose.
+
+## Alerts you describe in a sentence
+
+> "Avísame si paso 4 horas seguidas sin ventas."
+
+`create-alert` turns that into a rule — the metric, the window, the hours it
+watches, how often it checks — verifies the event exists and has enough volume
+to be worth watching, and registers a scheduled check. `check-alerts` runs it
+and answers in one line while the site is healthy:
+
+```
+🟢 no-conversions-4h: 6 purchases today, last one 18 minutes ago.
+```
+
+When it fires, it names the hour the silence started — the thing you match
+against your deploy log — and one concrete thing to try in the next two minutes.
+
+It refuses rules that would be noise. Ask it to watch an event that happens
+twice a day for four quiet hours and it says so, with the arithmetic, and offers
+a window that would mean something.
+
+Four kinds of rule: **silence** (N hours with no event), **drop** and **spike**
+(against what this site normally does at this hour), and **threshold** (a flat
+number for the day). Ask "what am I watching?" to list them, and "stop watching
+X" to remove one.
 
 ## Install
 
@@ -72,14 +102,32 @@ For intraday cart monitoring, run *"calibrate the watchdog"* once and then
 schedule `cart-watchdog` hourly with `/schedule`. The watchdog refuses to run
 without that baseline rather than inventing a threshold.
 
+## The connector, and what it can reach
+
 The plugin bundles the Sealmetrics connector as the remote server at
 `mcp.sealmetrics.com`, authorised per user over OAuth. You hold no token and
-the plugin stores no credential.
+the plugin stores no credential. That is the right default for the person this
+is built for: a marketer, who should never meet an API key.
 
-Installing tracking on a site from scratch is the one job that needs more than
-the connector offers: `install-sealmetrics` calls provisioning tools the remote
-server does not expose. For that, run the local server instead, with
-`SEALMETRICS_API_KEY` in your environment.
+It costs something, and the plugin says so rather than working around it in
+silence. Twenty tools reach backend routes that need a broader permission than
+any API key or OAuth grant can carry, so the connector does not offer them:
+traffic-quality validation, alerts, webhooks, saved segments, channel rules and
+event verification. Every skill knows this. Steps that need them are marked
+*(local only)*, skipped, and named once at the end of a report under **Not
+checked** — never quietly reported as passing.
+
+What that means in practice:
+
+| You will see | Why |
+|---|---|
+| "unvalidated for bots" on anomalies | Traffic-quality data is out of reach from here. The finding is still real; it just has not been screened for automated traffic |
+| `cost-reduction` scanning five patterns instead of eight | Three of them need alerts, segments or traffic quality |
+| `setup-audit` proposing a channel rule in words instead of testing it | It can read that `cpc` traffic is misrouted, and cannot write the rule that fixes it. Create it in the dashboard |
+
+Everything that matters for analysis — traffic, channels, campaigns, terms,
+landings, conversions, microconversions, properties, funnels, raw events — is
+fully available.
 
 ## What it remembers
 
@@ -101,10 +149,11 @@ Delete the directory to start clean. Nothing there is personal data.
 
 | Symptom | Cause and fix |
 |---|---|
-| "SEALMETRICS_API_KEY is not set" at session start | The variable is missing or was set after the session began. Export it and restart. |
-| Every call returns 401 or 403 | The token is invalid, revoked, or scoped to a different account. Regenerate it in Settings → API Tokens. Seal Copilot will not retry a 403. |
+| Every call fails on authentication | The connector is not authorised yet. Run `/mcp`, pick **sealmetrics**, sign in. Seal Copilot will not retry, and will not guess the numbers. |
 | It asks which site on every question | Set `SEALMETRICS_SITE_ID`, or answer once and it is cached in the site profile. |
-| Reports say "unvalidated for bots" | `get_bot_stats` returned nothing, which means agent analytics is not enabled on the site — not that you have zero bots. Enable it in your account settings. |
+| Reports say "unvalidated for bots" | Traffic-quality tools are not available over this connector, so anomalies are reported without that screening. The finding is real; it has not been checked for automated traffic. Nothing to enable — see "The connector, and what it can reach". |
+| It says installing tracking is a different plugin | It is. Install [`seal-install`](../seal-install/README.md), which carries the local connector and an API key. |
+| An alert never fires, or fires every day | Ask "what am I watching?" and check the window. `create-alert` sizes the window against the event's own volume; if the volume changed, the rule needs resizing. |
 | The watchdog says it has no baseline | Run `calibrate-watchdog` once. It is deliberate: a watchdog with a guessed threshold is worse than none. |
 | Numbers do not match GA4 or Google Ads | Expected. Sealmetrics measures last non-direct click, consentless, server-side. The other tools use different attribution and depend on consent. |
 | A skill stops early saying it is past budget | A session-level hook warns once the call count exceeds the largest skill budget. Ask it to continue if you want the deeper pass. |
@@ -122,6 +171,8 @@ Delete the directory to start clean. Nothing there is personal data.
 - "Where am I wasting money in operations — not on ads?"
 - "Schedule my Monday briefing every Monday at 8am."
 - "Calibrate the watchdog, then run it every hour from 9 to midnight."
+- "Avísame si paso 4 horas seguidas sin ventas."
+- "What am I watching on this site?"
 
 ## Principles the analyst follows
 
@@ -142,6 +193,9 @@ processed or sent to the model.
 - No ad-spend data: Sealmetrics does not ingest cost, so the analyst
   compares CR, AOV, and revenue — for ROAS, pull spend from your ads
   platform.
+- Traffic-quality screening, alerts, segments and channel rules are not
+  reachable over the default connector. See "The connector, and what it can
+  reach"; the skills that touch them say so rather than reporting a zero.
 - Attribution is last non-direct click, consentless, measured server-side.
   Numbers will not match GA4 or your ad platform dashboards, and upper-funnel
   channels are undervalued by definition — the analyst says so when it matters.
@@ -159,7 +213,7 @@ Two checks, from the repository root:
 ```
 bash scripts/check.sh              # linter, fixture arithmetic, self-test, manifests
 bash scripts/check.sh --online     # the above plus MCP schema drift
-node evals/run-evals.mjs           # 21 cases against a mock Sealmetrics server
+node evals/run-evals.mjs           # 32 cases against a mock Sealmetrics server
 node evals/run-evals.mjs --runs 3  # each case three times; model wording varies
 node evals/preflight.mjs           # one cheap call: proves the whole chain works
 node scripts/usage-report.mjs      # local metrics from your own state directory

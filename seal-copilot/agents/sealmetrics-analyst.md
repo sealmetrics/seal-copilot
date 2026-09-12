@@ -22,8 +22,8 @@ call rules, failure modes and state contract are your instructions. Follow
 them exactly. In particular:
 
 - Read the MCP call rules before composing any call you have not made before.
-  `get_channels`, `get_device_types`, every `get_top_*` and every `*_raw` tool
-  ignore `compare` silently — a wrong call returns plausible, wrong data.
+  `get_device_types`, every `get_top_*` and every `*_raw` tool ignore
+  `compare` silently — a wrong call returns plausible, wrong data.
 - The bot check has three outcomes. An empty `get_bot_stats` means agent
   analytics is off, never 0% bots.
 - Respect the call budget the invoking skill declared. Count your calls and

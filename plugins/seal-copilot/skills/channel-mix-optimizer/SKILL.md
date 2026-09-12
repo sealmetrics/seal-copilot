@@ -32,12 +32,14 @@ real CPC/CPM from the ad platform to confirm.** Never present RPE as ROAS.
 ## Step 1 — Map the paid channels
 
 1. `get_top_channels(period=90d)` — full channel list.
-2. `list_channel_rules` — confirm which channels the user classifies as
-   paid (Paid Search, Paid Social, Display, Affiliates, Paid Email…).
-
-If the user has not configured paid vs organic split well, run
-`get_traffic_mediums(period=30d)` and treat `cpc`, `paid`, `display`,
-`paidsocial`, `cpm`, `ppc` as paid by default; say so.
+2. `get_traffic_mediums(period=30d)` — this is where paid and organic actually
+   split, and it is the main route: treat `cpc`, `paid`, `display`,
+   `paidsocial`, `cpm`, `ppc` as paid, and say that is the classification you
+   used.
+3. **(local only)** `list_channel_rules` — the user's own classification, which
+   beats the default above when it exists. Not announced on `remote`, so on
+   that connector step 2 is the whole answer and there is nothing to report as
+   missing.
 
 ## Step 2 — Channel-level scorecard
 
@@ -55,7 +57,7 @@ Compute per channel:
 
 | Metric | Formula | Use |
 |---|---|---|
-| Entrances | from get_channels | volume |
+| Entrances | from get_top_channels | volume |
 | CR | conversions / entrances | quality |
 | AOV | revenue / conversions | ticket |
 | **RPE** | revenue / entrances | the ranking metric |

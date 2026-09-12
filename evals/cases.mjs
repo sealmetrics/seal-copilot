@@ -36,6 +36,58 @@
 // banning a token, grep the skill's examples/output.md for it.
 // eslint-disable-next-line no-unused-vars -- kept for future prose assertions
 const SEP = '[\\s\\u2010-\\u2015\\u2212-]?';   // space, any dash, or nothing
+
+// A scheduled alert check receives its rule in the prompt, because the runner
+// that fires it may have no filesystem. The rules are BUILT AT LOAD TIME rather
+// than hardcoded, for the reason the watchdog fixture learned the hard way: a
+// fixture pinned to a date only passes on the day it was written.
+const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const rule = (over) => JSON.stringify({
+  id: 'eval-rule', site_id: 'acct_demo', filter: {}, cadence_minutes: 60,
+  timezone: 'Europe/Madrid', expected: null, deliver: ['app'],
+  created_at: '2026-09-12', expires_at: '2027-03-12', status: 'active', ...over,
+}, null, 2);
+
+const ALL_DAYS = DAYS.slice();
+const ask = (r) => `Run the check-alerts skill for this rule and output only its result.\n\n${r}`;
+
+export const RULE_PROMPT = {
+  silence: ({ hours, from, to }) => ask(rule({
+    family: 'silence',
+    metric: { kind: 'conversion', type: 'purchase' },
+    condition: { hours },
+    active_hours: { from, to, days: ALL_DAYS },
+  })),
+
+  // Watching a single weekday that is not today, in a two-hour window eight
+  // hours from now. Either condition alone excludes the present moment; both
+  // together survive a machine whose clock sits in a different zone from the
+  // rule's, and a run that starts near midnight.
+  outsideActiveHours: () => {
+    const now = new Date();
+    const otherDay = DAYS[(now.getDay() + 3) % 7];
+    const from = (now.getHours() + 8) % 22;
+    return ask(rule({
+      family: 'silence',
+      metric: { kind: 'conversion', type: 'purchase' },
+      condition: { hours: 4 },
+      active_hours: { from, to: from + 2, days: [otherDay] },
+    }));
+  },
+
+  // `expected` is flat across the day on purpose: the verdict must then be the
+  // same at 09:00 and at 23:00, so the case tests the rule and not the clock.
+  drop: ({ ratio, expected }) => ask(rule({
+    family: 'drop',
+    metric: { kind: 'microconversion', type: 'add_to_cart' },
+    condition: { ratio },
+    active_hours: { from: 0, to: 24, days: ALL_DAYS },
+    expected: {
+      basis: 'watchdog-baseline',
+      cumulative_by_hour: Object.fromEntries(ALL_DAYS.map((d) => [d, Array(24).fill(expected)])),
+    },
+  })),
+};
 export default [
   {
     id: 'healthy-says-so',
@@ -164,21 +216,31 @@ export default [
     allowRejected: true,
   },
   {
-    id: 'no-api-key-gives-instructions',
-    fixture: 'no-api-key',
-    noApiKey: true,        // the whole point of this case
+    id: 'unauthorised-sends-user-to-mcp',
+    fixture: 'unauthorised-connector',
+    noApiKey: true,
     prompt: 'Run my weekly health check.',
-    maxCalls: 6,
-    mustMatch: [/SEALMETRICS_API_KEY|api (key|token)/i, /settings|my\.sealmetrics\.com/i],
-    mustNotMatch: [/here (is|are) your (weekly|report)/i],
-    // With no key the SessionStart hook tells the model not to call the tools,
-    // so zero calls is the correct behavior, not a failure.
-    maxCalls: 0,
+    // One attempt is how it learns; a retry loop is the defect.
+    maxCalls: 3,
+    mustMatch: [
+      // The remedy since 1.11.0 is a browser login, not a token to paste.
+      new RegExp(['/mcp', 'mcp panel', 'authorise', 'authorize', 'sign in', 'log in'].join('|'), 'i'),
+    ],
+    mustNotMatch: [
+      /here (is|are) your (weekly|report)/i,
+      // Sending a marketer to generate an API token is the stale advice this
+      // case exists to keep out: there is no variable to set any more.
+      /SEALMETRICS_API_KEY/,
+      /api\s*(key|token)s?\s*(page|settings)|settings\s*→\s*api/i,
+    ],
     allowRejected: true,
   },
   {
     id: 'install-reuses-existing-site',
     fixture: 'install-site-already-exists',
+    // Installing lives in seal-install, with the local connector: the OAuth one
+    // Seal Copilot declares does not announce provision_site or verify_setup.
+    pluginDir: 'seal-install',
     prompt: 'Install Sealmetrics on demo-store.com. The repo is here.',
     maxCalls: 8,
     mustMatch: [/already (exists|has)|existing site/i],
@@ -408,5 +470,112 @@ export default [
         mustMatch: [/\b([0-9]|10)\s*\/\s*10\b/],
         mustCall: ['list_microconversion_types', 'get_tracking_code'] },
     ],
+  },
+
+  // ---- E14: the connector withholds twenty tools, and the skills must not
+  //      plan a step around one of them. Only a two-transport mock can see it.
+  {
+    id: 'remote-never-attempts-hidden-tools',
+    fixture: 'ecommerce-bot-spike',
+    transport: 'remote',
+    // The fixture is a bot spike, so the old skill would reach for get_bot_stats
+    // on the first anomaly. On this connector the tool is not announced; the
+    // correct run reports the spike and says the quality check was unavailable.
+    prompt: 'Traffic jumped 58% this month. Are we growing?',
+    maxCalls: 12,
+    mustMatch: [
+      // It must still do the analysis, and still refuse to celebrate.
+      new RegExp(['not checked', 'unvalidated', 'unavailable', 'not announced',
+                  'cannot (be )?(validate|confirm)', "can'?t (validate|confirm)",
+                  'no (traffic.quality|bot) data'].join('|'), 'i'),
+    ],
+    mustNotMatch: [/congratulations|great news|growing well/i],
+    // The whole point: zero attempts at a tool the connector never offered.
+    mustNotCall: ['get_bot_stats', 'get_suspicious_sessions', 'list_alerts', 'list_segments'],
+    // A rejection here means the model called something it was never given.
+    allowRejected: false,
+  },
+
+  // ---- E13: alerts in the user's own words ----
+  {
+    id: 'create-alert-writes-a-valid-rule',
+    fixture: 'ecommerce-healthy',
+    prompt: 'Alert me if four hours go by with no purchases, between 8am and midnight.',
+    maxCalls: 4,
+    // The rule has to reach the state file, and it has to name the real event.
+    mustMatch: [/4\s*hours?|four hours|4h/i, /purchase/i],
+    mustCall: ['get_conversions'],
+    stateMustContain: [/"family"\s*:\s*"silence"/, /"hours"\s*:\s*4/, /"active_hours"/],
+  },
+  {
+    id: 'create-alert-refuses-noisy-rule',
+    fixture: 'saas-demo-drop',
+    // demo_request runs at roughly two a day in this fixture, so four quiet
+    // hours is the normal afternoon, not a signal.
+    prompt: 'Alert me if four hours go by with no demo requests.',
+    maxCalls: 4,
+    mustMatch: [
+      // It must say why, with the number, and offer something concrete.
+      new RegExp(['too noisy', 'would fire', 'most (days|afternoons)', 'every day',
+                  'not enough volume', 'too (few|low)', 'normal'].join('|'), 'i'),
+      /12\s*hours?|twelve hours|daily|per day|a day/i,
+    ],
+    mustCall: ['list_microconversion_types'],
+  },
+  {
+    id: 'check-alerts-fires-with-start-time',
+    fixture: 'alerts-silence-fires',
+    prompt: RULE_PROMPT.silence({ hours: 4, from: 0, to: 24 }),
+    maxCalls: 3,
+    mustMatch: [
+      /🔴|act now|fired|alert/i,
+      // The incident start time is what the user matches against their deploys.
+      // Any clock format, but a real time must be there.
+      /\b([01]?\d|2[0-3])[:.][0-5]\d\b/,
+    ],
+    mustNotMatch: [/🟢/],
+    mustCall: ['get_conversions'],
+  },
+  {
+    id: 'check-alerts-silent-when-healthy',
+    fixture: 'ecommerce-healthy',
+    prompt: RULE_PROMPT.silence({ hours: 4, from: 0, to: 24 }),
+    maxCalls: 3,
+    mustMatch: [/🟢/],
+    mustNotMatch: [/🔴/],
+    // Silence is the product: a healthy scheduled run is one line, so the
+    // answer must not run to a paragraph of context nobody asked for.
+    maxAnswerChars: 400,
+  },
+  {
+    id: 'check-alerts-respects-active-hours',
+    fixture: 'alerts-silence-quiet-hours',
+    // The same silence as the firing case, on a rule that is not watching now.
+    prompt: RULE_PROMPT.outsideActiveHours(),
+    maxCalls: 0,
+    mustMatch: [/🟢/],
+    mustNotMatch: [/🔴/],
+    maxAnswerChars: 400,
+  },
+  {
+    id: 'check-alerts-drop-uses-embedded-expected',
+    fixture: 'alerts-drop-with-baseline',
+    // No baseline file exists. The expectation travels inside the rule, which
+    // is the only thing that makes a scheduled run possible without a disk.
+    prompt: RULE_PROMPT.drop({ ratio: 0.5, expected: 60 }),
+    maxCalls: 3,
+    mustMatch: [/🔴|⚠️/, /\b8\b/, /60|expected/i],
+    mustCall: ['get_microconversions'],
+  },
+  {
+    id: 'check-alerts-never-claims-bots',
+    fixture: 'alerts-drop-with-baseline',
+    prompt: RULE_PROMPT.drop({ ratio: 0.5, expected: 60 }),
+    maxCalls: 3,
+    // It may say the drop is unvalidated; it may not produce a bot figure, and
+    // it may not reach for a tool this connector does not announce.
+    transport: 'remote',
+    mustNotMatch: [/\|[^|\n]*\b\d+\s*%[^|\n]*bots?[^|\n]*\|/i, /bot share (is|was|of)\s*\d/i],
+    mustNotCall: ['get_bot_stats', 'get_suspicious_sessions'],
   },
 ];

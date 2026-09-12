@@ -30,10 +30,13 @@ list_property_keys(table=microconversions)
 list_property_keys(table=conversion_items)
 ```
 
-Also run `list_segments` — saved segments are part of the analytical surface
-and belong in the inventory. For up to three that look business-relevant, call
-`get_segment` and record their size and share of conversions: a segment that is
-8% of sessions and 35% of conversions is a finding in itself.
+**(local only)** Also run `list_segments` — saved segments are part of the
+analytical surface and belong in the inventory. For up to three that look
+business-relevant, call `get_segment` and record their size and share of
+conversions: a segment that is 8% of sessions and 35% of conversions is a
+finding in itself. Neither tool is announced on the `remote` connector: skip
+this paragraph there, and say in one line that saved segments are outside the
+inventory rather than that there are none.
 
 Each call returns `[{ key, conversions_count, microconversions_count,
 total_count }]` — the counts are the coverage signal. Build a deduped table:

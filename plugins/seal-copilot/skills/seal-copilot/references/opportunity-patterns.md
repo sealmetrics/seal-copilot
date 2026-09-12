@@ -66,14 +66,17 @@ silently.
   revenue × share gap.
 
 ## 8. Channel drift
-- Detect: `get_channels` on consecutive calendar pairs — `this_week` vs
+- Detect: `get_top_channels` on consecutive calendar pairs — `this_week` vs
   `last_week`, then the same for the two weeks before via `start_date` /
-  `end_date` — showing 3+ consecutive declines. `get_channels` does not accept
-  `compare`; diff the results yourself.
+  `end_date` — showing 3+ consecutive declines. It does not accept `compare`;
+  diff the results yourself.
 - Recommend: run the diagnose-drop cause hierarchy on that channel before
   it compounds. Impact = cumulative weekly loss × 4.
 
-## 9. Bot inflation
+## 9. Bot inflation (local only)
+- **Connector:** only the `local` connector announces these tools. On `remote`
+  this pattern cannot be screened at all — report it as unchecked rather than
+  as not firing.
 - Detect: `get_bot_stats(days=30)` → one source's traffic with high suspicion
   share; confirm with `get_suspicious_sessions(min_score=70, limit=50)`.
   An empty result means agent analytics is off, not 0% bots — see the

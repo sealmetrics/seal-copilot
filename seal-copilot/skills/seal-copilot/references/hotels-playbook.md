@@ -20,7 +20,7 @@ campaigns from weeks ago.
 ## Signature analyses
 
 1. **Direct vs OTA share.** Identify OTA traffic via `get_top_referrers`
-   and `get_channels`; compute direct booking revenue share. The ROI
+   and `get_top_channels`; compute direct booking revenue share. The ROI
    argument: every booking shifted from OTA to direct saves 15–25%
    commission. Quantify: OTA-referred bookings × ADR × commission rate
    = the budget available for direct acquisition campaigns.

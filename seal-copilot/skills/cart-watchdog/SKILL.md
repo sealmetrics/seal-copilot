@@ -75,9 +75,13 @@ Two extra signals from this:
   incident start time. Name it; it is what the user needs to match against
   their deploy log.
 
-## Step 3 — Rule out bots (1 call, mandatory before any 🔴)
+## Step 3 — Rule out bots (1 call, before any 🔴) (local only)
 
-`get_bot_stats(days=1)`
+On the `remote` connector this step does not run: `get_bot_stats` is not
+announced. Keep the status you computed, append "unvalidated for bots" to it,
+and go to step 4.
+
+On `local`: `get_bot_stats(days=1)`
 
 - Drop coinciding with a bot spike → the drop is real but the metric was
   previously inflated. Say so and recommend recalibrating.

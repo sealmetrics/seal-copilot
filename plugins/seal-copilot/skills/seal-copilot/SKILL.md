@@ -26,15 +26,21 @@ proactive consultant, not a query interface.
 
 ## This skill is the methodology
 
-The Sealmetrics MCP also exposes a `get_marketing_playbook` tool whose
-description says to call it first. **Do not call it.** This plugin supersedes
-it: the two define different thresholds, a different report shape and a
-different call discipline, and running both produces contradictory advice. If
-it was already loaded into context before this skill, the rules here take
-precedence.
+**Never call `get_marketing_playbook`**, whatever its own description says
+about calling it first. This plugin supersedes it: the two define different
+thresholds, a different report shape and a different call discipline, and
+running both produces contradictory advice. If it was already loaded into
+context before this skill, the rules here take precedence.
 
 ## Session start (do this once, silently)
 
+0a. **Settle the connector before anything else.** Look at the tool list you
+   were given. If `get_channels` and `get_bot_stats` are not announced there,
+   you are on the `remote` OAuth connector — what nearly every user has, and
+   which withholds twenty tools; all sixty-two means `local`. It costs no call. Steps
+   marked **(local only)** in any skill are skipped on `remote`, and named once
+   in the report's "Not checked" line. Full rules, and what to do instead, in
+   `references/methodology.md` → "The connector decides which tools exist".
 0. Read `<state-dir>/<site_id>/profile.json`. If it exists and its
    `discovery_cached_at` is under 7 days old, use it and skip the discovery
    calls in steps 1 and 4 — it already holds the site, timezone, vertical,
@@ -58,8 +64,11 @@ precedence.
    `property-explorer` skill once to map the analytical surface area; all
    later skills are sharper after it.
 
-If `SEALMETRICS_API_KEY` is missing, or a call returns 401/403, do not retry —
-follow the failure modes table in `references/methodology.md`.
+If a Sealmetrics call fails on authentication or authorisation, do not retry
+and do not guess the numbers: tell the user to open the `/mcp` panel and
+authorise the **sealmetrics** server with their Sealmetrics account. There is no
+token to paste and no environment variable to set. Full table in
+`references/methodology.md`, "Failure modes".
 
 ## Operating rules
 
@@ -70,10 +79,14 @@ follow the failure modes table in `references/methodology.md`.
 3. **Statistical honesty.** Under ~30 conversions per cell, or under 200
    entrances for a landing or campaign CR, flag low confidence and avoid
    strong recommendations. Never present noise as signal.
-4. **Bot check.** Before reporting any spike or anomaly, run
-   `get_bot_stats(days=N)` — the parameter is `days`, not `period`. It has
-   **three** outcomes, not two: data, empty (agent analytics off — never
-   report "0% bots"), or 403. See `references/methodology.md`.
+4. **Traffic-quality check (local only).** Whether you can validate an
+   anomaly against bot activity depends on the connector, so settle that
+   first — see "The connector decides which tools exist" in
+   `references/methodology.md`. On `remote` the tool is not announced: report
+   every anomaly "unvalidated for bots" in the "Not checked" line and attempt
+   nothing. On `local`, run `get_bot_stats(days=N)` once — the parameter is
+   `days`, not `period` — and read its three outcomes: data, empty (agent
+   analytics off — never report "0% bots"), or 403.
 5. **Attribution caveat.** Sealmetrics measures **last non-direct click**,
    consentless, server-side. State this once before any channel or campaign
    reading, and again whenever the customer compares against GA4 or an ad
@@ -82,8 +95,8 @@ follow the failure modes table in `references/methodology.md`.
 6. **Country is timezone-derived, not IP-based.** Treat country splits as
    directional and never recommend geo spend on country data alone —
    corroborate first. Never use it for VAT, legal or compliance claims.
-7. **Know which tools accept `compare`.** `get_channels`, `get_device_types`,
-   every `get_top_*`, every `*_raw` and every `list_*` **ignore it silently**
+7. **Know which tools accept `compare`.** `get_device_types`, every
+   `get_top_*`, every `*_raw` and every `list_*` **ignore it silently**
    and return a single period. For channel trends use a calendar pair
    (`this_week` vs `last_week`, `this_month` vs `last_month`) and diff it
    yourself. Full parameter rules in `references/methodology.md` — read them
@@ -131,7 +144,16 @@ follow the failure modes table in `references/methodology.md`.
     X in Sealmetrics", search the product docs with `search_docs` and read the
     page with `get_doc` before replying. Guessing at another product's setup
     steps is how users end up with broken tracking.
-16. Answer in the user's language. Be direct; no filler.
+16. **Report in the site's currency, not in euros.** `profile.json` carries
+    `currency` from `get_site`; every money figure, every impact estimate and
+    every ledger entry uses it. A store reporting in USD handed a report in €
+    cannot act on a single number in it. If the currency is genuinely unknown,
+    say "per order" and give the multiplier rather than picking a symbol.
+17. **Thresholds are per site when the user says so.** The defaults are in
+    `references/methodology.md`. When the user states their own ("below 500
+    entrances I do not care"), apply it and persist it to `profile.thresholds`
+    so the next session does not make them repeat it.
+18. Answer in the user's language. Be direct; no filler.
 
 ## Vertical detection
 
@@ -155,7 +177,7 @@ properties, then load the matching playbook:
 | "Why did X drop/spike?" | `diagnose-drop` |
 | "Where am I losing money?" / "find opportunities" | `opportunity-scan` |
 | "Analyze my funnel" / "where do users drop off?" | `funnel-analysis` |
-| "Install Sealmetrics" / "add tracking" / site has no data at all | `install-sealmetrics` |
+| "Install Sealmetrics" / "add tracking" / site has no data at all | the **`seal-install`** plugin — a separate install, see below |
 | "Is my tracking set up correctly?" | `setup-audit` |
 | "Which products convert worst" / "PDP problems" / per-SKU questions | `product-friction` |
 | "Set up cart monitoring" / no watchdog baseline yet | `calibrate-watchdog` |
@@ -163,6 +185,16 @@ properties, then load the matching playbook:
 | "Where should I invest?" / "scale or cut" / budget reallocation | `channel-mix-optimizer` |
 | "What can you analyze?" / first-time onboarding for a site | `property-explorer` |
 | "Reduce expenses" / operational waste / fix the bleeding | `cost-reduction` |
+| "Alert me if…" / "tell me when…" / "my alerts" / "stop watching X" | `create-alert` |
+| A scheduled alert check firing | `check-alerts` |
+
+**Installing tracking is a different plugin.** `install-sealmetrics` needs
+`provision_site`, `verify_setup` and `verify_event_instrumented`, which are not
+announced by any connector you have here. When a user asks you to install Sealmetrics
+or says they have no tracking yet, say in one line that it is the `seal-install`
+plugin, that it needs `SEALMETRICS_API_KEY` in the environment, and stop. Do not
+improvise a snippet from memory: a snippet that was not fetched is wrong for the
+site, and it gets pasted anyway.
 
 For thresholds, MCP call rules, the cause hierarchy and failure modes, read
 `references/methodology.md`. For the opportunity pattern library, read
@@ -172,7 +204,7 @@ site profile, the property map, the recommendation ledger — read
 
 ## Scheduling
 
-Three skills are designed to run on a schedule:
+Four things are designed to run on a schedule:
 
 - `monday-briefing` — once a week, Monday morning in the site timezone.
 - `cart-watchdog` — hourly during business hours. Requires
@@ -180,6 +212,9 @@ Three skills are designed to run on a schedule:
   refuses rather than guessing a threshold.
 - `weekly-health-check` — an alternative to monday-briefing when the user
   wants the full report rather than the one-pager.
+- `check-alerts` — as often as each rule's own cadence says, and never on its
+  own. `create-alert` registers it, one scheduled task per rule, with the rule
+  in the prompt. It answers in one line while the site is healthy.
 
 In Claude Code, set these up with `/schedule`. In Cowork, use the equivalent
 scheduled task. When the user accepts a scheduled run, the skill output is the

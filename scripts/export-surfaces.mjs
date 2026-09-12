@@ -2,8 +2,8 @@
 /**
  * One source, several targets.
  *
- * The plugin is the single source of truth for the methodology and the fourteen
- * procedures. Every other surface — Cowork, Claude on the web, Codex — gets a
+ * The plugin is the single source of truth for the methodology and every
+ * procedure. Every other surface — Cowork, Claude on the web, Codex — gets a
  * rendering of that same source rather than a copy someone maintains by hand.
  * Two copies of a methodology diverge; this is the whole reason the export is
  * generated and not written.
@@ -122,8 +122,8 @@ ZIPs: edit the skills and re-run the export.
 
 Claude.ai takes Skills but not plugins, one at a time: **Settings → Features →
 Skills**, then upload each \`.zip\` here. Install the ones you will use rather
-than all fourteen — every enabled skill's description is weighed on every
-message.
+than all ${skills.length} — every enabled skill's description is weighed on
+every message.
 
 Start with \`seal-copilot.zip\` (the analyst itself), \`weekly-health-check.zip\`
 and \`diagnose-drop.zip\`.
@@ -281,17 +281,22 @@ is not available yet.
 
 ## Before it can do anything
 
-The bundled MCP server needs your credentials in the environment:
+Authorise the bundled connector with your own Sealmetrics account — a browser
+login, no token to copy. If your account has more than one site, name the
+default:
 
-    SEALMETRICS_API_KEY=sm_...
     SEALMETRICS_SITE_ID=your-site
 
 ## What you get
 
-Everything Claude Code gets: the fourteen skills, the methodology, the session
-hooks, and memory in files on this machine — Cowork has a filesystem, so the
-recommendation ledger works and the weekly report opens by verifying what it
-told you two weeks ago.
+Everything Claude Code gets: every skill, the methodology, the session hooks,
+and memory in files on this machine — Cowork has a filesystem, so the
+recommendation ledger works, alerts can be listed, and the weekly report opens
+by verifying what it told you two weeks ago.
+
+Installing tracking from scratch is the separate \`seal-install\` plugin, which
+carries the local MCP server and reads \`SEALMETRICS_API_KEY\` from your
+environment.
 `);
 console.log('dist/cowork — the plugin bundle, unchanged');
 const codex = exportCodex();

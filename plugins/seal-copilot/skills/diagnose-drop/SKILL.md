@@ -27,7 +27,10 @@ stop at the first isolated cause.
    is `traffic_change` / `conversions_change`; the daily `*_series` show
    exactly which day it broke. If the user's claim is not visible in data, say so
    and show what you see instead.
-1. **Bots/tracking:** `get_bot_stats(days=30)`. Read it with the
+1. **Tracking, and traffic quality (local only).** The traffic-quality half
+   runs only on the `local` connector; on `remote` the tool is not announced,
+   so skip to step 2 and say once, in "Not checked", that the change is
+   unvalidated for bots. On `local`: `get_bot_stats(days=30)`, read with the
    three-outcome rule in `methodology.md` — an empty result means agent
    analytics is off, not 0% bots. **When bots are the cause the diagnosis is
    not finished until you have named the source.** Call `get_top_referrers`

@@ -11,6 +11,59 @@ const root = process.argv[2] || join(here, '..', 'seal-copilot');
 const schema = JSON.parse(readFileSync(join(here, 'mcp-schema.json'), 'utf8'));
 const TOOLS = new Set(Object.keys(schema));
 
+// Two tools exist in the schema and must still never be called, and twenty more
+// are not announced by the connector nearly every user has. The schema check
+// below cannot see either problem: both are perfectly valid calls that fail in
+// production. See evals/tool-availability.json and PRD E14.
+const availability = JSON.parse(readFileSync(join(here, 'tool-availability.json'), 'utf8'));
+const FORBIDDEN = new Set(availability.forbidden.tools);
+const GATED = new Set(availability.gated.tools);
+const REFUSAL = availability.markers.refusal;
+const LOCAL_ONLY = availability.markers.localOnly.toLowerCase();
+const LOCAL_ROOTS = availability.localOnlyRoots;
+
+// Emphasis sits inside phrases we match on: "It is **not** supported on" has to
+// read as "not supported". Strip the markers before looking for one.
+const plain = (text) => text.toLowerCase().replace(/[*_]+/g, '');
+const hasRefusal = (text) => { const t = plain(text); return REFUSAL.some((k) => t.includes(k)); };
+
+/**
+ * Split a markdown file into blocks (separated by blank lines), then each block
+ * into sentences and table cells, keeping the line number each one started on.
+ *
+ * Block-first matters: soft-wrapped prose has to be rejoined before sentences
+ * can be found, but flattening the whole file would let a refusal marker in one
+ * paragraph excuse a call instruction in the next.
+ */
+function units(raw) {
+  const out = [];
+  const lines = raw.split('\n');
+  let block = [], start = 0, heading = '';
+  const flush = () => {
+    if (!block.length) return;
+    const flat = block.join(' ').replace(/\s+/g, ' ');
+    if (/^#{1,6}\s/.test(block[0])) heading = flat;
+    for (const piece of flat.split(/(?<=[.!?])\s+|\|/)) {
+      if (piece.trim()) out.push({ text: piece, line: start + 1, block: flat, heading });
+    }
+    block = [];
+  };
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].trim()) { flush(); continue; }
+    if (!block.length) start = i;
+    block.push(lines[i].trim());
+  }
+  flush();
+  return out;
+}
+
+// `(local only)` marks a STEP, so it is inherited: writing it once on the
+// section heading covers every sentence under that heading. Requiring it on
+// each sentence would push authors to sprinkle it, which is how a marker stops
+// being read.
+const isLocalOnly = (u) =>
+  [u.text, u.block, u.heading].some((t) => plain(t || '').includes(plain(LOCAL_ONLY)));
+
 // Identifiers that match the tool-name shape but are state fields, config keys
 // or prose — not MCP tools. Extend deliberately, never to silence a real bug.
 const NOT_TOOLS = new Set([
@@ -96,6 +149,24 @@ for (const file of files) {
         errors.push({ file: rel, line: lineOf(name + '('), kind: 'bad-enum',
           msg: `${name}(${key}=${val}) — not allowed. Valid: ${en.join(', ')}` });
       }
+    }
+  }
+
+  // 3. Tools that exist in the schema but must not be called, and tools the
+  //    default connector does not announce. Both are invisible to rules 1-2.
+  const localRoot = LOCAL_ROOTS.some((r) => rel.split('/').includes(r));
+  for (const u of units(raw)) {
+    for (const name of new Set([...FORBIDDEN, ...GATED])) {
+      if (!new RegExp(`\\b${name}\\b`).test(u.text)) continue;
+      if (hasRefusal(u.text)) continue;
+      if (FORBIDDEN.has(name)) {
+        errors.push({ file: rel, line: u.line, kind: 'forbidden-tool',
+          msg: `\`${name}\` must never be called. Name it only in a sentence that says so (${REFUSAL.slice(0, 4).join(', ')}…): "${u.text.trim().slice(0, 70)}"` });
+        continue;
+      }
+      if (localRoot || isLocalOnly(u)) continue;
+      errors.push({ file: rel, line: u.line, kind: 'gated-tool',
+        msg: `\`${name}\` is not announced by the remote connector. Mark the step \`${availability.markers.localOnly}\` or say it is unavailable: "${u.text.trim().slice(0, 70)}"` });
     }
   }
 }

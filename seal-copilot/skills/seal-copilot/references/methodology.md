@@ -97,16 +97,16 @@ pass `start_date` and `end_date` (account-timezone local days).
 
 | Tool | Correct usage |
 |---|---|
-| `get_bot_stats` | `days` (1–90), not `period` |
-| `get_suspicious_sessions` | `limit`, `min_score` only — no period |
+| `get_bot_stats` (local only) | `days` (1–90), not `period` |
+| `get_suspicious_sessions` (local only) | `limit`, `min_score` only — no period |
 | `get_microconversions` | `conversion_type`, not `type` |
 | `get_microconversion_details` | `conversion_type` + filters (`device_type`, `utm_source`, `country`, `browser`, `os`). There is **no** `group_by` — segment by making one filtered call per segment |
 | `get_property_breakdown` | `property_key`, `table`, `conversion_type`, `period`. No `limit`, no `sort_by` — it returns the full pivot; rank and truncate yourself |
 | `get_property_values` | `group_by` accepts only `utm_source`, `utm_medium`, `utm_campaign`, `all`. It cannot filter to a single property value |
 | `get_campaigns` | No `country` filter. Use `get_top_campaigns(country=XX)` for geo screening |
 | `get_top_campaigns` | No `sort_by` — it is ranked by entrances |
-| `get_alert_history` | `limit`, `offset`, `rule_id`, `status` — no period |
-| `get_channels`, `get_device_types` | No `compare`, no `sort_by` |
+| `get_alert_history` (local only) | `limit`, `offset`, `rule_id`, `status` — no period |
+| `get_device_types` | No `compare`, no `sort_by` |
 
 **Raw tools** (`get_conversions_raw`, `get_microconversions_raw`,
 `get_conversion_items_raw`): one row per event, `conversion_type` takes an
@@ -178,34 +178,58 @@ API key and no OAuth connection can ever call `get_channels`,
 session can. The MCP's remote transport hides these tools for that reason
 (decision of 2026-07-02); the local transport still lists them, and they 403.
 
-**What to do about it:**
+## The connector decides which tools exist — read this before step one
 
+There are two ways this plugin reaches Sealmetrics, and they expose different
+tool sets. **Establish which one you are on before you plan any analysis**,
+because it decides which steps of a skill can run at all.
+
+**Look at the tools you were given.** The list is already in front of you; it
+costs nothing to read and there is no call that reveals it.
+
+| What you see | Connector | What it means |
+|---|---|---|
+| `get_channels` and `get_bot_stats` are not announced | `remote` — the OAuth connector in `.mcp.json`, which is what nearly every user installs | The twenty tools above are **not announced**. Do not plan a step around them |
+| All sixty-two tools listed | `local` — `npx @sealmetrics/mcp` with `SEALMETRICS_API_KEY` | They are announced. Twenty of them still 403 for a modern key, so treat them as best-effort |
+
+Write the answer into `profile.json` as `connector`, once, so no later run has
+to work it out again. See `references/state-schema.md`.
+
+**The rule, on either connector: never call a tool that is not in your list.**
+A tool the connector did not announce is not a tool you have. Guessing at its
+name produces an "unknown tool" error, burns a call, and tells the user nothing
+they can act on.
+
+**What that changes, concretely:**
+
+- Steps marked **(local only)** in any skill are skipped on `remote`. Skip them
+  silently in the procedure and account for them once, at the end, in the
+  report's "Not checked" line. One line, naming what was not checked and what
+  it would have added — never a paragraph of apology, and never a retry.
+- **Traffic-quality validation is one of those steps.** On `remote` there is no
+  way to validate an anomaly against bot activity, so every anomaly you report
+  is **"unvalidated for bots"**. Say it once, in the "Not checked" line, and
+  move on. Do not recommend enabling agent analytics: it would not help, since
+  the connector would still not announce the tool.
+- `agent_analytics_enabled` in the profile is `"unknown"` on `remote`. That is
+  correct and final — it is not measurable from here, and `"unknown"` is not
+  the same as `false`.
 - **Never call `get_channels`. Use `get_top_channels`.** It hits
   `/stats/top-channels`, covered by `stats:read`, returns the same row shape as
   a bare array, and takes a `period` — so a calendar pair
   (`this_week` vs `last_week`) works exactly as before. It has no `compare`
-  either, so nothing is lost.
-- **Bot validation: attempt it once, expect it to fail, never retry.** Call
-  `get_bot_stats` the first time a session needs it — that single call is how
-  you learn which of the three outcomes applies, and a legacy key carrying
-  `read` still returns real data. Then:
-  - **Data** → use it.
-  - **Empty** → agent analytics is off. Never "0% bots".
-  - **"Access denied"** → the key cannot reach it. Record
-    `agent_analytics_enabled: "refused"` in `profile.json`, treat the anomaly
-    as "unvalidated for bots", say so in the "Not checked" line, and do not
-    call it again in this session.
+  either, so nothing is lost. This holds on both connectors.
+- **Installing tracking from scratch is a different plugin.** `seal-install`
+  carries the local connector and the provisioning tools. When a user on
+  `remote` asks you to install Sealmetrics, say so in one line and name it —
+  do not improvise a snippet from memory.
 
-  When the profile already says `"refused"`, skip the call and go straight to
-  the disclaimer. Do not skip the first attempt: an unattempted check is not
-  the same as a refused one, and only the attempt tells them apart.
-- **Alerts, webhooks, segments, channel rules, event verification** are out
-  of reach the same way. The skills that referenced them (`cost-reduction`
-  patterns 6–7, `setup-audit` steps 6, 8 and the channel-rule write path,
-  `property-explorer` segment scoring, `install-sealmetrics` verification)
-  run without them and report the gap once, without retrying.
-- `agent_analytics_enabled` in the profile is `"unknown"` for every
-  API-key connection, because it cannot be measured. That is correct.
+**On `local`, the bot check has three outcomes, not two.** Call
+`get_bot_stats` once, the first time a session needs it, and read the result:
+data → use it; empty → agent analytics is off, never "0% bots"; "Access
+denied" → record `agent_analytics_enabled: "refused"` and do not call it again
+this session. An unattempted check and a refused one are not the same thing,
+and only the attempt tells them apart.
 
 ## Reading responses — the real shapes
 
@@ -288,12 +312,17 @@ Safari- or iOS-only collapse is visible from this single call.
 `examples` per vertical. Use the signatures verbatim in install-sealmetrics.
 
 **Unverified:** `get_bot_stats` and `get_suspicious_sessions` could not be
-captured — the account-id family refused every identifier the key exposed.
-Read them defensively.
+captured — the account-id family refused every identifier the key exposed, and
+the remote connector does not announce them at all. Read them defensively on
+the one connector that has them.
 
-## The bot check has three outcomes, not two
+## The bot check has three outcomes, not two (local only)
 
-`get_bot_stats(days=N)` is mandatory before reporting any spike, drop, or
+On the `remote` connector this whole section does not apply: the tool is not
+announced, nothing is attempted, and every anomaly is reported "unvalidated for
+bots" in the "Not checked" line. See "The connector decides which tools exist".
+
+On `local`, `get_bot_stats(days=N)` comes before reporting any spike, drop, or
 anomaly. Read the result correctly:
 
 1. **Data returned** — use it. Bot share ≥15%, or one source ≥40%, is itself
@@ -302,7 +331,7 @@ anomaly. Read the result correctly:
    **agent analytics is not enabled on the site**, not that the site has zero
    bots. Never report "0% bots". Say: *"Traffic-quality data unavailable for
    this period — agent analytics may not be enabled on this site."* Mark every
-   anomaly in that report **"unvalidated for bots"** and recommend enabling it.
+   anomaly in that report **"unvalidated for bots"**.
 3. **403 / access denied** — a permissions problem, not a data problem. Say so
    plainly, do not retry, and continue the analysis with the same
    "unvalidated" marking.
@@ -311,11 +340,14 @@ anomaly. Read the result correctly:
 
 Work down this list and stop at the first isolated cause:
 
-1. **Bots / tracking failure** — `get_bot_stats(days=…)`,
-   `get_suspicious_sessions(min_score=70)`. A spike concentrated in one source
-   with high bot scores is not growth. A sudden drop to near-zero on one page
-   may be a tag removed in a deploy (check `get_pages(path_filter=…)`).
-2. **One channel** — `get_channels` on a calendar pair (see MCP call rules).
+1. **Tracking failure, and traffic quality (local only).** A sudden drop to
+   near-zero on one page may be a tag removed in a deploy — check
+   `get_pages(path_filter=…)`, which works on both connectors. On `local` only,
+   add `get_bot_stats(days=…)` and `get_suspicious_sessions(min_score=70)`: a
+   spike concentrated in one source with high bot scores is not growth. On
+   `remote` neither is announced, so skip straight to step 2 and carry the
+   "unvalidated for bots" marking into the report.
+2. **One channel** — `get_top_channels` on a calendar pair (see MCP call rules).
    If all channels fell evenly, skip to step 6.
 3. **One campaign** — `get_campaigns(compare=previous, sort_by=conversions)`
    filtered with `utm_source` / `utm_medium` to the moved channel.
@@ -392,8 +424,9 @@ metric that should move.
 
 | Situation | Behavior |
 |---|---|
-| No `SEALMETRICS_API_KEY` | Do not call the MCP. Tell the user to generate a token at my.sealmetrics.com → Settings → API Tokens and set the variable |
-| 401 / 403 | "Permission problem, not a data problem." Do not retry. Say where to regenerate the token |
+| A call fails on authentication | The connector is not authorised yet. Stop calling. Tell the user to open `/mcp`, pick **sealmetrics**, and sign in with their Sealmetrics account in the browser. No token to paste, nothing to export, no restart |
+| 401 / 403 | "Permission problem, not a data problem." Do not retry. On `remote`, re-authorising in `/mcp` is the fix; on `local`, the key in `SEALMETRICS_API_KEY` is invalid, revoked, or scoped to another account and is regenerated at my.sealmetrics.com → Settings → API Tokens |
+| A tool you wanted is not in your tool list | The connector did not announce it — see "The connector decides which tools exist". Do not call it by name hoping it is there. Skip the step and name it once in "Not checked" |
 | Multiple sites, no `SEALMETRICS_SITE_ID` | List sites by name and URL, ask which one, then proceed |
 | Fewer than 14 days of data | Skip yoy, warn that comparisons are noisy, label every verdict directional |
 | Fewer than 30 conversions in the period | Report KPIs only; do not issue findings or impact estimates |

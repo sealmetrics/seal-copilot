@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sealmetrics": {
+      "command": "npx",
+      "args": ["-y", "@sealmetrics/mcp"],
+      "env": { "SEALMETRICS_API_KEY": "${SEALMETRICS_API_KEY}" }
+    }
+  }
+}

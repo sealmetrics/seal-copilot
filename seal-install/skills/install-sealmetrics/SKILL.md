@@ -18,6 +18,19 @@ Take a site from no analytics to measured and verified. This is the only skill
 that writes code, and the only one that can create an account — both are gated
 below. Budget: ≤15 tool calls plus whatever editing the codebase takes.
 
+**This skill needs the local connector**, the one this plugin carries:
+`npx @sealmetrics/mcp` with `SEALMETRICS_API_KEY` in the environment. Half the
+procedure — `provision_site`, `verify_setup`, `get_instrumentation_guide`,
+`verify_event_instrumented` — reaches backend routes that the remote OAuth
+connector does not announce, which is why installing lives in its own plugin
+rather than in Seal Copilot.
+
+Check before step 0: if `provision_site` and `verify_setup` are not in your
+tool list, you are on the remote connector. Say so in one line, tell the user
+to install `seal-install` and set `SEALMETRICS_API_KEY`, and stop. Do not hand
+over a snippet you could not fetch — that is how a site ends up with tracking
+that looks right and measures nothing.
+
 Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone.
 
@@ -138,12 +151,16 @@ because the code looks right.
 1. Write what you established into
    `<state-dir>/<site_id>/profile.json` — site id, domain, timezone,
    vertical, the real event names you used and the product identifier key.
-   See `skills/seal-copilot/references/state-schema.md`.
+   Seal Copilot reads that profile, so writing it here is what makes the first
+   analysis cheap. The contract is `skills/seal-copilot/references/state-schema.md`
+   in the Seal Copilot plugin; the fields that matter at install time are
+   `site_id`, `site_name`, `timezone`, `currency`, `vertical`, `events`,
+   `product_identifier` and `discovery_cached_at`.
 2. Tell the user that data takes a few days to become analyzable, and name the
    first analysis that will be worth running: `property-explorer` once events
    are flowing, then `weekly-health-check`.
 3. If anything is instrumented but unverified, say so explicitly and offer
-   `setup-audit` to re-check once traffic arrives.
+   Seal Copilot's `setup-audit` to re-check once traffic arrives.
 
 ## What you do NOT do
 

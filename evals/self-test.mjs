@@ -6,7 +6,7 @@
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { assess } from './assess.mjs';
+import { assess, GLOBAL_MUST_NOT_CALL } from './assess.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cases = (await import(join(here, 'cases.mjs'))).default;
@@ -39,8 +39,8 @@ for (const c of cases) {
 }
 
 console.log('\nmock server over JSON-RPC');
-const rpc = (fixture, calls) => new Promise((resolve) => {
-  const p = spawn('node', [join(here, 'mock-server', 'server.mjs')], { env: { ...process.env, SEAL_FIXTURE: fixture } });
+const rpc = (fixture, calls, env = {}) => new Promise((resolve) => {
+  const p = spawn('node', [join(here, 'mock-server', 'server.mjs')], { env: { ...process.env, SEAL_FIXTURE: fixture, ...env } });
   const out = [];
   let buf = '';
   p.stdout.on('data', d => {
@@ -105,6 +105,50 @@ ok('over budget fails', assess(c, 'on track', [...good, { tool: 'a' }, { tool: '
 ok('rejected call fails', assess(c, 'on track', [...good, { tool: 'x', rejected: 'bad param' }]).some(f => f.includes('invalid call')));
 ok('allowRejected tolerates rejections', assess({ ...c, allowRejected: true }, 'on track', [...good, { tool: 'x', rejected: 'bad' }]).length === 0);
 ok('empty answer fails', assess(c, '   ', good).some(f => f.includes('empty')));
+
+
+// The connector a user actually has announces forty-two tools, not sixty-two.
+// A mock that always served all of them could never catch a skill planning a
+// step around a tool the connector withheld — the whole of E14.
+console.log('\ntransport gating');
+{
+  const list = (env) => new Promise((resolve) => {
+    const p = spawn('node', [join(here, 'mock-server', 'server.mjs')],
+      { env: { ...process.env, SEAL_FIXTURE: 'ecommerce-healthy', ...env } });
+    let buf = '', out = [];
+    p.stdout.on('data', d => {
+      buf += d;
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const l = buf.slice(0, i); buf = buf.slice(i + 1);
+        if (l.trim()) out.push(JSON.parse(l));
+        if (out.length === 2) { p.kill(); resolve(out[1].result.tools.map(t => t.name)); }
+      }
+    });
+    p.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '1' } } }) + '\n');
+    p.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) + '\n');
+    setTimeout(() => { p.kill(); resolve([]); }, 8000);
+  });
+  const localTools = await list({ SEAL_TRANSPORT: 'local' });
+  const remoteTools = await list({ SEAL_TRANSPORT: 'remote' });
+  ok('local announces every tool in the schema', localTools.length === 62, `${localTools.length}`);
+  ok('remote withholds the twenty gated tools', remoteTools.length === 42, `${remoteTools.length}`);
+  ok('remote still offers the replacement', remoteTools.includes('get_top_channels'));
+  ok('remote hides get_bot_stats', !remoteTools.includes('get_bot_stats'));
+  const r = await rpc('ecommerce-healthy', [{ name: 'get_bot_stats', arguments: { days: 7 } }], { SEAL_TRANSPORT: 'remote' });
+  ok('calling a withheld tool fails like an unknown one', /Unknown tool/.test(r[0]?.error?.message || ''), JSON.stringify(r[0]));
+}
+
+console.log('\nglobal bans and answer length');
+{
+  const base = { mustMatch: [], mustCall: [] };
+  ok('get_channels fails every case', assess(base, 'ok', [{ tool: 'get_channels' }]).some(f => /no skill may ever call/.test(f)));
+  ok('get_marketing_playbook fails every case', assess(base, 'ok', [{ tool: 'get_marketing_playbook' }]).some(f => /no skill may ever call/.test(f)));
+  ok('the ban list is the one the linter reads', GLOBAL_MUST_NOT_CALL.includes('get_channels'));
+  ok('a zero call budget is enforced', assess({ ...base, maxCalls: 0 }, 'ok', [{ tool: 'get_overview' }]).some(f => /budget/.test(f)));
+  ok('an over-long healthy answer fails', assess({ ...base, maxAnswerChars: 40 }, 'x'.repeat(80), []).some(f => /cap 40/.test(f)));
+  ok('a short answer passes the cap', assess({ ...base, maxAnswerChars: 40 }, 'ok', []).length === 0);
+}
 
 console.log(`\n${fails === 0 ? 'harness self-test passed' : fails + ' harness check(s) FAILED'}`);
 process.exit(fails ? 1 : 0);

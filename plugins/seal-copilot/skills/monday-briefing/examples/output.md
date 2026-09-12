@@ -26,7 +26,7 @@ of its conversions → audit the audience and creative before renewing spend →
 🚨 WATCHDOG
 Add-to-cart: 🟢 normal, tracking against the 4-week baseline.
 Tracking decay (microconversions): 🟢
-Bot share: 6% (last week 6%)
+Alerts: 2 active, none fired this week.
 
 ➡️ NEXT
 Suggested follow-up: "Diagnose retarget-es."

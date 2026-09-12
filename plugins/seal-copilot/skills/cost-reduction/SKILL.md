@@ -28,7 +28,13 @@ that's broken, and unused features. Budget: ≤12 calls.
 
 ## Patterns scanned (report only those that fire)
 
-### 1. Bot tax
+Three of the eight need tools the `remote` connector does not announce, and
+they are marked **(local only)** below. On `remote`, five patterns run. Say so
+once in the scorecard line — "3 patterns need the local connector" — and list
+them as unchecked in the closing block, never as clean. A pattern that could
+not be screened is not a pattern that came back empty.
+
+### 1. Bot tax (local only)
 - Detect: `get_bot_stats(days=30)` and
   `get_suspicious_sessions(min_score=70, limit=50)` — neither takes a
   `period`. An empty `get_bot_stats` means agent analytics is off, not 0%
@@ -79,7 +85,7 @@ that's broken, and unused features. Budget: ≤12 calls.
   selling there.
 - Impact: entrances × per-session infra cost + ads budget.
 
-### 6. Stale alerts and webhooks
+### 6. Stale alerts and webhooks (local only)
 - Detect: `list_alerts` + `get_alert_history(limit=100)` + `get_alert_stats`
   — `get_alert_history` has no `period`; it is paged with `limit` and
   `offset` and filtered with `status`. Alerts firing ≥10 times with no
@@ -90,7 +96,7 @@ that's broken, and unused features. Budget: ≤12 calls.
   delete failing webhooks. Each one is dev time saved.
 - Impact: dev hours/month + reduced alert fatigue.
 
-### 7. Unused segments
+### 7. Unused segments (local only)
 - Detect: `list_segments` — segments not referenced in any saved report
   or alert. Many accounts accumulate dozens of test segments.
 - Recommend: delete or rename. Pure hygiene.
@@ -108,8 +114,11 @@ that's broken, and unused features. Budget: ≤12 calls.
    saving: €X (variable cost) + Y dev hours/month."
 2. **Top 3 wastes, each:** name · evidence (numbers + period) · action ·
    estimated saving (with assumption stated) · how to verify in 30d.
-3. **Remaining patterns** (one line each): "Bot tax: clean. Zombie pages:
-   2 minor flags." — so the user sees the full scan happened.
+3. **Remaining patterns** (one line each): "Zombie pages: 2 minor flags.
+   Dead UTM tax: clean." — so the user sees the full scan happened. Patterns
+   that could not be screened on this connector get their own line: "Bot tax,
+   stale alerts, unused segments: need the local connector, not checked."
+
 4. **Single follow-up question:** name the next operational audit (e.g.
    "Want me to re-run after you ship the fixes?").
 

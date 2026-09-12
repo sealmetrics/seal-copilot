@@ -23,6 +23,12 @@ for `verify_event_instrumented`), never paraphrased ones. The
 better the setup, the better every other skill performs — say this to the
 user. Budget: ≤12 calls, and `get_tracking_code` is call number one.
 
+Steps marked **(local only)** need the local connector; on `remote` they are
+skipped and named once in the gap table as "not checkable from here", never
+scored as passing. Settle which connector you are on before step 0 — see "The
+connector decides which tools exist" in
+`skills/seal-copilot/references/methodology.md`.
+
 ## Procedure
 
 0. `get_tracking_code` — **first, before anything else.** Its `js_api`
@@ -51,16 +57,23 @@ user. Budget: ≤12 calls, and `get_tracking_code` is call number one.
 5. `get_conversions(30d)` — are revenue values being passed? Rows carry
    `avg_value`; 0 or null means revenue tracking is missing. Note
    `list_property_keys` returns objects with `key` and counts, not names.
-6. `list_channel_rules` — are paid sources classified correctly? Spot-check
-   against `get_traffic_sources`: cpc traffic landing in "Referral" means
-   missing UTMs or rules.
+6. Are paid sources classified correctly? Cross `get_traffic_mediums(30d)`
+   with `get_top_channels(30d)`: a `cpc` or `paidsocial` medium carrying real
+   volume while no paid channel shows it means the traffic is landing in
+   "Referral" or "Direct", so UTMs or channel rules are missing. Both tools are
+   announced on every connector, so this check always runs. **(local only)**
+   `list_channel_rules` shows the user's actual rules and sharpens the finding;
+   without it, say which medium is misrouted and let the user compare against
+   their own rules in the dashboard.
 7. `get_top_campaigns(30d)` — UTM hygiene: "(not set)" dominating means
    campaigns run untagged.
-8. `list_alerts` + `get_bot_stats(days=30)` — is anyone watching? Is bot
-   traffic material? An empty bot result means agent analytics is off, which
-   is itself a gap worth listing. If no live monitoring of add-to-cart
-   exists, recommend running `calibrate-watchdog` once and then scheduling
-   `cart-watchdog` hourly with `/schedule`.
+8. Is anyone watching? Read `<state-dir>/<site_id>/alerts.json` — the rules
+   `create-alert` has registered for this site. No file, or no rule with
+   `status: active`, is a gap: a site nobody is watching finds out about an
+   outage from its customers. Recommend one concrete rule the site's own data
+   justifies (for stores, "tell me if add-to-cart goes quiet for 2 hours"), and
+   for intraday cart cover, `calibrate-watchdog` once and then `cart-watchdog`
+   hourly with `/schedule`.
 9. `get_microconversions(period=30d)` — check that each canonical funnel
    stage receives at least 10 events/day; below that the watchdog baseline
    will be too noisy to be useful and that is a gap worth flagging.
@@ -73,8 +86,8 @@ user. Budget: ≤12 calls, and `get_tracking_code` is call number one.
 how to fix → effort (S/M/L). Order by value unlocked, not by effort.
 
 For fixes, the snippet comes **verbatim** from the `js_api` signatures you
-fetched in step 0, or from `get_instrumentation_guide`. Rules that are not
-negotiable:
+fetched in step 0 — or, **(local only)**, from `get_instrumentation_guide`.
+Rules that are not negotiable:
 
 - **Never write a call you did not fetch.** If for any reason you have no
   fetched signature, give no code — say "run `get_tracking_code` and use its
@@ -85,8 +98,14 @@ negotiable:
   "average deal size" will be pasted as-is. Use a visibly non-literal
   placeholder — `<average deal size in EUR>` — and say the developer replaces it.
 - Name the event with the site's own convention when one exists (the
-  microconversion list shows it); otherwise use the guide's canonical name. For each canonical funnel event, confirm it is really arriving with
-`verify_event_instrumented` rather than inferring it from counts. When a symptom
+  microconversion list shows it); otherwise use the canonical name from the
+  vertical table in `install-sealmetrics`.
+
+Confirm each canonical funnel event is really arriving by its volume in step 9:
+an event declared in the tracker and firing zero times is the finding, and
+`get_microconversions` shows it on every connector. **(local only)**
+`verify_event_instrumented` and `get_instrumentation_guide` settle it directly
+by polling for a live event; use them when they are announced. When a symptom
 looks like a known implementation fault, check `get_troubleshooting_guide`
 before theorising.
 
@@ -97,10 +116,17 @@ table, `agent_analytics_enabled` as `true`/`false`/`"unknown"`, and
 real audit rewrote the profile and left it out). That last flag is what stops every later skill from reporting
 "0% bots" on a site that simply is not measuring them.
 
-## Channel rules — the one place this plugin can write
+## Channel rules — the one place this plugin can write (local only)
 
-When the audit finds paid traffic misclassified (cpc sessions landing in
-"Referral", or a source the site's rules do not cover), you may propose a fix:
+None of these tools is announced on the `remote` connector, so there the audit
+**proposes the rule in words and stops**: name the source, medium and campaign
+pattern and the channel it should land in, and tell the user to create it in the
+dashboard. That is the whole procedure on `remote` — do not describe the dry run
+as something you could have done.
+
+On `local`, when the audit finds paid traffic misclassified (cpc sessions
+landing in "Referral", or a source the site's rules do not cover), you may
+propose a fix and apply it:
 
 1. Draft the rule and show it to the user in plain language.
 2. Dry-run it with `test_channel_rules` and report exactly which sessions
@@ -116,9 +142,9 @@ stop.
 
 **Close:** offer to re-audit after fixes ship, and name the first analysis
 that becomes possible once the top gap is closed. Where the fix is a channel
-rule (cpc traffic landing in "Referral"), propose the rule and offer to test
-it with `test_channel_rules` — never create or update a rule without the
-user explicitly confirming. If a product identifier
+rule (cpc traffic landing in "Referral"), propose the rule in words; offering
+to dry-run or apply it is **(local only)**, and never without the user
+explicitly confirming. If a product identifier
 is missing, name `product-friction` as the unlocked analysis. If
 microconversions are sparse, name `property-explorer` as the next step
 once volume grows.

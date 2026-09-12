@@ -3,7 +3,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 echo "→ No skill state inside the plugin"
-STRAY=$(find "$ROOT/seal-copilot" -type d \( -name state -o -name .state \) 2>/dev/null)
+STRAY=$(find "$ROOT/seal-copilot" "$ROOT/seal-install" -type d \( -name state -o -name .state \) 2>/dev/null)
 if [ -n "$STRAY" ]; then
   echo "  A skill wrote its state inside the plugin, which then ships in the bundle:"
   echo "$STRAY" | sed 's/^/    /'
@@ -13,10 +13,12 @@ fi
 echo "  clean"
 
 echo "→ Tool-call linter";        node "$ROOT/evals/lint-tool-calls.mjs" "$ROOT/seal-copilot"
+echo "→ Tool-call linter (seal-install)"; node "$ROOT/evals/lint-tool-calls.mjs" "$ROOT/seal-install"
 echo "→ Fixture arithmetic";      node "$ROOT/evals/fixtures/_check-coherence.mjs" | tail -1
 echo "→ Eval harness self-test";  node "$ROOT/evals/self-test.mjs" | tail -1
 echo "→ Assertions vs golden outputs"; node "$ROOT/evals/check-assertion-contradictions.mjs" | tail -1
-echo "→ Plugin manifest";         claude plugin validate "$ROOT/seal-copilot" | tail -1
+echo "→ Plugin manifests";        claude plugin validate "$ROOT/seal-copilot" | tail -1
+                             claude plugin validate "$ROOT/seal-install" | tail -1
 echo "→ Surface exports"; node "$ROOT/scripts/export-surfaces.mjs" | sed 's/^/  /'
 
 # The Codex marketplace is generated but committed, because a remote marketplace

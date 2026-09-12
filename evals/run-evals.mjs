@@ -81,7 +81,15 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
           // the server's environment. An absolute interpreter removes the doubt.
           command: process.execPath,
           args: [join(here, 'mock-server', 'server.mjs')],
-          env: { SEAL_FIXTURE: c.fixture, SEAL_CALL_LOG: callLog, PATH: process.env.PATH || '' },
+          env: {
+            SEAL_FIXTURE: c.fixture, SEAL_CALL_LOG: callLog,
+            // Which connector to imitate. Default `local` keeps every existing
+            // case serving all sixty-two tools; cases that set `transport:
+            // 'remote'` get the forty-two the OAuth connector announces, which
+            // is what nearly every user actually has.
+            SEAL_TRANSPORT: c.transport || 'local',
+            PATH: process.env.PATH || '',
+          },
         },
       },
     });
@@ -90,7 +98,9 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
       '-p', step.prompt,
       '--mcp-config', mcpConfig,
       '--strict-mcp-config',
-      '--plugin-dir', join(root, 'seal-copilot'),
+      // Installing tracking lives in its own plugin, because the connector this
+      // one declares cannot reach the provisioning tools. A case says which.
+      '--plugin-dir', join(root, c.pluginDir || 'seal-copilot'),
       '--allowed-tools', allowedTools,
       '--output-format', 'stream-json', '--verbose',
     ];
