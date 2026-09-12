@@ -52,7 +52,13 @@ stop at the first isolated cause.
    `get_top_channels(period=last_week)` (or the `this_month`/`last_month` pair for
    a monthly drop) — `get_top_channels` has no `compare`, so diff the pair
    yourself. All channels down evenly → jump to step 7.
-3. **Campaign:** `get_campaigns(compare=previous, utm_source/medium filters)`.
+3. **Campaign:** `get_campaigns(compare=previous, sort_by=conversions)`,
+   filtered with `utm_source` / `utm_medium` to the channel that moved.
+   **It has to be this tool.** `get_top_campaigns` is compact and tempting, and
+   it ignores `compare` silently — it would hand you the campaign's 2
+   conversions today and nothing to compare them against, and the cause
+   statement this skill owes is "230 → 2", not "2". A drill-down that cannot
+   show the prior period has not isolated anything.
 4. **Landing/term:** `get_landing_pages(compare=previous)` and/or
    `get_terms(compare=previous)` filtered to the campaign.
 5. **Device/country/browser:** `get_devices(compare=previous)` returns

@@ -7,6 +7,11 @@
 //   mustCall       — these tools must have been called
 //   mustNotCall    — these tools must never be called
 //   allowRejected  — set true only for cases that deliberately test error paths
+//   maxTextBlocks  — how many assistant text blocks the run may emit. Core rule
+//                    11 forbids narrating between tool calls, and a phrase ban
+//                    cannot catch "Now channels." / "Drilling into campaigns."
+//                    without also catching correct prose. The count can: a run
+//                    that says nothing until its report emits one block.
 //
 // Writing assertions: models vary their typography. Match "paid search" with
 // SEP, not a literal space — a model that writes "paid\u2011search" with a
@@ -94,6 +99,7 @@ export default [
     fixture: 'ecommerce-healthy',
     prompt: 'Run my weekly health check.',
     maxCalls: 10,
+    maxTextBlocks: 1,
     mustMatch: [/on track|✅/i],
     mustNotMatch: [/🔴|act now/i],
     mustCall: ['get_overview'],
@@ -103,6 +109,10 @@ export default [
     fixture: 'ecommerce-paid-search-drop',
     prompt: 'Conversions fell this week. Why?',
     maxCalls: 14,
+    // One run emitted "Drop confirmed: … Now channels.", "Drilling into
+    // campaigns." and "Checking landing/term and seasonality." before its
+    // report. In an interactive session the user reads all of that first.
+    maxTextBlocks: 1,
     mustMatch: [
       // Naming the campaign is the strong claim; requiring the channel name too
       // is redundant with it and only adds a way to flake on wording.
@@ -368,6 +378,7 @@ export default [
   },
   {
     id: 'monday-briefing-is-one-page',
+    maxTextBlocks: 1,
     fixture: 'ecommerce-healthy',
     prompt: '/seal-copilot:monday-briefing',
     maxCalls: 16,

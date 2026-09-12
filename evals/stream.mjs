@@ -19,5 +19,11 @@ export function parseStream(out) {
   // undefined, every attempt looks unfinished, and the suite silently retries
   // each case once — masking real failures behind the retry.
   if (!sawStream) return { text: out, result: null, isError: false, sessionId: null, sawResult: true };
-  return { text: texts.length ? texts.join('\n\n') : (result || ''), result, isError, sessionId, sawResult };
+  // textBlocks is how the suite sees process narration. Core rule 11 forbids
+  // emitting anything between tool calls, and a phrase ban cannot catch it —
+  // this repo has failed twelve correct answers that way. The count can: a run
+  // that says nothing until its report has one block, one that narrates has
+  // several, whatever words it chose.
+  return { text: texts.length ? texts.join('\n\n') : (result || ''), textBlocks: texts.length,
+           result, isError, sessionId, sawResult };
 }

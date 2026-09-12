@@ -12,7 +12,7 @@ const availability = JSON.parse(readFileSync(join(here, 'tool-availability.json'
 // get_marketing_playbook is a second methodology that contradicts this one.
 export const GLOBAL_MUST_NOT_CALL = availability.forbidden.tools;
 
-export function assess(c, answer, calls) {
+export function assess(c, answer, calls, textBlocks = 1) {
   const failures = [];
   const names = calls.map(x => x.tool);
   const rejected = calls.filter(x => x.rejected);
@@ -27,6 +27,9 @@ export function assess(c, answer, calls) {
   // paragraph is a defect, and no phrase assertion can catch length.
   if (c.maxAnswerChars && answer.trim().length > c.maxAnswerChars)
     failures.push(`answer is ${answer.trim().length} chars, cap ${c.maxAnswerChars}`);
+  // Process narration, caught structurally. Pass textBlocks from the stream.
+  if (c.maxTextBlocks && textBlocks > c.maxTextBlocks)
+    failures.push(`${textBlocks} text blocks, cap ${c.maxTextBlocks} — narrated between tool calls`);
   if (rejected.length && !c.allowRejected)
     failures.push(`${rejected.length} invalid call(s): ${rejected.map(r => r.rejected).join(' | ')}`);
   if (!answer.trim()) failures.push('empty answer');

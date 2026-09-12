@@ -153,6 +153,7 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
       const rejected = calls.filter(c2 => c2.rejected);
 
       resolve({ cliError, calls, rejected, ms, answer, sessionId, truncated,
+                textBlocks: parsed.textBlocks ?? 1,
                 toolNames: [...new Set(calls.map(x => x.tool))] });
     });
   });
@@ -180,7 +181,8 @@ async function runCase(c, siteId) {
     if (r.cliError) { cliError = r.cliError; break; }
     if (step.continue && !lastSession) failures.push(`step ${i + 1}: could not resume — no session id from step ${i}`);
     const label = steps.length > 1 ? `step ${i + 1}: ` : '';
-    for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected }, r.answer, stepCalls))
+    for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected },
+                           r.answer, stepCalls, r.textBlocks))
       failures.push(label + f);
   }
 

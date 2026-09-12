@@ -90,6 +90,7 @@ console.log('\nstream-json parsing');
   ok('a cut-off stream reports !sawResult',
      parseStream(ev({ type: 'assistant', message: { content: [{ type: 'text', text: 'half' }] } })).sawResult === false);
   ok('plain output is not treated as truncated', parseStream('hello').sawResult === true);
+  ok('counts the assistant text blocks', parseStream(stream).textBlocks === 2, String(parseStream(stream).textBlocks));
 }
 
 console.log('\nassertion logic');
@@ -148,6 +149,10 @@ console.log('\nglobal bans and answer length');
   ok('a zero call budget is enforced', assess({ ...base, maxCalls: 0 }, 'ok', [{ tool: 'get_overview' }]).some(f => /budget/.test(f)));
   ok('an over-long healthy answer fails', assess({ ...base, maxAnswerChars: 40 }, 'x'.repeat(80), []).some(f => /cap 40/.test(f)));
   ok('a short answer passes the cap', assess({ ...base, maxAnswerChars: 40 }, 'ok', []).length === 0);
+  // Process narration, caught by structure rather than by wording.
+  ok('narrating between tool calls fails', assess({ ...base, maxTextBlocks: 1 }, 'ok', [], 3).some(f => /narrated between tool calls/.test(f)));
+  ok('a single report block passes', assess({ ...base, maxTextBlocks: 1 }, 'ok', [], 1).length === 0);
+  ok('cases without the cap are unaffected', assess(base, 'ok', [], 5).length === 0);
 }
 
 console.log(`\n${fails === 0 ? 'harness self-test passed' : fails + ' harness check(s) FAILED'}`);
