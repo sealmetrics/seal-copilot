@@ -26,8 +26,11 @@ this skill runs from a rule and point at `create-alert`. Do not invent a rule,
 and do not fall back to a general health check.
 
 Work out the local time in `rule.timezone`. **If now is outside
-`active_hours`, stop.** Answer `🟢 <id>: outside watch hours` and make zero
-calls. Most of a day's runs end here, and that is correct.
+`active_hours`, stop.** Answer `⏸ <id>: outside watch hours` and make zero
+calls. **Not 🟢** — a green tick means you looked and the site is fine, and here
+you did not look. An operations log full of green ticks for hours nobody watched
+is how a watchdog stops being believed. Say which window the rule watches and
+what today is, so the reader can see why nothing ran. Most of a day's runs end here, and that is correct.
 
 ## Step 1 — Evaluate, by family
 
@@ -49,7 +52,17 @@ verdict needs is either in the rule or in the calls below.
    **last** page rather than the first: `page = ceil(total / 100)` on
    `get_conversions_raw(conversion_type=[<type>], period=today, limit=100,
    page=N)`. Rows carry `timestamp_local` and `hour`; take the largest.
-4. Fires when `now − last event ≥ condition.hours`, counting only active hours.
+4. **Do the subtraction, and show it.** Fires when `now − last event ≥
+   condition.hours`, counting only active hours. Establish the current local
+   time in `rule.timezone` first, then state the gap as elapsed time — "last
+   one 18 minutes ago", "no purchase for 5h 20m" — never as a bare clock time.
+   A run that printed "last one at 13:56 local" and called it healthy had the
+   right rows in front of it and never subtracted; the elapsed form is what
+   makes that impossible to skip.
+   **If you cannot establish the current time with confidence, do not answer
+   🟢.** Say which figure you are missing. A watchdog that cannot tell the time
+   reporting all-clear is worse than one that admits it, because the user stops
+   checking.
 
 ### `drop`
 
@@ -82,6 +95,10 @@ active hours, unless the rule says to fire as soon as it is crossed.
 ```
 🟢 no-conversions-4h: 6 conversions today, last one 18 minutes ago.
 ```
+
+**"18 minutes ago", not "at 13:56".** The elapsed figure is the verdict in
+miniature: a reader who sees it can check your arithmetic, and a reader who
+sees a clock time cannot. This holds for 🟢, ⚠️ and 🔴 alike.
 
 No greeting, no preamble, no offer to look deeper. A scheduled run that prints
 a paragraph on a healthy site is a defect.

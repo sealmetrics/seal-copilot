@@ -18,6 +18,12 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 Recommend budget shifts across paid channels using **Revenue Per Entrance
 (RPE)** as the proxy for ROAS. Budget: ≤10 tool calls.
 
@@ -94,12 +100,6 @@ budget decisions need their cost reality. Provide the **ratio** and the
 **verification formula**.
 
 ## Output format
-
-**Before anything else: emit no text until the report.** No "Drop confirmed,
-moving to channels", no "Drilling into campaigns", no "Checking seasonality".
-The user reads every one of those before your answer, and a run that narrates
-its way to a conclusion reads as one that has not reached it. Make the calls in
-silence; your first message is the finished report.
 
 1. **Channel scorecard table** (paid channels only): entrances · CR · AOV
    · RPE · RPE vs site avg · 90d trend.

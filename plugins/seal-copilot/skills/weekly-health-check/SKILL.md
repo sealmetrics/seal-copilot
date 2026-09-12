@@ -14,6 +14,12 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 Produce a tight weekly performance report. Budget: ≤8 tool calls.
 Apply the operating rules, thresholds, MCP call rules and failure modes from
 `skills/seal-copilot/references/methodology.md`.
@@ -47,12 +53,6 @@ findings — say why in one line.
    mover: `get_landing_pages`, `get_terms`, or `get_devices` as relevant.
 
 ## Output format
-
-**Before anything else: emit no text until the report.** No "Drop confirmed,
-moving to channels", no "Drilling into campaigns", no "Checking seasonality".
-The user reads every one of those before your answer, and a run that narrates
-its way to a conclusion reads as one that has not reached it. Make the calls in
-silence; your first message is the finished report.
 
 **Verdict line first:** one of
 - ✅ On track — nothing needs action this week

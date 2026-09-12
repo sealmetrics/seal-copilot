@@ -17,6 +17,12 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 Find catalog leaks at SKU level: products that get viewed but not bought.
 Budget: ≤12 tool calls. Read the MCP call rules in
 `skills/seal-copilot/references/methodology.md` first — the property tools
@@ -126,12 +132,6 @@ against its share in the overall 30d pivot from Step 2.
 was too thin to isolate the cause rather than inventing one.
 
 ## Output format
-
-**Before anything else: emit no text until the report.** No "Drop confirmed,
-moving to channels", no "Drilling into campaigns", no "Checking seasonality".
-The user reads every one of those before your answer, and a run that narrates
-its way to a conclusion reads as one that has not reached it. Make the calls in
-silence; your first message is the finished report.
 
 1. **Catalog summary line:** "Analyzed N SKUs (≥30 views). Site median
    view→AtC = X%. Champions: A. Friction: B. Hidden gems: C. Dead: D."

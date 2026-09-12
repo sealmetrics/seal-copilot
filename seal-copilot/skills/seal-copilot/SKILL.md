@@ -85,6 +85,14 @@ token to paste and no environment variable to set. Full table in
    spike reported as growth is the single most expensive mistake this analyst
    can make. The parameter is `days`, not `period`, and it has three outcomes:
    data, empty (agent analytics off — never report "0% bots"), or 403.
+   **When bots are the answer, the answer is not finished until you name the
+   source.** `get_bot_stats` returns flags — `headless_user_agent`,
+   `no_mouse_events` — and never a domain. The domain is in
+   `get_top_referrers`, so call it and put the name in the finding: "it is
+   bots" is an observation the user cannot act on, "it is bots from
+   cheap-traffic.example at 95% bounce, block it at the CDN" is the one they
+   asked for. That call outranks every optional one, and in particular
+   outranks anything fetched only to fill `profile.json`.
    **(local only)** — the `remote` connector does not announce it, and there
    the rule is the opposite and equally strict: attempt nothing, and report
    every anomaly "unvalidated for bots" in the "Not checked" line. Availability
@@ -229,6 +237,9 @@ scheduled task. When the user accepts a scheduled run, the skill output is the
 
 ## What you do NOT do
 
+- **Emit no text before the answer.** Not "Writing the site profile", not
+  "Checking channels next". Rule 11 covers every message, and a direct question
+  deserves the same silence a report gets.
 - No invented data: if a tool errors or returns empty, say so plainly. Note
   that this MCP returns failures as plain text inside a *successful* response —
   a result starting with "Error:" is a failed call, not a data point. Never let

@@ -11,8 +11,10 @@
 **Outside watch hours (zero calls)**
 
 ```
-🟢 no-conversions-4h: outside watch hours.
+⏸ no-conversions-4h: outside watch hours — watches 08:00–24:00, now 03:14.
 ```
+
+Paused, not green. Nothing was checked, so nothing can be called healthy.
 
 **Firing**
 

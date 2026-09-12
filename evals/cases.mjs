@@ -577,8 +577,14 @@ export default [
     // The same silence as the firing case, on a rule that is not watching now.
     prompt: RULE_PROMPT.outsideActiveHours(),
     maxCalls: 0,
-    mustMatch: [/🟢/],
-    mustNotMatch: [/🔴/],
+    // Assert the meaning, not the symbol. Two correct answers failed this case
+    // for lacking a green tick while saying "Outside active hours — rule active
+    // only on Tuesdays 03:00–05:00, and today is Saturday. No check performed,
+    // no alert." That is the behaviour under test, and it is better than the
+    // format the skill used to ask for: nothing was checked, so nothing is green.
+    mustMatch: [new RegExp(['outside (its )?(active|watch) hours', 'not watching',
+                            'no check performed', 'outside the window'].join('|'), 'i')],
+    mustNotMatch: [/🔴/, /🟢/],
     maxAnswerChars: 400,
   },
   {

@@ -15,6 +15,12 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 Find the weakest funnel stage and isolate its cause. Budget: ≤10 calls.
 Vertical playbooks: `skills/seal-copilot/references/ecommerce-playbook.md`
 (stores) and `skills/seal-copilot/references/hotels-playbook.md` (hotels).
@@ -45,12 +51,6 @@ Vertical playbooks: `skills/seal-copilot/references/ecommerce-playbook.md`
    skill for the full per-SKU treatment.
 
 ## Output format
-
-**Before anything else: emit no text until the report.** No "Drop confirmed,
-moving to channels", no "Drilling into campaigns", no "Checking seasonality".
-The user reads every one of those before your answer, and a run that narrates
-its way to a conclusion reads as one that has not reached it. Make the calls in
-silence; your first message is the finished report.
 
 1. **Funnel table:** stage → volume → step CR → change vs previous.
 2. **Weakest link:** one sentence naming the stage and the segment where

@@ -15,6 +15,12 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 Isolate the root cause of a metric change. Budget: ≤12 tool calls.
 Follow the cause hierarchy from
 `skills/seal-copilot/references/methodology.md` strictly — work down,
@@ -82,12 +88,6 @@ stop at the first isolated cause.
 8. **Market-wide:** if nothing isolates, state it plainly.
 
 ## Output format
-
-**Before anything else: emit no text until the report.** No "Drop confirmed,
-moving to channels", no "Drilling into campaigns", no "Checking seasonality".
-The user reads every one of those before your answer, and a run that narrates
-its way to a conclusion reads as one that has not reached it. Make the calls in
-silence; your first message is the finished report.
 
 All four sections are **mandatory**, in this order. A one-line summary is not
 an acceptable answer to this skill even when the cause is obvious: the user

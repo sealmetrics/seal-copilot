@@ -17,6 +17,12 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 The Monday-morning one-pager. Combines the highlights of three skills
 into a 6-block report the user can forward to their team. Budget: ≤15
 calls. Designed for **scheduled execution** — `/schedule` in Claude Code, or
@@ -92,12 +98,6 @@ only)** — on `remote` there is no result to reuse, so every mover carries that
 marking by default and the "Not checked" line says so once.
 
 ## Output format (the one-pager)
-
-**Before anything else: emit no text until the report.** No "Drop confirmed,
-moving to channels", no "Drilling into campaigns", no "Checking seasonality".
-The user reads every one of those before your answer, and a run that narrates
-its way to a conclusion reads as one that has not reached it. Make the calls in
-silence; your first message is the finished report.
 
 ```
 🦭 Seal Copilot — Monday Briefing · <site> · <week dates>

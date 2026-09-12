@@ -18,6 +18,12 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** No "Drop confirmed,
+moving to channels", no "Drilling into campaigns", no "Checking seasonality".
+The user reads every one of those before your answer, and a run that narrates
+its way to a conclusion reads as one that has not reached it. Make the calls in
+silence; your first message is the finished report.
+
 Find waste Sealmetrics can see **without** ad-spend data: traffic that
 costs money on the infrastructure side but produces nothing, instrumentation
 that's broken, and unused features. Budget: ≤12 calls.
@@ -44,8 +50,14 @@ not be screened is not a pattern that came back empty.
   bots: say so and skip this pattern. If bot share ≥ 15% of total sessions,
   or one source has bot share ≥ 40%, the cost is real (CDN egress, log
   storage, polluted analytics).
-- Recommend: enable Cloudflare / WAF blocking on top bot sources;
-  exclude them from Sealmetrics if they ride a UTM the user controls.
+- **Name the source, or the pattern is not reported.** `get_bot_stats` returns
+  flags (`headless_user_agent`, `no_mouse_events`), never domains. Call
+  `get_top_referrers` and find the domain carrying the traffic — a single
+  referrer at 90%+ bounce is the shape. This call outranks patterns 6, 7 and 8,
+  which are hygiene: a run that lists unused segments and cannot say where the
+  bot traffic comes from has spent its budget on the wrong thing.
+- Recommend: enable Cloudflare / WAF blocking on that domain; exclude it from
+  Sealmetrics if it rides a UTM the user controls.
 - Impact: bot sessions × site's per-session infra cost (user must supply
   €/1k sessions; if not, state hours saved in analyst time instead).
 
@@ -112,12 +124,6 @@ not be screened is not a pattern that came back empty.
 - Impact: cleaner schema + lighter pixel payload.
 
 ## Output format
-
-**Before anything else: emit no text until the report.** No "Drop confirmed,
-moving to channels", no "Drilling into campaigns", no "Checking seasonality".
-The user reads every one of those before your answer, and a run that narrates
-its way to a conclusion reads as one that has not reached it. Make the calls in
-silence; your first message is the finished report.
 
 1. **Waste scorecard line:** "Found N patterns firing. Estimated monthly
    saving: €X (variable cost) + Y dev hours/month."
