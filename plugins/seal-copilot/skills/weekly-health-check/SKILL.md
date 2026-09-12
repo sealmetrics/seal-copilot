@@ -37,11 +37,12 @@ findings — say why in one line.
    two calendar-pair calls yourself (see `methodology.md`, MCP call rules).
 3. `get_campaigns(period=7d, compare=previous, sort_by=revenue, limit=20)`
    — winners and losers.
-4. **(local only)** If any anomaly (±25%): `get_bot_stats(days=7)` to
-   validate it is human. An empty result means agent analytics is off, not 0%
-   bots — mark the finding "unvalidated for bots" (see `methodology.md`). On
-   the `remote` connector the tool is not announced: skip this step, attempt
-   nothing, and carry "unvalidated for bots" into the "Not checked" line.
+4. If any anomaly (±25%) and `get_bot_stats` is in your tool list, call
+   `get_bot_stats(days=7)` to validate it is human — do not report the
+   anomaly before you have. An empty result means agent analytics is off, not
+   0% bots: mark the finding "unvalidated for bots" (see `methodology.md`).
+   **(local only)** — on `remote` the tool is not announced, so there you
+   attempt nothing and carry that marking into the "Not checked" line.
 5. Optional drill-down (1–2 calls max) only to explain the single biggest
    mover: `get_landing_pages`, `get_terms`, or `get_devices` as relevant.
 

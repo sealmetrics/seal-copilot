@@ -18,7 +18,9 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density and tone. It is the reference for what a good run of this
 skill looks like.
 
-Budget: ≤3 tool calls. The output of a successful run is under 10 lines.
+Budget: ≤3 tool calls — up to two to find the event and measure it, one
+for the expectation a `drop` rule needs. The output of a successful run is
+under 10 lines.
 
 This skill writes the rule. `check-alerts` evaluates it, on a schedule. The two
 share the grammar below and nothing else — deliberately, because a scheduled
@@ -89,18 +91,29 @@ not assume**, and ask everything in a single message:
 Sensible defaults you may apply without asking: `cadence_minutes` from the
 formula, `expires_at` six months out, `deliver: ["app"]`, `filter: {}`.
 
-### 2. Verify the metric exists, and that the rule will not be noise (1 call)
+### 2. Verify the metric exists, and that the rule will not be noise (1–2 calls)
 
-- `list_microconversion_types` for a microconversion, or `get_conversions(period=30d)`
-  for a conversion. If the name the user used is not there, say which names do
-  exist and stop — a rule on an event that never fires alerts every single day.
-- **Noise check.** Compute the median events per active window from the 30-day
-  volume. **Below 5, refuse the rule as written** and propose either a longer
-  window or the `threshold` family on a daily figure. A `silence` rule of four
-  hours on an event that happens three times a day fires most afternoons and
-  teaches the user to ignore you. Say the arithmetic out loud: "purchase runs
-  at about 2 a day, so four quiet hours is normal — at 12 hours it would mean
-  something."
+**Check both surfaces before saying an event is not tracked.** The user says
+"demo requests" or "sales"; they do not say whether the site records that as a
+conversion or a microconversion, and you cannot tell from the word. Call
+`list_microconversion_types`; if the name is not there, call
+`get_conversions(period=30d)` before concluding anything — and the other way
+round. Only when it is in **neither** is the event genuinely untracked, and only
+then do you list what does exist and stop.
+
+Getting this wrong is not a near miss. A run told a SaaS account that
+`demo_request` was not being tracked, having looked only at the microconversion
+list; it was the site's macro conversion, 41 of them that month. Set
+`metric.kind` from where you actually found the event, never from the word the
+user used.
+
+**Noise check.** Compute the median events per active window from the 30-day
+volume. **Below 5, refuse the rule as written** and propose either a longer
+window or the `threshold` family on a daily figure. A `silence` rule of four
+hours on an event that happens three times a day fires most afternoons and
+teaches the user to ignore you. Say the arithmetic out loud: "demo_request runs
+at about 1.4 a day, so four quiet hours is normal — at 12 hours it would mean
+something."
 
 ### 3. Fill `expected`, for `drop` and `spike` only (0–1 calls)
 

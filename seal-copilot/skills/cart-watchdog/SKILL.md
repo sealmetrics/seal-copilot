@@ -77,11 +77,11 @@ Two extra signals from this:
 
 ## Step 3 — Rule out bots (1 call, before any 🔴) (local only)
 
-On the `remote` connector this step does not run: `get_bot_stats` is not
-announced. Keep the status you computed, append "unvalidated for bots" to it,
-and go to step 4.
-
-On `local`: `get_bot_stats(days=1)`
+If `get_bot_stats` is in your tool list, call `get_bot_stats(days=1)` before
+you raise a 🔴. A cart that looks dead because a bot wave inflated yesterday's
+baseline is not an incident, and paging someone for it is how a watchdog gets
+turned off. On `remote` the tool is not announced: keep the status you
+computed, append "unvalidated for bots", and go to step 4.
 
 - Drop coinciding with a bot spike → the drop is real but the metric was
   previously inflated. Say so and recommend recalibrating.

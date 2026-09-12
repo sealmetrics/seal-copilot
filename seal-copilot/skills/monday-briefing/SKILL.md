@@ -70,9 +70,10 @@ Pick one only — the one with the largest € impact. Do not list the others.
   `calibrate-watchdog` has run. Without a baseline, compare to
   `get_microconversions(conversion_type=<atc>, period=yesterday)` and say the
   comparison is coarse.
-- **(local only)** `get_bot_stats(days=7)` — bot share trend. Empty means
-  agent analytics is off, not 0%. Not announced on `remote`: skip it, and drop
-  the bot line from the watchdog block rather than printing a zero.
+- `get_bot_stats(days=7)` — bot share trend, when the tool is in your tool
+  list. Empty means agent analytics is off, not 0%. **(local only)** — not
+  announced on `remote`, and there you drop the bot line from the watchdog
+  block entirely rather than printing a zero.
 
 Status line: `🟢 normal` / `⚠️ watch — <reason>` / `🔴 act now — <reason>`.
 
@@ -84,11 +85,11 @@ the one line that matters instead — that nothing is watching it between these
 reports — and an offer to set one up with `create-alert`. Omit the block
 entirely if the file is unreadable.
 
-### Block D — Validation (0 calls) (local only)
+### Block D — Validation (0 calls)
 Reuse the `get_bot_stats(days=7)` result from Block C. If it was empty or
-returned 403, mark every mover in Block A "unvalidated for bots". On `remote`
-there is no result to reuse, so every mover carries that marking by default and
-the "Not checked" line says so once.
+returned 403, mark every mover in Block A "unvalidated for bots". **(local
+only)** — on `remote` there is no result to reuse, so every mover carries that
+marking by default and the "Not checked" line says so once.
 
 ## Output format (the one-pager)
 

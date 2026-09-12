@@ -55,11 +55,12 @@ Budget: ≤12 tool calls.
    microconversions are tracked, RPE gap (12) for accounts running
    multiple paid channels, intraday gap (13) only if a watchdog baseline
    already exists (`calibrate-watchdog` has run).
-7. **(local only)** Validate any anomaly with `get_bot_stats(days=30)` —
-   pattern 9 — before reporting. An empty result means agent analytics is off,
-   not 0% bots: mark the finding "unvalidated for bots". On `remote` the tool
-   is not announced, so pattern 9 cannot fire: list it among the patterns that
-   could not be checked, not among those that did not fire.
+7. If `get_bot_stats` is in your tool list, validate any anomaly with
+   `get_bot_stats(days=30)` — pattern 9 — before reporting it. An empty result
+   means agent analytics is off, not 0% bots: mark the finding "unvalidated
+   for bots". **(local only)** — on `remote` the tool is not announced, so
+   pattern 9 cannot be screened at all: list it among the patterns that could
+   not be checked, never among those that did not fire.
 
 ## Output format
 

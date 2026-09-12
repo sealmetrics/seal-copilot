@@ -317,14 +317,16 @@ captured — the account-id family refused every identifier the key exposed, and
 the remote connector does not announce them at all. Read them defensively on
 the one connector that has them.
 
-## The bot check has three outcomes, not two (local only)
+## The bot check has three outcomes, not two
 
-On the `remote` connector this whole section does not apply: the tool is not
-announced, nothing is attempted, and every anomaly is reported "unvalidated for
-bots" in the "Not checked" line. See "The connector decides which tools exist".
+**Whenever `get_bot_stats` is in your tool list, calling it comes before
+reporting any spike, drop or anomaly.** It is not a step you weigh up; a
+bot-driven spike reported as growth moves real budget. **(local only)** — on
+the `remote` connector it is not announced, so nothing is attempted and every
+anomaly is reported "unvalidated for bots" in the "Not checked" line instead.
+See "The connector decides which tools exist".
 
-On `local`, `get_bot_stats(days=N)` comes before reporting any spike, drop, or
-anomaly. Read the result correctly:
+When you can call it, read the result correctly:
 
 1. **Data returned** — use it. Bot share ≥15%, or one source ≥40%, is itself
    the finding.
@@ -341,13 +343,14 @@ anomaly. Read the result correctly:
 
 Work down this list and stop at the first isolated cause:
 
-1. **Tracking failure, and traffic quality (local only).** A sudden drop to
-   near-zero on one page may be a tag removed in a deploy — check
-   `get_pages(path_filter=…)`, which works on both connectors. On `local` only,
-   add `get_bot_stats(days=…)` and `get_suspicious_sessions(min_score=70)`: a
-   spike concentrated in one source with high bot scores is not growth. On
-   `remote` neither is announced, so skip straight to step 2 and carry the
-   "unvalidated for bots" marking into the report.
+1. **Tracking failure, and traffic quality.** A sudden drop to near-zero on
+   one page may be a tag removed in a deploy — check `get_pages(path_filter=…)`,
+   which works on both connectors. And if `get_bot_stats` is in your tool list,
+   call it here, before step 2: a spike concentrated in one source with high
+   bot scores is not growth, and no amount of channel drill-down will tell you
+   that. Add `get_suspicious_sessions(min_score=70)` to confirm a hit.
+   **(local only)** — on `remote` neither is announced, so skip straight to
+   step 2 and carry the "unvalidated for bots" marking into the report.
 2. **One channel** — `get_top_channels` on a calendar pair (see MCP call rules).
    If all channels fell evenly, skip to step 6.
 3. **One campaign** — `get_campaigns(compare=previous, sort_by=conversions)`

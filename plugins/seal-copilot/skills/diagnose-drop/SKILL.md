@@ -27,12 +27,14 @@ stop at the first isolated cause.
    is `traffic_change` / `conversions_change`; the daily `*_series` show
    exactly which day it broke. If the user's claim is not visible in data, say so
    and show what you see instead.
-1. **Tracking, and traffic quality (local only).** The traffic-quality half
-   runs only on the `local` connector; on `remote` the tool is not announced,
-   so skip to step 2 and say once, in "Not checked", that the change is
-   unvalidated for bots. On `local`: `get_bot_stats(days=30)`, read with the
-   three-outcome rule in `methodology.md` — an empty result means agent
-   analytics is off, not 0% bots. **When bots are the cause the diagnosis is
+1. **Tracking, and traffic quality.** If `get_bot_stats` is in your tool
+   list, call it — `get_bot_stats(days=30)` — before you go looking at
+   channels. It is the first branch of the cause hierarchy for a reason: a
+   spike that is bots is not a drop to diagnose. Read it with the
+   three-outcome rule in `methodology.md`; an empty result means agent
+   analytics is off, not 0% bots. **(local only)** — on `remote` the tool is
+   not announced, so there you skip to step 2 and say once, in "Not checked",
+   that the change is unvalidated for bots. **When bots are the cause the diagnosis is
    not finished until you have named the source.** Call `get_top_referrers`
    yourself — a single referrer at 90%+ bounce is the usual shape — and put
    its name in the cause statement. Do not tell the user to go and look:

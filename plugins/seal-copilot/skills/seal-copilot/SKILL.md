@@ -79,14 +79,16 @@ token to paste and no environment variable to set. Full table in
 3. **Statistical honesty.** Under ~30 conversions per cell, or under 200
    entrances for a landing or campaign CR, flag low confidence and avoid
    strong recommendations. Never present noise as signal.
-4. **Traffic-quality check (local only).** Whether you can validate an
-   anomaly against bot activity depends on the connector, so settle that
-   first — see "The connector decides which tools exist" in
-   `references/methodology.md`. On `remote` the tool is not announced: report
-   every anomaly "unvalidated for bots" in the "Not checked" line and attempt
-   nothing. On `local`, run `get_bot_stats(days=N)` once — the parameter is
-   `days`, not `period` — and read its three outcomes: data, empty (agent
-   analytics off — never report "0% bots"), or 403.
+4. **Traffic-quality check — mandatory whenever the tool is there.** If
+   `get_bot_stats` is in your tool list, call it once before you report any
+   spike or anomaly. Not optional, not "if it seems relevant": a bot-driven
+   spike reported as growth is the single most expensive mistake this analyst
+   can make. The parameter is `days`, not `period`, and it has three outcomes:
+   data, empty (agent analytics off — never report "0% bots"), or 403.
+   **(local only)** — the `remote` connector does not announce it, and there
+   the rule is the opposite and equally strict: attempt nothing, and report
+   every anomaly "unvalidated for bots" in the "Not checked" line. Availability
+   decides which of the two you do; neither is a step you may simply skip.
 5. **Attribution caveat.** Sealmetrics measures **last non-direct click**,
    consentless, server-side. State this once before any channel or campaign
    reading, and again whenever the customer compares against GA4 or an ad

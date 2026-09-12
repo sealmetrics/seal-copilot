@@ -34,7 +34,10 @@ once in the scorecard line — "3 patterns need the local connector" — and lis
 them as unchecked in the closing block, never as clean. A pattern that could
 not be screened is not a pattern that came back empty.
 
-### 1. Bot tax (local only)
+### 1. Bot tax
+- **(local only)** — needs `get_bot_stats` and `get_suspicious_sessions` in
+  your tool list. When they are there, screen this pattern; when they are not,
+  report it as unchecked rather than clean.
 - Detect: `get_bot_stats(days=30)` and
   `get_suspicious_sessions(min_score=70, limit=50)` — neither takes a
   `period`. An empty `get_bot_stats` means agent analytics is off, not 0%
