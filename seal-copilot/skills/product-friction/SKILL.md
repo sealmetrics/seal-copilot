@@ -24,7 +24,11 @@ either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
 no "Checking seasonality". The user reads every one of those before your answer,
 and a run that narrates its way to a conclusion reads as one that has not
 reached it. Make the calls in silence; your first and only message is the
-finished report.
+finished report. **And nothing after it:** write the profile, the ledger and the
+run log *before* the report, never once it is written. A tool call after the
+report forces a second message, and a run that logged its diagnosis first and
+then added "Diagnosis complete: the drop traces to /collections/sale" made the
+user read the same finding twice.
 
 Find catalog leaks at SKU level: products that get viewed but not bought.
 Budget: ≤12 tool calls. Read the MCP call rules in
@@ -163,7 +167,7 @@ was too thin to isolate the cause rather than inventing one.
 
 ---
 
-Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
+**Before the report, not after it:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
 ceiling, a number — `12` here), `verdict` (one of `on_track`, `watch`, `act`,

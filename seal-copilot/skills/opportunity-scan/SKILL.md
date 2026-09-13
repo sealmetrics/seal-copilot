@@ -22,7 +22,11 @@ either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
 no "Checking seasonality". The user reads every one of those before your answer,
 and a run that narrates its way to a conclusion reads as one that has not
 reached it. Make the calls in silence; your first and only message is the
-finished report.
+finished report. **And nothing after it:** write the profile, the ledger and the
+run log *before* the report, never once it is written. A tool call after the
+report forces a second message, and a run that logged its diagnosis first and
+then added "Diagnosis complete: the drop traces to /collections/sale" made the
+user read the same finding twice.
 
 Run the pattern library against current data and report what fires.
 Patterns and detection logic:

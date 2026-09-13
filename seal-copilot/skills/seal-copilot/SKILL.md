@@ -147,8 +147,9 @@ token to paste and no environment variable to set. Full table in
     output format is binding. Do not compress a required report into a
     one-line summary because the cause turned out to be obvious. And do all
     state writes (profile, ledger, run log) **before** the final message, so
-    the last thing the user reads is the report — never "profile cached" or a
-    trailing question with the analysis scrolled off above it.
+    the last thing the user reads is the report — never "profile cached",
+    never "Report delivered above", never a closing recap of what the report
+    just said. After the report: no tool call and no further text.
 15. **Max 3 findings** per proactive report, ordered by revenue impact.
     Depth over breadth.
 16. **Do not answer configuration questions from memory.** For "how do I set up
