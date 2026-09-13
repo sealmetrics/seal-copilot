@@ -19,6 +19,16 @@ allowed to be chatty.
 Budget: ≤3 tool calls per rule. Silence when healthy is the product — an alert
 that talks every hour is one the user mutes.
 
+**This skill runs on every connector, the remote OAuth one included.** It uses
+only `get_conversions`, `get_microconversions`, `get_conversions_raw`,
+`get_overview`, `get_campaigns` and `get_top_referrers`, and all of them are
+announced everywhere. The alert tools the remote connector withholds —
+`list_alerts`, `get_alert_history`, `get_alert_stats` — are not available to
+it: they belong to Sealmetrics' own dashboard alerts, a different product this
+skill never touches. **Never refuse a check because of the connector.** A run
+that answered "check-alerts is local-only" left a site unwatched on exactly the
+connector nearly every user has.
+
 ## Step 0 — Read the rule and the clock
 
 The rule arrives as JSON in the prompt. If it did not, say in one line that
@@ -95,6 +105,11 @@ filter — against `condition.below` or `condition.above`. Evaluate it on the la
 active hours, unless the rule says to fire as soon as it is crossed.
 
 ## Step 2 — Answer
+
+**The answer opens with a symbol: 🟢, ⚠️, 🔴 or ⏸.** The words `on_track`,
+`watch` and `act` belong to the run log in `runs.jsonl` and nowhere else. A
+reader scanning a column of scheduled results reads the symbols; "act" at
+the start of a line reads as a typo.
 
 **Healthy.** One line, and it is the entire response:
 

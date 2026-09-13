@@ -22,6 +22,11 @@ Budget: ≤3 tool calls — up to two to find the event and measure it, one
 for the expectation a `drop` rule needs. The output of a successful run is
 under 10 lines.
 
+**Works on every connector.** These rules are the plugin's own and need none
+of the tools the remote connector withholds; `list_alerts` and the other
+dashboard-alert tools are not available to it and are a different product. Do
+not tell a user on the remote connector that alerts need the local one.
+
 This skill writes the rule. `check-alerts` evaluates it, on a schedule. The two
 share the grammar below and nothing else — deliberately, because a scheduled
 run may have no filesystem and must carry everything it needs in its prompt.

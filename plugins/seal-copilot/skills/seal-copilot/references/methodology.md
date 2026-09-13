@@ -186,7 +186,7 @@ costs nothing to read and there is no call that reveals it.
 
 | What you see | Connector | What it means |
 |---|---|---|
-| `get_channels` and `list_alerts` are not announced | `remote` — the OAuth connector in `.mcp.json`, which is what nearly every user installs | The twenty tools above are **not announced**. Do not plan a step around them |
+| `list_alerts` and `list_segments` are not announced | `remote` — the OAuth connector in `.mcp.json`, which is what nearly every user installs | The twenty tools above are **not announced**. Do not plan a step around them |
 | All sixty-two tools listed | `local` — `npx @sealmetrics/mcp` with `SEALMETRICS_API_KEY` | They are announced. Twenty of them still 403 for a modern key, so treat them as best-effort |
 
 Write the answer into `profile.json` as `connector`, once, so no later run has
@@ -203,6 +203,11 @@ they can act on.
   silently in the procedure and account for them once, at the end, in the
   report's "Not checked" line. One line, naming what was not checked and what
   it would have added — never a paragraph of apology, and never a retry.
+  The marker is on **steps**, never on a whole skill: no skill in this plugin is
+  unavailable on `remote`. In particular the plugin's own alerts —
+  `create-alert`, `check-alerts` — use none of the withheld tools; the withheld
+  alert tools are not available to them and belong to Sealmetrics' dashboard
+  alerts, a different thing.
 - **Never call `get_channels`. Use `get_top_channels`.** It hits
   `/stats/top-channels`, covered by `stats:read`, returns the same row shape as
   a bare array, and takes a `period` — so a calendar pair

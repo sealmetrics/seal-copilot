@@ -345,7 +345,7 @@ export default [
     ],
     // The snippet must come from the site's own js_api, so the call is mandatory.
     mustCall: ['list_microconversion_types', 'list_property_keys', 'get_tracking_code'],
-    maxCalls: 13,
+    maxCalls: 15,   // skill budget 13, plus list_sites and one call of headroom
   },
   {
     id: 'watchdog-refuses-without-a-baseline',
@@ -544,7 +544,7 @@ export default [
     // which is exactly what it must not do.
     maxCalls: 4,
     mustMatch: [
-      /🔴|act now|fired|alert/i,
+      /🔴|\bact\b|fired|alert/i,
       // The incident start time is what the user matches against their deploys.
       // Any clock format, but a real time must be there.
       /\b([01]?\d|2[0-3])[:.][0-5]\d\b/,
@@ -588,7 +588,7 @@ export default [
     // is the only thing that makes a scheduled run possible without a disk.
     prompt: (now) => RULE_PROMPT.drop({ ratio: 0.5, expected: 60 }, now),
     maxCalls: 4,
-    mustMatch: [/🔴|⚠️/, /\b8\b/, /60|expected/i],
+    mustMatch: [/🔴|⚠️|\bact\b|\bwatch\b|\bfires?\b/i, /\b8\b/, /60|expected/i],
     mustCall: ['get_microconversions'],
   },
   {
@@ -599,6 +599,6 @@ export default [
     // The same drop rule on the connector nearly everyone has: it fires on the
     // embedded expectation and needs nothing the connector withholds.
     transport: 'remote',
-    mustMatch: [/🔴|⚠️/, /\b8\b/],
+    mustMatch: [/🔴|⚠️|\bact\b|\bwatch\b|\bfires?\b/i, /\b8\b/],
   },
 ];

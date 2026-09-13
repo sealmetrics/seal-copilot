@@ -85,7 +85,7 @@ prevent. Write these names, not synonyms of them. The eval suite asserts on
 them.
 
 `connector` is `"remote"` or `"local"`, and it is free to determine: `remote`
-is the one where `get_channels` and `list_alerts` are not announced in the
+is the one where `list_alerts` and `list_segments` are not announced in the
 tool list you were given.
 It decides which steps of every skill can run, so write it on the first run and
 read it before planning an analysis. See "The connector decides which tools

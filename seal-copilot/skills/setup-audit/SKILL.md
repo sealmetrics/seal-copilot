@@ -21,7 +21,7 @@ request always runs the full procedure, even minutes after the last one. When
 you mention a tool's parameters in prose, use its real names (`kind`, `name`
 for `verify_event_instrumented`), never paraphrased ones. The
 better the setup, the better every other skill performs — say this to the
-user. Budget: ≤12 calls, and `get_tracking_code` is call number one.
+user. Budget: ≤13 calls, and `get_tracking_code` is call number one.
 
 Steps marked **(local only)** need the local connector; on `remote` they are
 skipped and named once in the gap table as "not checkable from here", never
@@ -68,7 +68,8 @@ connector decides which tools exist" in
    their own rules in the dashboard.
 7. `get_top_campaigns(30d)` — UTM hygiene: "(not set)" dominating means
    campaigns run untagged.
-8. Is anyone watching? Read `<state-dir>/<site_id>/alerts.json` — the rules
+8. Is anyone watching? **No call** — do not call `list_alerts`, whose rules
+   this plugin does not manage. Read `<state-dir>/<site_id>/alerts.json` — the rules
    `create-alert` has registered for this site. No file, or no rule with
    `status: active`, is a gap: a site nobody is watching finds out about an
    outage from its customers. Recommend one concrete rule the site's own data
@@ -156,7 +157,7 @@ once volume grows.
 Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `12` here), `verdict` (one of `on_track`, `watch`, `act`,
+ceiling, a number — `13` here), `verdict` (one of `on_track`, `watch`, `act`,
 `kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
 (boolean), `notes` (one line). The first real audit wrote `calls_used` and a
 free-text verdict because this footer said "calls used" in prose; the field
