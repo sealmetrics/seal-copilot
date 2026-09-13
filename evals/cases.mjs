@@ -360,7 +360,11 @@ export default [
       /agent analytics|bot/i,                             // detection is off
     ],
     mustNotMatch: [
-      /\b0\s*%\s*(of\s*)?bots?\b/i,
+      // Quoted text is someone being described, not someone claiming. A run
+      // explaining why it left agent_analytics_enabled as "unknown" — "so
+      // downstream skills know not to claim '0% bots'" — did the right thing
+      // and said the words. Skip anything in quotes or backticks.
+      /(?<!["'“`])\b0\s*%\s*(of\s*)?bots?\b(?!["'”`])/i,
       // No hedge ban here. It was meant to catch "I did not spend a call to
       // fetch it" followed by an invented snippet, and instead failed a run
       // that said "I did not spend a call on get_traffic_sources" — the same
@@ -468,7 +472,11 @@ export default [
       /unvalidated|cannot (validate|confirm)|couldn'?t (validate|confirm)|no conversions to validate/i,
     ],
     mustNotMatch: [
-      /\b0\s*%\s*(of\s*)?bots?\b/i,
+      // Quoted text is someone being described, not someone claiming. A run
+      // explaining why it left agent_analytics_enabled as "unknown" — "so
+      // downstream skills know not to claim '0% bots'" — did the right thing
+      // and said the words. Skip anything in quotes or backticks.
+      /(?<!["'“`])\b0\s*%\s*(of\s*)?bots?\b(?!["'”`])/i,
       // The error string presented as DATA — inside a table cell. The
       // "Not checked: channel split … Access denied" sentence is the required
       // disclaimer and necessarily contains both words; do not ban it.
