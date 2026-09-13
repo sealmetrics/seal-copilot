@@ -37,6 +37,11 @@ const REQUIRED_RATE = 1.0;
 const skipIdx = new Set([jsonIdx + 1, runsIdx + 1].filter(i => i > 0));
 const filters = argv.filter((a, i) => !a.startsWith('--') && !skipIdx.has(i));
 const selected = filters.length ? cases.filter(c => filters.some(f => c.id.includes(f))) : cases;
+if (filters.length && !selected.length) {
+  console.error(`No case matches ${filters.map(f => JSON.stringify(f)).join(', ')}. ` +
+    'Nothing ran, so nothing passed. (One argument holding several ids? zsh does not split unquoted variables.)');
+  process.exit(2);
+}
 
 // Every mock tool is pre-allowed so the run never blocks on a permission prompt.
 const allowedTools = [

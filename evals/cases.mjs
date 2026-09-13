@@ -210,7 +210,8 @@ export default [
     // many words — "not a media or acquisition problem" — and a bare noun ban
     // fails it, as it did. Same fix seasonality got in 1.8.0.
     mustNotMatch: [
-      /\b(it'?s|this is|the (leak|cause|problem) is)\s+(an?\s+|the\s+)?(traffic|acquisition)\b/i,
+      // The apostrophe is required: "its traffic share" is a possessive.
+      /\b(it['’]s|this is|the (leak|cause|problem) is)\s+(an?\s+|the\s+)?(traffic|acquisition)\b/i,
       /\btraffic is the problem\b/i,
     ],
   },
