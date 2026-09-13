@@ -87,7 +87,8 @@ token to paste and no environment variable to set. Full table in
    converts. A rise concentrated in one referrer — `get_top_referrers` — at
    very high bounce and almost no conversions is not demand: name the referrer
    and describe it by what the data shows, "cheap-traffic.example sent 21,900
-   entrances at 95% bounce and 5 conversions", not by who you suspect sent it.
+   entrances at 95% bounce and 5 conversions", not by who you suspect sent it —
+   no "crawlers", "previewers" or "not humans" either.
    That referrer call outranks every optional one, and in particular anything
    fetched only to fill `profile.json`.
 5. **Attribution caveat.** Sealmetrics measures **last non-direct click**,

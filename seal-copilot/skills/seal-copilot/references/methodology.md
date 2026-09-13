@@ -232,7 +232,9 @@ in one referrer (`get_top_referrers`) at very high bounce and almost no
 conversions is not — name the referrer and describe it by what it did:
 "cheap-traffic.example sent 21,900 entrances at 95% bounce and 5 conversions".
 Recommend excluding it from decisions, and blocking it if the user controls
-the source. Never speculate about who or what sent it.
+the source. Never speculate about who or what sent it — not "crawlers",
+"scrapers", "previewers", "agents" or "not humans" either. Say what the traffic
+did: its bounce, its engagement, its conversions.
 
 ## Reading responses — the real shapes
 

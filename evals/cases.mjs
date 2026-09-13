@@ -557,8 +557,9 @@ export default [
     fixture: 'alerts-silence-healthy',
     prompt: (now) => RULE_PROMPT.silence({ hours: 4, from: 0, to: 24 }, now),
     maxCalls: 4,
-    mustMatch: [/🟢/],
-    mustNotMatch: [/🔴/],
+    // Quiet, not a particular symbol: "Silent — last purchase 18 min ago" is a
+    // correct healthy line. The bans below are what would make it wrong.
+    mustNotMatch: [/🔴|⚠️/, /\bact\b|\bfires?\b|\bfired\b/i],
     // Silence is the product: a healthy scheduled run is one line, so the
     // answer must not run to a paragraph of context nobody asked for.
     maxAnswerChars: 400,
