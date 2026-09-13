@@ -228,7 +228,12 @@ Four things are designed to run on a schedule:
   in the prompt. It answers in one line while the site is healthy.
 
 In Claude Code, set these up with `/schedule`. In Cowork, use the equivalent
-scheduled task. When the user accepts a scheduled run, the skill output is the
+scheduled task. **What gets scheduled is the command, never a sentence:**
+`/seal-copilot:monday-briefing`, `/seal-copilot:cart-watchdog`,
+`/seal-copilot:check-alerts` followed by its rule. `monday-briefing` and
+`cart-watchdog` cannot be invoked by the model, so a scheduled "run my Monday
+briefing" reaches nothing, and a check that had to find its own skill spent six
+minutes searching the disk. When the user accepts a scheduled run, the skill output is the
 **entire** response — no greeting, no preamble. Optimized for forwarding.
 
 ## What you do NOT do

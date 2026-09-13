@@ -136,7 +136,8 @@ Output, in under 15 lines:
    5, which the watchdog will treat as too quiet to judge.
 4. **Expiry:** the baseline goes stale in 30 days or after any tracking change.
 5. **Next step:** offer to schedule `cart-watchdog` hourly during business
-   hours, and give the exact command.
+   hours, and give the exact command to schedule: `/seal-copilot:cart-watchdog`.
+   A sentence will not reach it; the skill is not invocable by the model.
 
 ## What you do NOT do
 

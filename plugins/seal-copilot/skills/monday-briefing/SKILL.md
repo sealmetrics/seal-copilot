@@ -144,6 +144,11 @@ On first successful run, offer:
 > "Want this every Monday at 8 am? Reply 'schedule monday-briefing' and I
 > will set it up."
 
+**The scheduled task runs the command `/seal-copilot:monday-briefing`**, not a
+sentence asking for the briefing. This skill is not invocable by the model — so
+that it does not fire on a passing "how was my week" — which means a scheduled
+sentence reaches the model and never reaches the skill. Only the command does.
+
 When the scheduler fires this skill, the output is the entire response —
 no preamble, no "Hi! Here is your briefing", just the one-pager above.
 

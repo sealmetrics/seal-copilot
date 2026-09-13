@@ -66,7 +66,13 @@ const firedAt = (d = new Date()) => {
 // `now` is supplied by the runner, per attempt, and the mock gets the same
 // instant as SEAL_NOW. Two clocks for one case is how a correct subtraction
 // failed three runs out of three.
-const ask = (r, now) => `Run the check-alerts skill for this rule and output only its result.\n\nFired at: ${firedAt(now)}\n\n${r}`;
+// A scheduler runs the command, which reaches the skill directly. The 'natural'
+// form is a sentence, and exists to prove the model can load check-alerts by
+// itself: while it carried disable-model-invocation, a sentence made the model
+// search the disk with find for six minutes and evaluate nothing.
+const ask = (r, now, form = 'command') => (form === 'command'
+  ? `/seal-copilot:check-alerts\n\nFired at: ${firedAt(now)}\n\n${r}`
+  : `Run the check-alerts skill for this rule and output only its result.\n\nFired at: ${firedAt(now)}\n\n${r}`);
 
 export const RULE_PROMPT = {
   silence: ({ hours, from, to }, now) => ask(rule({
@@ -93,7 +99,7 @@ export const RULE_PROMPT = {
 
   // `expected` is flat across the day on purpose: the verdict must then be the
   // same at 09:00 and at 23:00, so the case tests the rule and not the clock.
-  drop: ({ ratio, expected }, now) => ask(rule({
+  drop: ({ ratio, expected, form }, now) => ask(rule({
     family: 'drop',
     metric: { kind: 'microconversion', type: 'add_to_cart' },
     condition: { ratio },
@@ -102,7 +108,7 @@ export const RULE_PROMPT = {
       basis: 'watchdog-baseline',
       cumulative_by_hour: Object.fromEntries(ALL_DAYS.map((d) => [d, Array(24).fill(expected)])),
     },
-  }), now),
+  }), now, form),
 };
 export default [
   {
@@ -596,7 +602,9 @@ export default [
   {
     id: 'check-alerts-drop-on-remote-connector',
     fixture: 'alerts-drop-with-baseline',
-    prompt: (now) => RULE_PROMPT.drop({ ratio: 0.5, expected: 60 }, now),
+    // A sentence, not the command: this case also proves the model can load
+    // check-alerts by itself, which it could not while the skill was gated.
+    prompt: (now) => RULE_PROMPT.drop({ ratio: 0.5, expected: 60, form: 'natural' }, now),
     maxCalls: 4,
     // The same drop rule on the connector nearly everyone has: it fires on the
     // embedded expectation and needs nothing the connector withholds.

@@ -134,15 +134,21 @@ invent its own expectation is the guessed threshold this plugin refuses to use.
 ### 4. Compile the prompt the scheduler will run
 
 The scheduled task must work with no filesystem, so everything travels in the
-prompt:
+prompt, and **the prompt starts with the command**, not a sentence:
 
 ```
-Run the check-alerts skill for this rule and output only its result.
+/seal-copilot:check-alerts
 
 Fired at: <the scheduler's local time, ISO 8601 with offset>
 
 <the rule, as JSON>
 ```
+
+The command is what reaches the skill directly. A sentence asking to "run the
+check-alerts skill" leaves the model to find and load it on its own, and a run
+that could not load it spent six minutes searching the disk with `find` and
+evaluated nothing. On a surface where commands are named differently, use that
+surface's command for the skill; never a paraphrase.
 
 **The firing time is not optional.** The verdict is a comparison against the
 hours elapsed so far today, so a check that has to guess the hour guesses the

@@ -118,9 +118,12 @@ cart now".
 
 ## Scheduling guidance
 
-Recommend hourly during business hours: *"Run cart-watchdog every hour from
-8 am to midnight in [site timezone]."* The skill is silent when healthy, so
-it will not become noise. Offer the schedule once, after a successful run.
+Recommend hourly during business hours, and schedule **the command
+`/seal-copilot:cart-watchdog`** — every hour from 8 am to midnight in the site
+timezone. Not a sentence asking to check the cart: this skill is not invocable
+by the model, so a scheduled sentence never reaches it. The skill is silent when
+healthy, so it will not become noise. Offer the schedule once, after a
+successful run.
 
 ## What you do NOT do
 

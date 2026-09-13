@@ -6,7 +6,6 @@ description: >
   its prompt, so it needs no stored state. Trigger only when a scheduled alert
   check fires, or when the user asks to run a named alert now — never from a
   general question about traffic.
-disable-model-invocation: true
 short-description: 'Evaluate one alert rule and stay silent unless it fires. Runs from a scheduled task with the rule in its prompt. Use for "run my alert now" or a scheduled check.'
 ---
 
