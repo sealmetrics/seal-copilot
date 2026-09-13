@@ -57,29 +57,30 @@ const ALL_DAYS = DAYS.slice();
 // A real scheduler stamps the time it fired; so does this. Without it the check
 // has no clock, and the case that had to compute a five-hour gap retried in
 // every single run — fast when it worked, killed at the timeout when it did not.
-const firedAt = () => {
-  const d = new Date();
+const firedAt = (d = new Date()) => {
   const off = -d.getTimezoneOffset();
   const pad = (n) => String(Math.floor(Math.abs(n))).padStart(2, '0');
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
   return `${local}${off < 0 ? '-' : '+'}${pad(off / 60)}:${pad(off % 60)}`;
 };
-const ask = (r) => `Run the check-alerts skill for this rule and output only its result.\n\nFired at: ${firedAt()}\n\n${r}`;
+// `now` is supplied by the runner, per attempt, and the mock gets the same
+// instant as SEAL_NOW. Two clocks for one case is how a correct subtraction
+// failed three runs out of three.
+const ask = (r, now) => `Run the check-alerts skill for this rule and output only its result.\n\nFired at: ${firedAt(now)}\n\n${r}`;
 
 export const RULE_PROMPT = {
-  silence: ({ hours, from, to }) => ask(rule({
+  silence: ({ hours, from, to }, now) => ask(rule({
     family: 'silence',
     metric: { kind: 'conversion', type: 'purchase' },
     condition: { hours },
     active_hours: { from, to, days: ALL_DAYS },
-  })),
+  }), now),
 
   // Watching a single weekday that is not today, in a two-hour window eight
   // hours from now. Either condition alone excludes the present moment; both
   // together survive a machine whose clock sits in a different zone from the
   // rule's, and a run that starts near midnight.
-  outsideActiveHours: () => {
-    const now = new Date();
+  outsideActiveHours: (now = new Date()) => {
     const otherDay = DAYS[(now.getDay() + 3) % 7];
     const from = (now.getHours() + 8) % 22;
     return ask(rule({
@@ -87,12 +88,12 @@ export const RULE_PROMPT = {
       metric: { kind: 'conversion', type: 'purchase' },
       condition: { hours: 4 },
       active_hours: { from, to: from + 2, days: [otherDay] },
-    }));
+    }), now);
   },
 
   // `expected` is flat across the day on purpose: the verdict must then be the
   // same at 09:00 and at 23:00, so the case tests the rule and not the clock.
-  drop: ({ ratio, expected }) => ask(rule({
+  drop: ({ ratio, expected }, now) => ask(rule({
     family: 'drop',
     metric: { kind: 'microconversion', type: 'add_to_cart' },
     condition: { ratio },
@@ -101,7 +102,7 @@ export const RULE_PROMPT = {
       basis: 'watchdog-baseline',
       cumulative_by_hour: Object.fromEntries(ALL_DAYS.map((d) => [d, Array(24).fill(expected)])),
     },
-  })),
+  }), now),
 };
 export default [
   {
@@ -578,7 +579,7 @@ export default [
   {
     id: 'check-alerts-fires-with-start-time',
     fixture: 'alerts-silence-fires',
-    prompt: RULE_PROMPT.silence({ hours: 4, from: 0, to: 24 }),
+    prompt: (now) => RULE_PROMPT.silence({ hours: 4, from: 0, to: 24 }, now),
     // 3 is the skill's budget; the fourth is the site resolution a cold run may
     // still need. Anything beyond that is the skill widening into a diagnosis,
     // which is exactly what it must not do.
@@ -590,12 +591,12 @@ export default [
       /\b([01]?\d|2[0-3])[:.][0-5]\d\b/,
     ],
     mustNotMatch: [/🟢/],
-    mustCall: ['get_conversions'],
+    mustCall: ['get_conversions_raw'],   // where the last timestamp lives
   },
   {
     id: 'check-alerts-silent-when-healthy',
     fixture: 'alerts-silence-healthy',
-    prompt: RULE_PROMPT.silence({ hours: 4, from: 0, to: 24 }),
+    prompt: (now) => RULE_PROMPT.silence({ hours: 4, from: 0, to: 24 }, now),
     maxCalls: 4,
     mustMatch: [/🟢/],
     mustNotMatch: [/🔴/],
@@ -607,7 +608,7 @@ export default [
     id: 'check-alerts-respects-active-hours',
     fixture: 'alerts-silence-quiet-hours',
     // The same silence as the firing case, on a rule that is not watching now.
-    prompt: RULE_PROMPT.outsideActiveHours(),
+    prompt: (now) => RULE_PROMPT.outsideActiveHours(now),
     maxCalls: 0,
     // No prose assertion at all, deliberately. "Respects active hours" IS
     // maxCalls: 0 plus raising nothing, and both are asserted structurally
@@ -626,7 +627,7 @@ export default [
     fixture: 'alerts-drop-with-baseline',
     // No baseline file exists. The expectation travels inside the rule, which
     // is the only thing that makes a scheduled run possible without a disk.
-    prompt: RULE_PROMPT.drop({ ratio: 0.5, expected: 60 }),
+    prompt: (now) => RULE_PROMPT.drop({ ratio: 0.5, expected: 60 }, now),
     maxCalls: 4,
     mustMatch: [/🔴|⚠️/, /\b8\b/, /60|expected/i],
     mustCall: ['get_microconversions'],
@@ -634,7 +635,7 @@ export default [
   {
     id: 'check-alerts-never-claims-bots',
     fixture: 'alerts-drop-with-baseline',
-    prompt: RULE_PROMPT.drop({ ratio: 0.5, expected: 60 }),
+    prompt: (now) => RULE_PROMPT.drop({ ratio: 0.5, expected: 60 }, now),
     maxCalls: 4,
     // It may say the drop is unvalidated; it may not produce a bot figure, and
     // it may not reach for a tool this connector does not announce.

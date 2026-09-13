@@ -8,7 +8,9 @@ export const meta = { name: 'alerts-silence-fires',
 // hours: when five hours ago falls before midnight, today's total is zero and
 // the skill takes its documented second branch (widen to yesterday with an
 // explicit start_date/end_date), where the same events are waiting.
-const now = new Date();
+// The runner's instant for this attempt, the same one stamped into the
+// prompt as "Fired at:". Falls back to the wall clock when run by hand.
+const now = process.env.SEAL_NOW ? new Date(process.env.SEAL_NOW) : new Date();
 const LAST = new Date(now.getTime() - 5 * 3600 * 1000);
 const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
 const day = (d) => local(d).slice(0, 10);

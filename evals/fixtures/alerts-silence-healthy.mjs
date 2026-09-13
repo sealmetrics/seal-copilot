@@ -6,7 +6,9 @@ export const meta = { name: 'alerts-silence-healthy',
 // ecommerce-healthy because that fixture serves no raw conversions, which would
 // leave the skill looking at an empty page and unable to tell "no events today"
 // from "the handler is missing" — an ambiguity the case would then inherit.
-const now = new Date();
+// The runner's instant for this attempt, the same one stamped into the
+// prompt as "Fired at:". Falls back to the wall clock when run by hand.
+const now = process.env.SEAL_NOW ? new Date(process.env.SEAL_NOW) : new Date();
 const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
 const TODAY = local(now).slice(0, 10);
 

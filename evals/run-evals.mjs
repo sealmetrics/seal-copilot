@@ -73,6 +73,9 @@ function readState(dir) {
 
 function runStep(c, step, siteId, work, callLog, resumeId = null) {
   return new Promise((resolve) => {
+    // One instant per attempt, shared by the prompt and the mock. See cases.mjs.
+    const now = new Date();
+    const promptText = typeof step.prompt === 'function' ? step.prompt(now) : step.prompt;
     const mcpConfig = JSON.stringify({
       mcpServers: {
         sealmetrics: {
@@ -88,6 +91,7 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
             // 'remote'` get the forty-two the OAuth connector announces, which
             // is what nearly every user actually has.
             SEAL_TRANSPORT: c.transport || 'local',
+            SEAL_NOW: now.toISOString(),
             PATH: process.env.PATH || '',
           },
         },
@@ -95,7 +99,7 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
     });
 
     const args = [
-      '-p', step.prompt,
+      '-p', promptText,
       '--mcp-config', mcpConfig,
       '--strict-mcp-config',
       // Installing tracking lives in its own plugin, because the connector this
@@ -211,7 +215,10 @@ async function runCase(c, siteId) {
 // A session that never really ran: no answer, no tool call and no error — or
 // an error the API itself labels transient (stream idle timeout, overloaded,
 // rate limit). Neither is a verdict on the skill; retry once.
-const TRANSIENT = /stream idle timeout|partial response|overloaded|rate limit|529|503|ECONNRESET|ETIMEDOUT/i;
+// A 500 from the API is the server's failure, not the skill's. hostile-values
+// took one mid-certification and it scored as a verdict — and ended the case
+// after one of three runs — because the list stopped at 503.
+const TRANSIENT = /stream idle timeout|partial response|overloaded|rate limit|internal server error|api_error|\b50[0234]\b|529|ECONNRESET|ETIMEDOUT/i;
 const isTransient = (r) =>
   // Empty is empty, whether or not it got as far as calling anything. Every
   // skill here owes an answer, including the ones whose answer is one line.
