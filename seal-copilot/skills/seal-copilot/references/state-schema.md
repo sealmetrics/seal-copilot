@@ -71,7 +71,6 @@ file is the one thing the first real run got wrong here.
   "product_identifier": { "key": "sku", "table": "conversion_items" },
   "thresholds": {},
   "targets": {},
-  "agent_analytics_enabled": "unknown",
   "first_data_date": "2025-11-02",
   "discovery_cached_at": "2026-09-07",
   "scheduling_offered": { "monday_briefing": true, "cart_watchdog": false }
@@ -86,7 +85,7 @@ prevent. Write these names, not synonyms of them. The eval suite asserts on
 them.
 
 `connector` is `"remote"` or `"local"`, and it is free to determine: `remote`
-is the one where `get_channels` and `get_bot_stats` are not announced in the
+is the one where `get_channels` and `list_alerts` are not announced in the
 tool list you were given.
 It decides which steps of every skill can run, so write it on the first run and
 read it before planning an analysis. See "The connector decides which tools
@@ -119,7 +118,7 @@ what the analysis already fetched and leave the rest absent; a field you did
 not need is not worth a call. A diagnosis once spent three of its six calls on
 `get_site`, `list_microconversion_types` and `list_property_keys` to populate
 the profile, and ran out of budget before naming the referrer carrying the
-bots — the one thing that made the finding actionable. The analysis owns the
+spike — the one thing that made the finding actionable. The analysis owns the
 budget; the profile gets the leftovers.
 
 **`discovery_cached_at` is mandatory** — write it whenever you write the
@@ -128,13 +127,6 @@ to read. **TTL: 7 days** on `discovery_cached_at`. Past that, re-run `list_sites
 `list_microconversion_types` and `list_property_keys` and refresh the file.
 Refresh immediately, regardless of TTL, if any skill finds an event name or
 property key that contradicts the profile — that means tracking changed.
-
-`agent_analytics_enabled` has **three** values: `true`, `false`, or
-`"unknown"` when `get_bot_stats` could not be called at all (the account-id
-family refused the site, or it was never tried). Never write `false` for a
-call that was refused — `false` means measured and off. This field is what
-stops every later skill from reporting "0% bots" (see the three-outcome rule
-in `methodology.md`).
 
 `scheduling_offered` exists so the plugin offers a schedule **once** and then
 stops asking.
@@ -245,7 +237,7 @@ wrote `run_at`, `reason` and `findings_issued` and omitted `calls` and
 blank. Use these names and no others; add nothing, rename nothing.
 
 ```json
-{"ts":"2026-09-07T08:00:12Z","skill":"monday-briefing","calls":13,"budget":15,"verdict":"watch","scheduled":true,"notes":"bot stats empty"}
+{"ts":"2026-09-07T08:00:12Z","skill":"monday-briefing","calls":13,"budget":15,"verdict":"watch","scheduled":true,"notes":"channel split refused"}
 ```
 
 - `ts` — ISO timestamp, UTC.

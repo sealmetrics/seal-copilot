@@ -64,12 +64,11 @@ Budget: ≤12 tool calls.
    microconversions are tracked, RPE gap (12) for accounts running
    multiple paid channels, intraday gap (13) only if a watchdog baseline
    already exists (`calibrate-watchdog` has run).
-7. If `get_bot_stats` is in your tool list, validate any anomaly with
-   `get_bot_stats(days=30)` — pattern 9 — before reporting it. An empty result
-   means agent analytics is off, not 0% bots: mark the finding "unvalidated
-   for bots". **(local only)** — on `remote` the tool is not announced, so
-   pattern 9 cannot be screened at all: list it among the patterns that could
-   not be checked, never among those that did not fire.
+7. Before reporting any rise as an opportunity, screen pattern 9 with
+   `get_top_referrers(period=30d)`: a referrer carrying the rise at 90%+
+   bounce and almost no conversions is not demand, and a finding built on it
+   is not a finding. Name it by what it did. No bot data — never call
+   `get_bot_stats` and never say bots (see "No bot data" in `methodology.md`).
 
 ## Output format
 

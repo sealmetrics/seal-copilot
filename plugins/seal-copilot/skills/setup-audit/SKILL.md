@@ -2,7 +2,7 @@
 name: setup-audit
 description: >
   Audit a site's Sealmetrics implementation quality — tracking coverage,
-  microconversions, properties, channel rules, alerts, and bot exposure.
+  microconversions, properties, channel rules, and whether anything is watching.
   Trigger on: "is my tracking set up correctly", "audit my setup", "am I
   measuring everything", "tracking audit", "qué me falta por medir",
   "implementation review", or when another skill finds missing events.
@@ -114,10 +114,9 @@ before theorising.
 
 **Persist:** update `<state-dir>/<site_id>/profile.json` with what this
 audit established — the real event names, the product identifier and its
-table, `agent_analytics_enabled` as `true`/`false`/`"unknown"`, and
-`discovery_cached_at` as today's date (the refresh rule reads it; the first
-real audit rewrote the profile and left it out). That last flag is what stops every later skill from reporting
-"0% bots" on a site that simply is not measuring them.
+table, `currency`, `connector`, and `discovery_cached_at` as today's date (the
+refresh rule reads it; the first real audit rewrote the profile and left it
+out).
 
 ## Channel rules — the one place this plugin can write (local only)
 

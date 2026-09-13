@@ -26,7 +26,6 @@ export const tools = {
       byOs: [['Windows', 18000, 360, 28000, 0.48], ['iOS', 12000, 240, 18000, 0.57], ['macOS', 9000, 190, 14000, 0.44], ['Android', 6650, 96, 8160, 0.6]] }),
   get_browsers: f.share('browser', [['Chrome', 26000, 520, 40000, 0.5], ['Safari', 14000, 290, 22000, 0.55], ['Firefox', 5650, 76, 6160, 0.53]]),
   get_operating_systems: f.share('os', [['Windows', 18000, 360, 28000, 0.48], ['iOS', 12000, 240, 18000, 0.57], ['macOS', 9000, 190, 14000, 0.44], ['Android', 6650, 96, 8160, 0.6]]),
-  get_bot_stats: f.botStats({ total: 45650, botShare: 0.07 }),
   list_microconversion_types: f.microTypes(['product_view', 'add_to_cart', 'start_checkout']),
   get_conversions: (a) => f.conversions([['purchase', 886, 68160]], { prev: a.compare ? [['purchase', 1120, 83100]] : null }),
   get_microconversions: (a) => f.micro({ product_view: 28000, add_to_cart: 2500, start_checkout: 1040 },

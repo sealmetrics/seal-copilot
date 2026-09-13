@@ -87,10 +87,44 @@ is now read by all of them, `profile.thresholds` persists a threshold the user
 states so the next session does not make them repeat it, and `profile.targets`
 holds a monthly goal when there is one.
 
+### Removed — bot data, everywhere
+Sealmetrics does not give bot data, and the plugin no longer pretends to. Product
+decision, 2026-09-13.
+
+`get_bot_stats` and `get_suspicious_sessions` are never called, on either
+connector, and join `get_channels` and `get_marketing_playbook` in
+`evals/tool-availability.json` as forbidden: the linter fails a skill that
+mentions them outside a refusal, and every eval case fails a run that calls
+them. No report estimates a bot share or says traffic comes from bots, and a
+second global assertion fails any answer containing a bot figure — tested
+against "bot share is 7%" and a Bots column, and against "Sealmetrics does not
+give bot data", which passes.
+
+The "unvalidated for bots" disclaimer is gone from every report and the "Not
+checked" line, because a product decision is not a gap. `agent_analytics_enabled`
+is gone from the profile.
+
+What replaces it uses standard data and keeps the one thing the bot check was
+for: **a spike is not growth until it converts.** Before calling a rise demand,
+the analyst reads `get_top_referrers`; a referrer carrying it at very high bounce
+and almost no conversions is named and described by what it did —
+"cheap-traffic.example sent 21,900 entrances at 95% bounce and 5 conversions" —
+never by who might have sent it. Opportunity pattern 9 is now "non-converting
+referrer", cost-reduction's first pattern is "non-engaging referrer", and
+cart-watchdog loses its bot step (steps renumbered). On the remote connector
+cost-reduction now runs six patterns of eight.
+
+Evals: `empty-bot-stats-is-not-zero-percent` is deleted with its fixture;
+`spike-is-bots-not-growth` becomes `spike-is-not-growth` and
+`cost-reduction-names-the-bot-referrer` becomes
+`cost-reduction-names-the-junk-referrer`, both requiring the referrer named and
+`get_top_referrers` called; the spike fixture is `ecommerce-referrer-spike`. 31
+cases. This also retires the only two cases that were still flaky in the sixth
+certification — both were the model skipping a bot call it is now forbidden to
+make.
+
 ### Not changed
-Nothing in the Sealmetrics API or MCP server. Nothing about bot detection: the
-tools stay out of reach on the default connector, and the skills say so instead
-of working around it.
+Nothing in the Sealmetrics API or MCP server.
 
 ## 1.11.0 — 2026-09-10
 

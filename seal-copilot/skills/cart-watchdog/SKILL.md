@@ -3,7 +3,7 @@ name: cart-watchdog
 description: >
   Intraday watchdog for add-to-cart activity. Detects unusual silence or
   spikes vs the site's own learned hour-of-week baseline (not a fixed
-  threshold) and rules out bots before alerting. Requires a baseline from the
+  threshold) and needs two bad readings in a row before alerting. Requires a baseline from the
   `calibrate-watchdog` skill. Trigger on: "is my cart alive", "check add to
   cart", "carrito parado", "cart watchdog", "no estamos vendiendo", "intraday
   alert", "checkout watchdog", or when run from a scheduled task. For hotels,
@@ -62,7 +62,8 @@ admits it, because the user stops checking.
 
 A single low reading is never 🔴 on its own. Two consecutive are.
 
-For spikes, mirror it: ratio ≥ 3 is 🔴 (likely bots), ≥ 2 is ⚠️.
+For spikes, mirror it: ratio ≥ 3 is 🔴, ≥ 2 is ⚠️ — and name the source
+carrying it from step 3's `by_source` split. No bot data: never say bots.
 
 **Quiet cells are not incidents.** If the sum of medians for the elapsed
 hours is below 5 events, there is not enough signal — report 🟢 and say the
@@ -84,21 +85,7 @@ Two extra signals from this:
   incident start time. Name it; it is what the user needs to match against
   their deploy log.
 
-## Step 3 — Rule out bots (1 call, before any 🔴) (local only)
-
-If `get_bot_stats` is in your tool list, call `get_bot_stats(days=1)` before
-you raise a 🔴. A cart that looks dead because a bot wave inflated yesterday's
-baseline is not an incident, and paging someone for it is how a watchdog gets
-turned off. On `remote` the tool is not announced: keep the status you
-computed, append "unvalidated for bots", and go to step 4.
-
-- Drop coinciding with a bot spike → the drop is real but the metric was
-  previously inflated. Say so and recommend recalibrating.
-- Spike that is bots → demote 🔴 to ⚠️ "bot inflation" and explain.
-- **Empty result** → agent analytics is off, not 0% bots. Keep the status but
-  mark it "unvalidated for bots" (see `methodology.md`).
-
-## Step 4 — Isolate the cause (≤2 calls, only if 🔴)
+## Step 3 — Isolate the cause (≤2 calls, only if 🔴)
 
 One call is enough — `get_microconversion_details(conversion_type=<event>,
 period=today)` returns `by_device`, `by_source`, `by_country` and
@@ -110,7 +97,7 @@ build. One-source drop with no other anomalies → that source paused or
 blocked. Uniform drop → payment or cart outage; tell the user to test
 manually now.
 
-## Step 5 — Persist the status
+## Step 4 — Persist the status
 
 Write `last_status` and the check timestamp back into the baseline file so the
 next run can apply the two-consecutive-checks rule. If the file is not
@@ -125,7 +112,7 @@ If 🟢 and the run is scheduled: that single line is the entire response.
 Do not pad. Silence on a healthy run is correct.
 
 If ⚠️ or 🔴: add the evidence (today's count vs expected-to-date, time since
-last event), the incident start time, the suspected cause from Step 4, and
+last event), the incident start time, the suspected cause from Step 3, and
 one concrete action — e.g. "open a product page on mobile and try to add to
 cart now".
 

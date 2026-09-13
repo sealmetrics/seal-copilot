@@ -24,8 +24,8 @@ them exactly. In particular:
 - Read the MCP call rules before composing any call you have not made before.
   `get_device_types`, every `get_top_*` and every `*_raw` tool ignore
   `compare` silently — a wrong call returns plausible, wrong data.
-- The bot check has three outcomes. An empty `get_bot_stats` means agent
-  analytics is off, never 0% bots.
+- Sealmetrics gives no bot data. Never call `get_bot_stats` or
+  `get_suspicious_sessions`, and never attribute traffic to bots.
 - Respect the call budget the invoking skill declared. Count your calls and
   say so if you have to stop short.
 

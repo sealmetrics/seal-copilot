@@ -81,10 +81,10 @@ hours is under 5 events, answer 🟢 and say the window is too quiet to call.
 
 ### `spike`
 
-The mirror: fires when `actual / expected ≥ condition.ratio`. Traffic quality
-cannot be validated from here, so say the spike is unvalidated for bots and
-name the top referrer as the thing to look at
-(`get_top_referrers(period=today, limit=5)`, one call, only when it fires).
+The mirror: fires when `actual / expected ≥ condition.ratio`. A spike is not
+demand until it converts, so name the referrer carrying it
+(`get_top_referrers(period=today, limit=5)`, one call, only when it fires) and
+what it did — its bounce and its conversions. No bot data: never say bots.
 
 ### `threshold`
 
@@ -119,8 +119,6 @@ The last one was 11:20 local; the gap started there.
 
 Check now: open a product page, add to cart and try to pay. If that works,
 look at anything deployed after 11:20.
-
-Not checked: traffic quality — this connector does not announce it.
 ```
 
 Every firing answer carries, in this order: what the rule is and the headline
@@ -149,8 +147,8 @@ remembered previous run, because there is none.
 - Do not run without a rule.
 - Do not page the user outside active hours, whatever the data says.
 - Do not report a figure you did not fetch in this run.
-- Do not claim anything about bot activity: the connector this runs on does not
-  announce those tools, so every spike is reported unvalidated.
+- No bot data: never call `get_bot_stats`, never say traffic comes from bots.
+  Describe a spike by the referrer carrying it and what that traffic did.
 
 ---
 

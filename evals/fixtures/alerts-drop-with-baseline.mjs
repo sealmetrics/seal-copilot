@@ -1,6 +1,6 @@
 import * as f from './_lib.mjs';
 export const meta = { name: 'alerts-drop-with-baseline',
-  summary: 'Add-to-cart running at a fraction of the expectation the rule carries. check-alerts must fire on the embedded curve alone, with no stored state and no claim about bot activity.' };
+  summary: 'Add-to-cart running at a fraction of the expectation the rule carries. check-alerts must fire on the embedded curve alone, with no stored state.' };
 
 // The rule passed to the skill carries its own `expected` curve, so nothing
 // here depends on a baseline file: a scheduled run may have no filesystem at

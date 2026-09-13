@@ -36,21 +36,17 @@ stop at the first isolated cause.
    is `traffic_change` / `conversions_change`; the daily `*_series` show
    exactly which day it broke. If the user's claim is not visible in data, say so
    and show what you see instead.
-1. **Tracking, and traffic quality.** If `get_bot_stats` is in your tool
-   list, call it — `get_bot_stats(days=30)` — before you go looking at
-   channels. It is the first branch of the cause hierarchy for a reason: a
-   spike that is bots is not a drop to diagnose. Read it with the
-   three-outcome rule in `methodology.md`; an empty result means agent
-   analytics is off, not 0% bots. **(local only)** — on `remote` the tool is
-   not announced, so there you skip to step 2 and say once, in "Not checked",
-   that the change is unvalidated for bots. **When bots are the cause the diagnosis is
-   not finished until you have named the source.** Call `get_top_referrers`
-   yourself — a single referrer at 90%+ bounce is the usual shape — and put
-   its name in the cause statement. Do not tell the user to go and look:
-   "it is bots" is an observation, "it is bots from cheap-traffic.example,
-   block it at the CDN" is the finding they asked for. That call takes
-   priority over every optional one, including anything gathered only to fill
-   `profile.json`. Sudden near-zero on one page →
+1. **Tracking, or a rise that is not demand.** No bot data here — never call
+   `get_bot_stats` or `get_suspicious_sessions`, and never say traffic comes
+   from bots (see "No bot data" in `methodology.md`). **For a spike**, call
+   `get_top_referrers` before you go looking at channels: a single referrer
+   carrying the rise at 90%+ bounce and almost no conversions is not demand,
+   and the diagnosis is not finished until its name is in the cause statement
+   with what it did — "cheap-traffic.example sent 21,900 entrances at 95%
+   bounce and 5 conversions; exclude it from decisions and block it at the CDN
+   if you control the source". Do not tell the user to go and look. That call
+   takes priority over every optional one, including anything gathered only to
+   fill `profile.json`. Sudden near-zero on one page →
    check `get_pages(path_filter=...)` for a tag lost in a deploy. For a
    broken microconversion event (cart, checkout), compare
    `get_microconversions(period=30d, compare=previous)` per type — a single type
@@ -106,7 +102,7 @@ cannot act on "it was campaign X" without the evidence, the fix and the check.
 Do not report how many tool calls you used either. The budget is an internal
 constraint on you, not information for the user.
 
-If the change is a spike, validate bots first (rule 1) before celebrating.
+If the change is a spike, check it converts and name the referrer carrying it (step 1) before celebrating.
 Never speculate beyond the data — if two causes remain plausible, present
 both with their evidence.
 

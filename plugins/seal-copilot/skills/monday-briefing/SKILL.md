@@ -73,16 +73,12 @@ Pick the **single highest-impact pattern** that fires from this short list
 
 Pick one only — the one with the largest € impact. Do not list the others.
 
-### Block C — Watchdog status (2 calls)
+### Block C — Watchdog status (1 call)
 - `get_microconversions(conversion_type=<atc-equivalent>, period=today)` —
   today's volume so far, compared against the stored watchdog baseline if
   `calibrate-watchdog` has run. Without a baseline, compare to
   `get_microconversions(conversion_type=<atc>, period=yesterday)` and say the
   comparison is coarse.
-- `get_bot_stats(days=7)` — bot share trend, when the tool is in your tool
-  list. Empty means agent analytics is off, not 0%. **(local only)** — not
-  announced on `remote`, and there you drop the bot line from the watchdog
-  block entirely rather than printing a zero.
 
 Status line: `🟢 normal` / `⚠️ watch — <reason>` / `🔴 act now — <reason>`.
 
@@ -93,12 +89,6 @@ days, and any rule expiring within 30 days. A site with **no** active rule gets
 the one line that matters instead — that nothing is watching it between these
 reports — and an offer to set one up with `create-alert`. Omit the block
 entirely if the file is unreadable.
-
-### Block D — Validation (0 calls)
-Reuse the `get_bot_stats(days=7)` result from Block C. If it was empty or
-returned 403, mark every mover in Block A "unvalidated for bots". **(local
-only)** — on `remote` there is no result to reuse, so every mover carries that
-marking by default and the "Not checked" line says so once.
 
 ## Output format (the one-pager)
 
@@ -128,8 +118,8 @@ number that moved and verified/failed. Omit the whole block if nothing was due.>
 
 ⛔ NOT CHECKED
 <only if a step's call was refused or skipped: one line naming it, e.g.
-"channel split and bot validation — API refused get_channels / get_bot_stats
-for this site; movers above are unvalidated for bots". Omit if all ran.>
+"channel split — the API refused the channel breakdown for this site".
+Omit if all ran.>
 
 🚨 WATCHDOG
 Add-to-cart: <🟢/⚠️/🔴 + one-line context>
@@ -160,8 +150,8 @@ no preamble, no "Hi! Here is your briefing", just the one-pager above.
 ## What you do NOT do
 
 - Do not include >1 opportunity. Monday is for focus.
-- Do not print a bot-share line. This connector does not announce the tool, and
-  a zero there would be read as a measurement.
+- No bot data, anywhere in the one-pager: no bot-share line, no "not bots",
+  no mention of bots at all. Sealmetrics does not give that data.
 - Do not run the full opportunity-scan, full health-check, or full
   watchdog procedures here — call them by name as follow-ups if the user
   wants depth.

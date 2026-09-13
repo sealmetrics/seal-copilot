@@ -4,8 +4,8 @@
 > that need the local connector are named as unchecked, never scored as passing.
 
 **Score: 6/10** — acquisition is measured well, the commercial funnel is not.
-Channel and campaign reporting is trustworthy; anything about products, carts
-or traffic quality is currently guesswork.
+Channel and campaign reporting is trustworthy; anything about products or
+carts is currently guesswork.
 
 | Gap | Why it matters | Fix | Effort |
 |---|---|---|---|
@@ -30,7 +30,7 @@ campaign → channel **Paid Search**, priority above the default Referral rule.
 I cannot create or dry-run it from here, so add it in the dashboard and the
 next audit will confirm the split moved.
 
-**Not checked:** traffic quality, saved segments and live channel rules need
+**Not checked:** saved segments and live channel rules need
 the local connector, which this session does not have. They are unscored above,
 not passing.
 

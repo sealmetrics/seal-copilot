@@ -34,7 +34,5 @@ export const tools = {
     : f.micro({ product_view: 9400, add_to_cart: 2680, start_checkout: 910 }),
   get_microconversions_raw: (a) => f.rawEvents(a.period === 'today' ? todayEvents() : history().slice(0, a.limit || 700)),
   get_microconversion_details: (a) => f.microDetails(a.conversion_type || 'add_to_cart', 2, { device: [['desktop', 0.5], ['mobile', 0.5]] }),
-  get_bot_stats: f.botStats({ total: 1400, botShare: 0.07 }),
-  get_suspicious_sessions: { data: [] },
   get_conversions: f.conversions([['purchase', 640, 49400]]),
 };

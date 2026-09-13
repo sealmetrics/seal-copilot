@@ -28,9 +28,6 @@ deploy log.
 Check now: open a product page, add to cart and try to pay. If the payment
 goes through, look at anything that shipped after 11:20.
 
-Not checked: traffic quality — this connector does not announce it, so the
-drop is real but unvalidated for bots.
-
 Want the full cause hierarchy? Ask me to diagnose the drop.
 ```
 

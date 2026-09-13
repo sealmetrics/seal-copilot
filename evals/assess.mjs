@@ -12,6 +12,14 @@ const availability = JSON.parse(readFileSync(join(here, 'tool-availability.json'
 // get_marketing_playbook is a second methodology that contradicts this one.
 export const GLOBAL_MUST_NOT_CALL = availability.forbidden.tools;
 
+// Sealmetrics gives no bot data, so no answer may contain a bot figure — "bot
+// share is 7%", "41% of sessions are bots", a Bots column with a percentage.
+// A figure, not the word: "Sealmetrics does not give bot data" passes, and so
+// does anything in quotes. Tested against both shapes before it went in.
+export const GLOBAL_MUST_NOT_MATCH = [
+  /(?<!["'“`])\bbots?\b[^.;,\n]{0,30}?\d+(\.\d+)?\s*%|\d+(\.\d+)?\s*%[^.;,\n]{0,30}?\bbots?\b(?!["'”`])/i,
+];
+
 export function assess(c, answer, calls, textBlocks = 1) {
   const failures = [];
   const names = calls.map(x => x.tool);
@@ -22,6 +30,8 @@ export function assess(c, answer, calls, textBlocks = 1) {
   for (const t of c.mustNotCall || []) if (names.includes(t)) failures.push(`should not have called ${t}`);
   for (const t of GLOBAL_MUST_NOT_CALL)
     if (names.includes(t)) failures.push(`called ${t}, which no skill may ever call`);
+  for (const re of GLOBAL_MUST_NOT_MATCH)
+    if (re.test(answer)) failures.push(`gave a bot figure — Sealmetrics provides no bot data (${re})`);
   if (c.maxCalls !== undefined && calls.length > c.maxCalls) failures.push(`${calls.length} calls > budget ${c.maxCalls}`);
   // Silence is the product for a scheduled check: a healthy run that writes a
   // paragraph is a defect, and no phrase assertion can catch length.

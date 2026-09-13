@@ -46,12 +46,11 @@ findings — say why in one line.
    two calendar-pair calls yourself (see `methodology.md`, MCP call rules).
 3. `get_campaigns(period=7d, compare=previous, sort_by=revenue, limit=20)`
    — winners and losers.
-4. If any anomaly (±25%) and `get_bot_stats` is in your tool list, call
-   `get_bot_stats(days=7)` to validate it is human — do not report the
-   anomaly before you have. An empty result means agent analytics is off, not
-   0% bots: mark the finding "unvalidated for bots" (see `methodology.md`).
-   **(local only)** — on `remote` the tool is not announced, so there you
-   attempt nothing and carry that marking into the "Not checked" line.
+4. If traffic rose ≥25% without conversions rising with it, call
+   `get_top_referrers(period=7d)` before calling it growth: a single referrer
+   at 90%+ bounce and almost no conversions is not demand — name it and what
+   it did. No bot data: never call `get_bot_stats` and never say bots (see
+   "No bot data" in `methodology.md`).
 5. Optional drill-down (1–2 calls max) only to explain the single biggest
    mover: `get_landing_pages`, `get_terms`, or `get_devices` as relevant.
 
@@ -68,12 +67,11 @@ delta vs comparable and a one-word direction.
 **Then one line for anything the procedure could not do**, whenever a step's
 call was refused, returned an error as text, or was skipped. The first real
 run had a +35% traffic spike at 84% bounce and said nothing about the fact
-that channel and bot data were refused for the site — a reader cannot tell a
-validated spike from an unvalidated one unless you say so. Format:
+that the channel split was refused for the site — a reader cannot tell a
+complete report from a partial one unless you say so. Format:
 
-> Not checked: channel split and bot validation — the API refused
-> `get_channels` and `get_bot_stats` for this site ("Access denied"). Movers
-> above are unvalidated for bots.
+> Not checked: channel split — the API refused the channel breakdown for this
+> site ("Access denied"), so movers above are not broken down by channel.
 
 Omit the line only when every step ran.
 
@@ -85,8 +83,8 @@ If nothing fires, say so in one line — do not pad.
 me to diagnose the Paid Search drop?").
 
 Before the final message: if no `profile.json` existed, write one with what
-discovery established (site, timezone, vertical, event names,
-`agent_analytics_enabled` as `true`/`false`/`"unknown"`) **and
+discovery established (site, timezone, currency, connector, vertical, event
+names) **and
 `discovery_cached_at` as today's date** — the 7-day refresh rule reads that
 field, and a profile without it can never be judged fresh or stale. Append every
 finding you issued to `recommendations.jsonl` with its metric, baseline,

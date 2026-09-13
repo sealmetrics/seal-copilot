@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { assess, GLOBAL_MUST_NOT_CALL } from './assess.mjs';
+import { assess, GLOBAL_MUST_NOT_CALL, GLOBAL_MUST_NOT_MATCH } from './assess.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cases = (await import(join(here, 'cases.mjs'))).default;
@@ -74,14 +74,14 @@ const rpc = (fixture, calls, env = {}) => new Promise((resolve) => {
 const r = await rpc('ecommerce-healthy', [
   { name: 'get_overview', arguments: { period: '30d', compare: 'previous' } },
   { name: 'get_channels', arguments: { period: '7d', compare: 'previous' } },
-  { name: 'get_bot_stats', arguments: { period: '7d' } },
-  { name: 'get_bot_stats', arguments: { days: 7 } },
+  { name: 'get_microconversions', arguments: { type: 'add_to_cart' } },
+  { name: 'get_microconversions', arguments: { conversion_type: 'add_to_cart', period: '7d' } },
   { name: 'get_microconversions', arguments: { period: 'last_28_days' } },
 ]);
 ok('valid call succeeds', !!r[0]?.result);
 ok('get_channels(compare) is rejected', /Invalid parameter/.test(r[1]?.error?.message || ''), JSON.stringify(r[1]));
-ok('get_bot_stats(period) is rejected', /Invalid parameter/.test(r[2]?.error?.message || ''), JSON.stringify(r[2]));
-ok('get_bot_stats(days) succeeds', !!r[3]?.result);
+ok('get_microconversions(type) is rejected', /Invalid parameter/.test(r[2]?.error?.message || ''), JSON.stringify(r[2]));
+ok('get_microconversions(conversion_type) succeeds', !!r[3]?.result);
 ok('period=last_28_days is rejected', /Invalid value/.test(r[4]?.error?.message || ''), JSON.stringify(r[4]));
 
 console.log('\nstream-json parsing');
@@ -110,11 +110,11 @@ console.log('\nstream-json parsing');
 console.log('\nassertion logic');
 const c = { mustMatch: [/on track/i], mustNotMatch: [/🔴/], mustCall: ['get_overview'],
             mustNotCall: ['get_channels'], maxCalls: 3 };
-const good = [{ tool: 'get_overview' }, { tool: 'get_bot_stats' }];
+const good = [{ tool: 'get_overview' }, { tool: 'get_campaigns' }];
 ok('clean case passes', assess(c, 'Verdict: on track.', good).length === 0);
 ok('missing phrase fails', assess(c, 'All good.', good).some(f => f.startsWith('missing')));
 ok('forbidden phrase fails', assess(c, 'on track 🔴', good).some(f => f.startsWith('forbidden')));
-ok('uncalled required tool fails', assess(c, 'on track', [{ tool: 'get_bot_stats' }]).some(f => f.includes('never called')));
+ok('uncalled required tool fails', assess(c, 'on track', [{ tool: 'get_campaigns' }]).some(f => f.includes('never called')));
 ok('forbidden tool fails', assess(c, 'on track', [...good, { tool: 'get_channels' }]).some(f => f.includes('should not')));
 ok('over budget fails', assess(c, 'on track', [...good, { tool: 'a' }, { tool: 'b' }]).some(f => f.includes('budget')));
 ok('rejected call fails', assess(c, 'on track', [...good, { tool: 'x', rejected: 'bad param' }]).some(f => f.includes('invalid call')));
@@ -149,8 +149,8 @@ console.log('\ntransport gating');
   ok('local announces every tool in the schema', localTools.length === 62, `${localTools.length}`);
   ok('remote withholds the twenty gated tools', remoteTools.length === 42, `${remoteTools.length}`);
   ok('remote still offers the replacement', remoteTools.includes('get_top_channels'));
-  ok('remote hides get_bot_stats', !remoteTools.includes('get_bot_stats'));
-  const r = await rpc('ecommerce-healthy', [{ name: 'get_bot_stats', arguments: { days: 7 } }], { SEAL_TRANSPORT: 'remote' });
+  ok('remote hides list_alerts', !remoteTools.includes('list_alerts'));
+  const r = await rpc('ecommerce-healthy', [{ name: 'list_alerts', arguments: {} }], { SEAL_TRANSPORT: 'remote' });
   ok('calling a withheld tool fails like an unknown one', /Unknown tool/.test(r[0]?.error?.message || ''), JSON.stringify(r[0]));
 }
 
@@ -163,6 +163,14 @@ console.log('\nglobal bans and answer length');
   ok('a zero call budget is enforced', assess({ ...base, maxCalls: 0 }, 'ok', [{ tool: 'get_overview' }]).some(f => /budget/.test(f)));
   ok('an over-long healthy answer fails', assess({ ...base, maxAnswerChars: 40 }, 'x'.repeat(80), []).some(f => /cap 40/.test(f)));
   ok('a short answer passes the cap', assess({ ...base, maxAnswerChars: 40 }, 'ok', []).length === 0);
+  // No bot data, enforced on every case: calls and figures both.
+  ok('calling get_bot_stats fails every case', assess(base, 'ok', [{ tool: 'get_bot_stats' }]).some(f => /no skill may ever call/.test(f)));
+  ok('a bot figure fails every case', assess(base, 'Bot share is 7%, unchanged.', []).some(f => /bot figure/.test(f)));
+  ok('a bot figure in a table cell fails', assess(base, '| Bots | 41% |', []).some(f => /bot figure/.test(f)));
+  ok('saying there is no bot data passes', assess(base, 'Sealmetrics does not give bot data.', []).length === 0);
+  ok('a referrer described by what it did passes',
+     assess(base, 'cheap-traffic.example sent 21,900 entrances at 95% bounce and 5 conversions.', []).length === 0);
+  ok('there is exactly one global text ban', GLOBAL_MUST_NOT_MATCH.length === 1);
   // Process narration, caught by structure rather than by wording.
   ok('narrating between tool calls fails', assess({ ...base, maxTextBlocks: 1 }, 'ok', [], 3).some(f => /narrated between tool calls/.test(f)));
   ok('a single report block passes', assess({ ...base, maxTextBlocks: 1 }, 'ok', [], 1).length === 0);

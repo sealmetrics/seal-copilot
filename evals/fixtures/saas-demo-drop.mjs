@@ -13,7 +13,6 @@ export const tools = {
   get_funnel: { error: 'No funnel configured for this site' },
   get_microconversion_details: (a) => f.microDetails(a.conversion_type || 'form_view', 611,
     { device: [['desktop', 0.53], ['mobile', 0.47]], landing: [['/pricing', 0.8], ['/', 0.2]] }),
-  get_bot_stats: f.botStats({ total: 12800, botShare: 0.09 }),
   get_conversions: (a) => f.conversions([['demo_request', 41, 0]], { prev: a.compare ? [['demo_request', 96, 0]] : null }),
   get_content_groups: [{ content_grouping: 'blog', entrances: 6900, page_views: 9100, unique_pages: 140 },
                        { content_grouping: 'product', entrances: 3400, page_views: 8800, unique_pages: 12 },

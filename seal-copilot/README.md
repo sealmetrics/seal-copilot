@@ -112,8 +112,7 @@ is built for: a marketer, who should never meet an API key.
 It costs something, and the plugin says so rather than working around it in
 silence. Twenty tools reach backend routes that need a broader permission than
 any API key or OAuth grant can carry, so the connector does not offer them:
-traffic-quality validation, alerts, webhooks, saved segments, channel rules and
-event verification. Every skill knows this. Steps that need them are marked
+alerts, webhooks, saved segments, channel rules and event verification. Every skill knows this. Steps that need them are marked
 *(local only)*, skipped, and named once at the end of a report under **Not
 checked** — never quietly reported as passing.
 
@@ -121,8 +120,7 @@ What that means in practice:
 
 | You will see | Why |
 |---|---|
-| "unvalidated for bots" on anomalies | Traffic-quality data is out of reach from here. The finding is still real; it just has not been screened for automated traffic |
-| `cost-reduction` scanning five patterns instead of eight | Three of them need alerts, segments or traffic quality |
+| `cost-reduction` scanning six patterns instead of eight | Two of them need the account's alerts, webhooks and saved segments |
 | `setup-audit` proposing a channel rule in words instead of testing it | It can read that `cpc` traffic is misrouted, and cannot write the rule that fixes it. Create it in the dashboard |
 
 Everything that matters for analysis — traffic, channels, campaigns, terms,
@@ -135,7 +133,7 @@ Seal Copilot keeps a small state directory per site at `~/.seal-copilot/`
 (override with `SEAL_COPILOT_STATE_DIR`):
 
 - the site profile — timezone, vertical, your real event names, the product
-  identifier, whether bot detection is enabled
+  identifier, the currency, and which connector you are on
 - the property map from `property-explorer`
 - the watchdog baseline from `calibrate-watchdog`
 - a **recommendation ledger**: every recommendation, the metric that should
@@ -151,7 +149,6 @@ Delete the directory to start clean. Nothing there is personal data.
 |---|---|
 | Every call fails on authentication | The connector is not authorised yet. Run `/mcp`, pick **sealmetrics**, sign in. Seal Copilot will not retry, and will not guess the numbers. |
 | It asks which site on every question | Set `SEALMETRICS_SITE_ID`, or answer once and it is cached in the site profile. |
-| Reports say "unvalidated for bots" | Traffic-quality tools are not available over this connector, so anomalies are reported without that screening. The finding is real; it has not been checked for automated traffic. Nothing to enable — see "The connector, and what it can reach". |
 | It says installing tracking is a different plugin | It is. Install [`seal-install`](../seal-install/README.md), which carries the local connector and an API key. |
 | An alert never fires, or fires every day | Ask "what am I watching?" and check the window. `create-alert` sizes the window against the event's own volume; if the volume changed, the rule needs resizing. |
 | The watchdog says it has no baseline | Run `calibrate-watchdog` once. It is deliberate: a watchdog with a guessed threshold is worse than none. |
@@ -177,8 +174,8 @@ Delete the directory to start clean. Nothing there is personal data.
 ## Principles the analyst follows
 
 Every number is real (no invented data) · rates over volumes · minimum
-sample sizes before strong claims · bot traffic checked before any anomaly
-is reported · last non-direct click attribution caveats stated · every
+sample sizes before strong claims · a spike is not called growth until it
+converts, and the referrer carrying it is named · last non-direct click attribution caveats stated · every
 recommendation comes with evidence, action, estimated € impact, and a
 verification plan.
 
@@ -190,11 +187,15 @@ processed or sent to the model.
 
 ## Limitations
 
+- No bot data. Sealmetrics does not provide it, so Seal Copilot never estimates
+  a bot share or says traffic comes from bots. What it does instead is check
+  whether a spike engages and converts, and name the referrer carrying it when
+  it does not.
 - No ad-spend data: Sealmetrics does not ingest cost, so the analyst
   compares CR, AOV, and revenue — for ROAS, pull spend from your ads
   platform.
-- Traffic-quality screening, alerts, segments and channel rules are not
-  reachable over the default connector. See "The connector, and what it can
+- Alerts, segments and channel rules are not reachable over the default
+  connector. See "The connector, and what it can
   reach"; the skills that touch them say so rather than reporting a zero.
 - Attribution is last non-direct click, consentless, measured server-side.
   Numbers will not match GA4 or your ad platform dashboards, and upper-funnel
@@ -213,7 +214,7 @@ Two checks, from the repository root:
 ```
 bash scripts/check.sh              # linter, fixture arithmetic, self-test, manifests
 bash scripts/check.sh --online     # the above plus MCP schema drift
-node evals/run-evals.mjs           # 32 cases against a mock Sealmetrics server
+node evals/run-evals.mjs           # 31 cases against a mock Sealmetrics server
 node evals/run-evals.mjs --runs 3  # each case three times; model wording varies
 node evals/preflight.mjs           # one cheap call: proves the whole chain works
 node scripts/usage-report.mjs      # local metrics from your own state directory

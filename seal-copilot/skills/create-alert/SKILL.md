@@ -70,7 +70,7 @@ run may have no filesystem and must carry everything it needs in its prompt.
 | `spike` | "if one campaign triples in an hour" | The mirror of `drop` | 1–2 |
 | `threshold` | "if revenue does not reach 2,000 today", "if brand-es drops below 10 conversions a day" | One reading against a fixed number | 1 |
 
-Anything else — rules about bot activity, about saved segments, about a metric
+Anything else — rules about saved segments, about a metric
 that would take more than two calls, or comparing two sites — is out of scope.
 Say so plainly and offer the nearest rule that is in scope.
 

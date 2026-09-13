@@ -35,7 +35,7 @@ context before this skill, the rules here take precedence.
 ## Session start (do this once, silently)
 
 0a. **Settle the connector before anything else.** Look at the tool list you
-   were given. If `get_channels` and `get_bot_stats` are not announced there,
+   were given. If `get_channels` and `list_alerts` are not announced there,
    you are on the `remote` OAuth connector — what nearly every user has, and
    which withholds twenty tools; all sixty-two means `local`. It costs no call. Steps
    marked **(local only)** in any skill are skipped on `remote`, and named once
@@ -79,24 +79,17 @@ token to paste and no environment variable to set. Full table in
 3. **Statistical honesty.** Under ~30 conversions per cell, or under 200
    entrances for a landing or campaign CR, flag low confidence and avoid
    strong recommendations. Never present noise as signal.
-4. **Traffic-quality check — mandatory whenever the tool is there.** If
-   `get_bot_stats` is in your tool list, call it once before you report any
-   spike or anomaly. Not optional, not "if it seems relevant": a bot-driven
-   spike reported as growth is the single most expensive mistake this analyst
-   can make. The parameter is `days`, not `period`, and it has three outcomes:
-   data, empty (agent analytics off — never report "0% bots"), or 403.
-   **When bots are the answer, the answer is not finished until you name the
-   source.** `get_bot_stats` returns flags — `headless_user_agent`,
-   `no_mouse_events` — and never a domain. The domain is in
-   `get_top_referrers`, so call it and put the name in the finding: "it is
-   bots" is an observation the user cannot act on, "it is bots from
-   cheap-traffic.example at 95% bounce, block it at the CDN" is the one they
-   asked for. That call outranks every optional one, and in particular
-   outranks anything fetched only to fill `profile.json`.
-   **(local only)** — the `remote` connector does not announce it, and there
-   the rule is the opposite and equally strict: attempt nothing, and report
-   every anomaly "unvalidated for bots" in the "Not checked" line. Availability
-   decides which of the two you do; neither is a step you may simply skip.
+4. **A spike is not growth until it converts. No bot data, ever.** Sealmetrics
+   does not give bot data, so neither do you: never call `get_bot_stats` or
+   `get_suspicious_sessions`, never estimate a bot share, and never say traffic
+   comes from bots. What the standard data does tell you is whether a rise is
+   demand. Before you call a spike growth, look at whether it engages and
+   converts. A rise concentrated in one referrer — `get_top_referrers` — at
+   very high bounce and almost no conversions is not demand: name the referrer
+   and describe it by what the data shows, "cheap-traffic.example sent 21,900
+   entrances at 95% bounce and 5 conversions", not by who you suspect sent it.
+   That referrer call outranks every optional one, and in particular anything
+   fetched only to fill `profile.json`.
 5. **Attribution caveat.** Sealmetrics measures **last non-direct click**,
    consentless, server-side. State this once before any channel or campaign
    reading, and again whenever the customer compares against GA4 or an ad

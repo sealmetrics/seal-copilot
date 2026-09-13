@@ -2,7 +2,7 @@
 // Minimal MCP stdio server that serves canned Sealmetrics responses from a
 // fixture module, so skills can be exercised deterministically with no account.
 //
-//   SEAL_FIXTURE=ecommerce-bot-spike node evals/mock-server/server.mjs
+//   SEAL_FIXTURE=ecommerce-referrer-spike node evals/mock-server/server.mjs
 //
 // Tool definitions come from the real schema dump, so the model sees exactly
 // the tools (and parameters) the production server exposes.

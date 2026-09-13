@@ -20,10 +20,12 @@ const lines = [
   '',
   'Before planning any analysis, settle which connector you are on by looking',
   'at the tool list you were given — it costs no call. The remote OAuth',
-  'connector withholds twenty tools, including traffic-quality validation and',
+  'connector withholds twenty tools, including',
   'everything about alerts, segments and channel rules; steps marked',
   '(local only) in a skill are skipped there and named once in the report.',
   'Installing tracking is the separate seal-install plugin, not this one.',
+  'Sealmetrics gives no bot data: never call get_bot_stats or',
+  'get_suspicious_sessions, and never attribute traffic to bots.',
 ];
 {
   const stateRoot = process.env.SEAL_COPILOT_STATE_DIR || join(homedir(), '.seal-copilot');

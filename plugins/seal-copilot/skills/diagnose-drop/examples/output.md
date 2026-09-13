@@ -10,7 +10,7 @@ is large and every other campaign is flat.
 
 1. Site conversions fell 20.9% (1,120 → 886) on flat traffic (46,200 → 45,650).
    Conversion rate went 2.42% → 1.94%. Revenue −18.0% (€83,100 → €68,160).
-2. Bots are not the cause: bot share is 7%, unchanged.
+2. No single referrer is carrying unusual traffic: the top referrers are unchanged.
 3. Only Paid Search moved. Its CR went 2.62% → 1.10%. Organic (430 → 428),
    Direct (168 → 166), Paid Social (88 → 87) and Email (46 → 45) are flat.
 4. Inside Paid Search, `brand-es` (142 conversions) and `retarget-es` (16) are
