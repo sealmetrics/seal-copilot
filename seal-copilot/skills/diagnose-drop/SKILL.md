@@ -17,7 +17,9 @@ run of this skill looks like.
 
 **Before anything else: emit no text until the report.** **Your first action
 is a tool call, not a sentence** — not "State directory is empty, running
-discovery", not "Let me start with the overview". And nothing between calls
+discovery", not "Let me start with the overview", not "Now writing state files,
+then the report". Writing state before the report is something you do, not
+something you announce. And nothing between calls
 either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
 no "Checking seasonality". The user reads every one of those before your answer,
 and a run that narrates its way to a conclusion reads as one that has not
