@@ -9,7 +9,10 @@
 // manual route pageview (PL-08), the site's domains (PL-11), the snippet
 // account (PL-16); stale plan, not_in_plan (SM-00) and revenue that is not a
 // number (SM-04) — and, for level 'page' (F3), the unavailable / invalid_input /
-// passing-flow shapes of the browser simulation. An eval here tests the SKILL's behaviour around those tools:
+// passing-flow shapes of the browser simulation. verifyEvent (F4) answers
+// verify_event_instrumented from a table of live rows the way the real tool does:
+// rejected / pending / warning_pii / mismatch / verified_by_recency / verified,
+// against `expect`. An eval here tests the SKILL's behaviour around those tools:
 // that it plans before editing, waits for approval, fixes what fails and never
 // calls a simulation a verification. The rules themselves are tested in
 // setup-core, against the real tracker.
@@ -223,4 +226,78 @@ export function simulateInstall(args, { domains = ['demo-store.com'], browser = 
   const simulation_id = 'sim_' + createHash('sha256').update(current + canonical(args?.cases || [])).digest('hex').slice(0, 12);
   return { ...base, status: 'ok', simulation_id, plan_id: current, verdict, cases,
     scenarios: [{ name: 'load', verdict: 'pass', pageviews: 1, checks: [] }, { name: 'spa_navigation', verdict: 'pass', pageviews: 3, checks: [] }] };
+}
+
+// verify_event_instrumented with expectations (PRD-058 F4, adinton/sealmetrics2#389).
+// `rows` is the live data per event name: { amount?: '1.23', properties: {…} }.
+// The session cache of simulations is not modelled: a simulation_id is always
+// from another session here, which is the realistic case after a deploy — so
+// without an explicit expect it answers needs_expectation, as the real tool does.
+export function verifyEvent(args, rows = {}) {
+  const kind = args?.kind;
+  const name = String(args?.name || '');
+  const lower = name.trim().toLowerCase();
+  const known = kind === 'conv' ? CONV : MICRO;
+  if (!known.has(lower)) {
+    return { status: 'rejected', reason: 'out_of_taxonomy', name, message: `'${name}' is not in the closed ${kind} taxonomy. Fix the event name before verifying.` };
+  }
+  if (name !== lower) {
+    return { status: 'rejected', reason: 'not_lowercase', name, suggestion: lower, message: `Event names are stored exactly as sent and the taxonomy is lowercase. Use '${lower}' in the code and here.` };
+  }
+  let expect = args?.expect;
+  if (typeof expect === 'string') {
+    try { expect = JSON.parse(expect); } catch { return { __textError: 'expect must be an object: { value_min?, value_exact?, properties_required? }.' }; }
+  }
+  if (expect && typeof expect === 'object') {
+    const unknown = Object.keys(expect).filter(k => !['value_min', 'value_exact', 'properties_required'].includes(k));
+    if (unknown.length) return { __textError: `Unknown key${unknown.length > 1 ? 's' : ''} in expect: ${unknown.join(', ')}. Use value_min, value_exact and properties_required.` };
+  }
+  const num = (v) => (v === undefined || v === null ? undefined : Number(v));
+  const exp = expect && typeof expect === 'object' ? {
+    ...(expect.value_min !== undefined ? { value_min: num(expect.value_min) } : {}),
+    ...(expect.value_exact !== undefined ? { value_exact: num(expect.value_exact) } : {}),
+    ...(expect.properties_required !== undefined ? { properties_required: expect.properties_required } : {}),
+  } : undefined;
+  if (exp && exp.properties_required !== undefined && !Array.isArray(exp.properties_required)) {
+    return { __textError: 'expect.properties_required must be an array of property keys.' };
+  }
+  if (kind === 'micro' && exp && (exp.value_min !== undefined || exp.value_exact !== undefined)) {
+    return { __textError: 'expect.value_min / value_exact apply to conversions only: microconversion rows carry no amount.' };
+  }
+  const expectation = exp && Object.keys(exp).length ? exp : undefined;
+  if (args?.simulation_id && !expectation) {
+    return { status: 'needs_expectation', account_id: args?.account_id || 'acct_demo', kind, name, simulation: 'not_in_session',
+      message: `Simulation ${args.simulation_id} is not in this session (the server restarted, or it ran in another conversation), so there is nothing to compare the row with. Call again with expect built from the approved plan: properties_required (and value_min / value_exact for a conversion).` };
+  }
+  const base = { account_id: args?.account_id || 'acct_demo', kind, name, ...(expectation ? { expectation } : {}),
+    ...(args?.simulation_id ? { simulation: 'not_in_session' } : {}) };
+  const note = args?.simulation_id ? ` Simulation ${args.simulation_id} is not in this session (the server restarted or it ran elsewhere), so the row was not compared with it.` : '';
+  const recent = rows[lower] || [];
+  const mismatchesOf = (row) => {
+    if (!expectation) return [];
+    const out = [];
+    const amount = row.amount === undefined ? null : Number(row.amount);
+    if (expectation.value_min !== undefined && (amount === null || amount < expectation.value_min)) {
+      out.push(amount ? `The row carries amount ${amount}, expected at least ${expectation.value_min}.` : `The row carries no revenue (amount ${amount ?? 'missing'}), expected at least ${expectation.value_min}. The call most likely sent a string instead of a number.`);
+    }
+    const missing = (expectation.properties_required || []).filter(k => !(k in (row.properties || {})));
+    if (missing.length) out.push(`Properties missing from the row: ${missing.join(', ')}.`);
+    return out;
+  };
+  const found = expectation?.value_exact !== undefined
+    ? recent.find(r => r.amount !== undefined && Math.abs(Number(r.amount) - expectation.value_exact) < 0.005)
+    : recent.find(r => mismatchesOf(r).length === 0) ?? recent[0];
+  if (!found) {
+    return { status: 'pending', ...base, message: expectation?.value_exact !== undefined && recent.length
+      ? `'${name}' events arrived, but none with amount ${expectation.value_exact}. Place the test order with that exact total, then re-run.`
+      : `No '${name}' ${kind} event in the last 15 minutes. Trigger the event (a test visit/action), then re-run. Raw endpoints lag ~2-5s.` };
+  }
+  const pii = Object.keys(found.properties || {}).filter(k => FORBIDDEN_KEY.test(k));
+  if (pii.length) return { status: 'warning_pii', ...base, pii_properties: pii.map(key => ({ reason: 'forbidden_key', key })), message: `Event '${name}' arrived, but its properties look like PII (${pii.join(', ')}).` };
+  const mismatches = mismatchesOf(found);
+  if (mismatches.length) return { status: 'mismatch', ...base, mismatches, message: `Event '${name}' arrived, but not as the install should send it: ${mismatches.join(' ')}` };
+  if (expectation?.value_exact === undefined && recent.length > 1) {
+    return { status: 'verified_by_recency', ...base, recent_rows: recent.length, message: `${recent.length} '${name}' events arrived in the last 15 minutes, so this one may be a real visitor's, not the test. For a conversion, verify with expect.value_exact and a test order with a recognisable total.${note}` };
+  }
+  return { status: 'verified', ...base, message: `Event '${name}' confirmed in SealMetrics${expectation ? ' as expected' : ''}, with no PII. Instrumentation verified.${note}` };
 }

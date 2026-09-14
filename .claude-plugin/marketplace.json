@@ -36,7 +36,7 @@
       "name": "seal-install",
       "source": "./seal-install",
       "description": "Installs Sealmetrics on a site from scratch: plans the snippet and the funnel with you, writes them, simulates them against the real tracker before anything ships, and verifies the first hit and each event live. Carries the local MCP server, the only one that exposes the provisioning, planning and verification tools.",
-      "version": "1.14.0",
+      "version": "1.15.0",
       "author": {
         "name": "Sealmetrics",
         "url": "https://sealmetrics.com"

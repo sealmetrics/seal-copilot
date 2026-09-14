@@ -1562,8 +1562,11 @@
   "verify_event_instrumented": {
     "params": [
       "account_id",
+      "expect",
       "kind",
+      "lookback_minutes",
       "name",
+      "simulation_id",
       "timeout_seconds"
     ],
     "enums": {

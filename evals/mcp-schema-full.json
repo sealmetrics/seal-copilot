@@ -2689,11 +2689,15 @@
     }
   },
   "verify_event_instrumented": {
-    "description": "Close the instrumentation loop (Fase 3 Bloque 4): after you add a sealmetrics.conv()/micro() call AND trigger it (a test visit/action), confirm the event reached the backend with the expected type. ALSO validates the event name against the closed taxonomy and rejects PII in properties before declaring success. Reads only.",
+    "description": "Close the instrumentation loop: after the user deployed a sealmetrics.conv()/micro() call AND triggered it on the live site, confirm the event reached the backend. Validates the name against the closed taxonomy first, and rejects PII in the stored properties (at any depth). Optionally pass `expect` — value_min, value_exact (a test order with a recognisable total, so only that row counts), properties_required — and/or `simulation_id` from simulate_install in this session, to check the row is the one the install should send: a row without revenue or missing a property returns mismatch. When several recent rows share the name and nothing exact was asked, the status is verified_by_recency, not verified. A simulation_id this session does not hold, with no expect, returns needs_expectation: pass expect from the plan. Rows from the last lookback_minutes (default 15) count, by the time the browser fired them. value_min / value_exact apply to conversions only (microconversions carry no amount). Reads only.",
     "params": {
       "account_id": {
         "type": "string",
         "description": "Site/account id. Defaults to the provisioned site."
+      },
+      "expect": {
+        "type": "object",
+        "description": "{ value_min?: number, value_exact?: number, properties_required?: string[] }. value_exact makes only the row with that amount count."
       },
       "kind": {
         "type": "string",
@@ -2703,9 +2707,17 @@
           "micro"
         ]
       },
+      "lookback_minutes": {
+        "type": "number",
+        "description": "How far back a row still counts, by the browser's clock when the event fired (default 15, max 60)."
+      },
       "name": {
         "type": "string",
         "description": "Event name (must be in the closed taxonomy, e.g. 'purchase')."
+      },
+      "simulation_id": {
+        "type": "string",
+        "description": "simulation_id returned by simulate_install in this session; the expectation is derived from what it stored for this event."
       },
       "timeout_seconds": {
         "type": "number",

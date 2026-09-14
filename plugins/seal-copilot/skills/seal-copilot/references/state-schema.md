@@ -311,7 +311,15 @@ against the data once traffic arrives.
 `simulations/<simulation_id>.json` — the `simulate_install` result as returned.
 A simulation says what the tracker would send and what the server would do with
 it; it is **not** evidence that an event arrives. Only `verify_event_instrumented`
-and real volume are.
+and real volume are — and a `verify_event_instrumented` status of
+`verified_by_recency` or `mismatch` is not a verification either.
+
+If the user accepted, the same plan also lives in their repository as
+`.sealmetrics/plan.json` (`{ "plan_id", "plan" }`, no approval fields) with the
+simulated calls in `.sealmetrics/cases.json`, for review in pull requests and
+for the `sealmetrics plan` / `simulate` CLI in CI. When both exist and their
+`plan_id` differ, the repository changed the plan after the approval recorded
+here: say so, and trust neither as the current install until the user confirms.
 
 ## `runs.jsonl`
 

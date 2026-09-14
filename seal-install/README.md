@@ -61,7 +61,9 @@ this does not.
    navigation. It asks before installing a browser and never touches a
    non-local URL on its own.
 7. Asks you to deploy, then proves the first pageview and each event on the
-   live site.
+   live site — **against the plan**, not just for arriving: a purchase without
+   revenue or an event missing a planned property is reported as a mismatch, and
+   a test order with a recognisable total tells your order from a real one.
 8. Writes the approved plan and the site profile Seal Copilot reads, so the
    first analysis is cheap.
 
@@ -79,7 +81,12 @@ Planning and simulation need `@sealmetrics/mcp` 1.9.0 or later; the browser
 simulation needs the release that adds `level: "page"` and a Chrome, Edge or
 Chromium on the machine. On an older
 server the skill still asks for your approval of a written plan, and marks every
-event "not simulated".
+event "not simulated". Verifying against the plan needs the release that adds
+`expect` to `verify_event_instrumented`.
+
+If you want, it keeps the approved plan in your repository as
+`.sealmetrics/plan.json`, so it is reviewed with the code and the `sealmetrics`
+CLI (0.2.0 or later) can check it in CI. It asks first.
 
 ## Next
 
