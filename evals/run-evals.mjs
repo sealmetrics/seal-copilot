@@ -49,6 +49,9 @@ const allowedTools = [
   'Read', 'Write',
 ].join(' ');
 
+// Anything that can create, change or fire a scheduled task outside this run.
+const SCHEDULER_TOOLS = ['RemoteTrigger', 'CronCreate', 'CronDelete', 'mcp__scheduled-tasks'].join(' ');
+
 // The default site id must agree with what the fixture's list_sites returns,
 // or the model is handed a contradiction before it starts.
 async function siteIdFor(fixture) {
@@ -111,6 +114,10 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
       // one declares cannot reach the provisioning tools. A case says which.
       '--plugin-dir', join(root, c.pluginDir || 'seal-copilot'),
       '--allowed-tools', allowedTools,
+      // Never the scheduler. A user's own settings can allow it, and on
+      // 2026-09-13 create-alert cases registered three real hourly cloud
+      // routines — for a fixture site, with every connector on the account.
+      '--disallowed-tools', SCHEDULER_TOOLS,
       '--output-format', 'stream-json', '--verbose',
     ];
     // A continued step resumes the previous step's session so the model sees
