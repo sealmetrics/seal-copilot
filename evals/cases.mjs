@@ -463,6 +463,37 @@ export default [
     stateMustContain: [/"calls"\s*:\s*"?\d+/, /"budget"\s*:\s*"?\d+/, /"site_id"\s*:\s*"sealmetricsv2"/,
                        /discovery_cached_at/],   // the 7-day refresh rule reads it; two real runs omitted it
   },
+  // ---- the first 1.12.0 run on a real account: state left by earlier versions ----
+  {
+    id: 'stale-state-does-not-resurrect-bots',
+    fixture: 'account-family-denied',
+    prompt: 'Run my weekly health check.',
+    maxCalls: 10,
+    // Copied from the real sealmetricsv2 state before it was cleaned: old field
+    // names, and notes about bot tools that 1.12.0 never calls. The real run
+    // printed "Not checked: bot validation" from them.
+    seedState: {
+      'sealmetricsv2/profile.json': JSON.stringify({
+        site_id: 'sealmetricsv2', account_id: 'unknown', name: 'Sealmetricsv2', domain: 'sealmetrics.com',
+        timezone: 'Europe/Madrid', currency: 'EUR', vertical: 'saas', agent_analytics_enabled: 'unknown',
+        event_names: { conversions: [], microconversions: ['pricing_view', 'cta_click', 'form_submit'] },
+        discovery_cached_at: new Date().toISOString().slice(0, 10),
+        notes: "account_id-scoped tools (list_channel_rules, list_alerts, get_bot_stats) refuse with 'Access denied'.",
+      }, null, 2),
+      'sealmetricsv2/runs.jsonl':
+        '{"ts":"2026-09-08","skill":"weekly-health-check","calls":3,"budget":8,"verdict":"kpis_only","scheduled":false,"notes":"+36% entrances unvalidated — get_bot_stats access denied"}\n',
+    },
+    // Sealmetrics gives no bot data, so a weekly report says nothing about bots
+    // — not as a figure, not as a gap. Here that is the whole behaviour under
+    // test, so the word itself is the assertion.
+    mustNotMatch: [/\bbots?\b/i],
+    // And the line the same real run left out.
+    // The idea, in any wording or language: a run wrote "clic no directo de
+    // última interacción" and was right.
+    mustMatch: [/non-direct|no directo|no-directo/i],
+    mustCall: ['get_overview'],
+    allowRejected: true,
+  },
   // ---- the second real audit: asked again in the same conversation, the
   // model declined to re-run and guessed nothing had changed ----
   {
