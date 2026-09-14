@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.13.1 — 2026-09-14
+
+A profile left on the machine by another Sealmetrics account no longer sends a
+run to a site the current connection cannot reach.
+
+### Fixed — a cached site belongs to one connection
+Everything under `<state-dir>/<site_id>/` is filed by site and records nothing
+about who authorised the connection, so two accounts on one machine share it.
+On 2026-09-13 a two-day-old profile for `sealmetricsv2` met a connection
+re-authorised with a demo account. The core skill said a fresh profile meant
+skipping `list_sites`. The weekly check, run in Codex, obeyed, sent its stats
+calls to a site the connection could not see, and ended as an access failure
+with no report.
+
+Freshness proves nothing about ownership. `list_sites` now runs at the start of
+every run, and anything cached — profile, baseline, ledger, saved alert — is
+used only if its `site_id` is in that list. If it is not, that state belongs to
+another account: it is ignored for the run, the site is resolved from the list,
+and the other account's files are never deleted.
+
+The rule lives in `state-schema.md` and `methodology.md`, and as one paragraph
+in all fourteen skills that read cached state. Four of them load neither
+document, and a skill invoked directly never runs the core skill's session
+start, which is exactly how the weekly check failed.
+
+### Evals
+- `stale-profile-from-another-account-rediscovers`: a seeded fresh profile for
+  a site the fixture refuses; it must call `list_sites`, report the reachable
+  site's figures, write state for it and leave the other profile in place.
+  **It passed before the fix too.** Claude called `list_sites` despite the
+  instruction to skip it; the Codex model that failed did not, and this harness
+  only drives `claude`. It guards the fixed behaviour; it does not reproduce the
+  original failure.
+- New case flag `noSiteEnv` drops `SEALMETRICS_SITE_ID`, as OAuth production has
+  no default site. 35 cases.
+
 ## 1.13.0 — 2026-09-14
 
 Alert rules are no longer scheduled. Every scheduled check this plugin created

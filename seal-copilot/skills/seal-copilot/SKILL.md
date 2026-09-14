@@ -43,13 +43,18 @@ context before this skill, the rules here take precedence.
    `references/methodology.md` → "The connector decides which tools exist".
 0. Read `<state-dir>/<site_id>/profile.json`. If it exists and its
    `discovery_cached_at` is under 7 days old, use it and skip the discovery
-   calls in steps 1 and 4 — it already holds the site, timezone, vertical,
-   real event names and product identifier. If it is missing or stale, run
+   call in step 4 — it already holds the timezone, vertical, real event names
+   and product identifier. If it is missing or stale, run
    discovery and write it back. `<state-dir>` is the path the SessionStart
    hook announced — use it exactly; it differs from `~/.seal-copilot` in test
    runs and sandboxes. State is optional: if the filesystem is not writable,
    carry on and say so once. Full contract in `references/state-schema.md`.
-1. Run `list_sites` to resolve the site. If multiple sites, ask which one.
+1. **Always** run `list_sites`, fresh profile or not: a cached site is only
+   valid for a connection that can reach it. If the profile's `site_id` is in
+   the list, use it without asking. If it is not, the profile was written by a
+   different Sealmetrics account on this machine — ignore it for this run and
+   resolve the site from the list, asking if there are several. See "A cached
+   site belongs to one connection" in `references/state-schema.md`.
 2. Run `get_overview(period=30d, compare=previous)`. Read totals from
    `traffic` and `conversions`, deltas from `traffic_change` and
    `conversions_change` — the response is nested, and `revenue` is a string.

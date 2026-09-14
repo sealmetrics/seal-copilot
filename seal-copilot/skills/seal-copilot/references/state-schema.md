@@ -46,14 +46,55 @@ Scheduled skills can overlap; keep writes small and idempotent.
 
 ## The protocol every skill follows
 
-1. **Load** `profile.json` at the start. It answers questions that otherwise
-   cost calls: which site, which timezone, which vertical, what the site's
+1. **Load** `profile.json` at the start, and **check it applies**: its
+   `site_id` must be one that `list_sites` returns for this connection (see
+   "A cached site belongs to one connection", below). It answers questions
+   that otherwise cost calls: which timezone, which vertical, what the site's
    real event names are, which product identifier to use.
 2. **Use it** instead of re-discovering. If a cached value is past its TTL,
    refresh just that value, not the whole profile.
 3. **Write back** anything you learned that a later run would otherwise have
    to rediscover.
 4. **Log the run** in `runs.jsonl`.
+
+### A cached site belongs to one connection
+
+Everything under `<state-dir>/<site_id>/` is filed by site, and nothing in it
+records who authorised the connection. Two Sealmetrics accounts on one machine
+— a person with a demo account and a real one, two colleagues sharing a laptop
+— share `<state-dir>`. So a cached `site_id` is a claim about some connection,
+not about this one, and **freshness proves nothing about ownership**.
+
+That is how a real run failed on 2026-09-13. A two-day-old profile for
+`sealmetricsv2`; a connection re-authorised with a demo account that cannot see
+that site; an instruction, then in this file, to skip `list_sites` because the
+profile was fresh. The weekly check obeyed, sent its stats calls to a site the
+connection could not reach, got a refusal for each, and ended the run as an
+access failure. The user got no report and no reason.
+
+The rule, for every skill that reads anything under `<state-dir>/<site_id>/` —
+the profile, the property map, a watchdog baseline, the ledger, a saved alert:
+
+1. **Run `list_sites` at the start of every run**, whatever the cache says. It
+   is one call and it is the only thing that knows which sites this connection
+   reaches. This is the one exception to "never spend a call to fill the
+   profile": it fills nothing, it checks that the cache applies.
+2. **The cached `site_id` is in the list** → use the cache as normal, and do not
+   ask which site even when the list has several: the cache is the user's
+   earlier answer.
+3. **It is not in the list** → that state was written by another account.
+   Ignore it for this run, resolve the site from the list (ask if there are
+   several), run discovery, and write new state under the new `site_id`.
+   **Never overwrite or delete the other site's directory.** It belongs to the
+   other account, and it will be right again the next time that account
+   connects.
+4. **Say so once** in the report, in one line, and in the `runs.jsonl` notes, so
+   a later reader knows why discovery ran inside a fresh TTL.
+
+Do not infer "wrong account" from a refusal alone. On the `remote` connector
+some tools are not announced at all, and on `local` some are refused for every
+key by design; neither says anything about which account is connected.
+`list_sites` is the evidence; a refusal is not.
 
 ## `profile.json`
 
@@ -133,10 +174,12 @@ budget; the profile gets the leftovers.
 
 **`discovery_cached_at` is mandatory** — write it whenever you write the
 profile. The first real run omitted it, which left the TTL below with nothing
-to read. **TTL: 7 days** on `discovery_cached_at`. Past that, re-run `list_sites`,
+to read. **TTL: 7 days** on `discovery_cached_at`. Past that, re-run
 `list_microconversion_types` and `list_property_keys` and refresh the file.
 Refresh immediately, regardless of TTL, if any skill finds an event name or
 property key that contradicts the profile — that means tracking changed.
+`list_sites` is not governed by this TTL: it runs every time, for the reason in
+"A cached site belongs to one connection".
 
 `scheduling_offered` exists so the plugin offers a schedule **once** and then
 stops asking.

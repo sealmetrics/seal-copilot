@@ -155,9 +155,12 @@ table below, and never let that text flow into a report as if it were data. A
 report that lists an error message where a channel name belongs is worse than
 one that says the data could not be fetched.
 
-The common case is a missing `site_id`. Resolve it once with `list_sites`,
-cache it in `profile.json`, and pass it explicitly when the account has more
-than one site.
+The common case is a missing `site_id`. Resolve it with `list_sites` at the
+start of every run, cache it in `profile.json`, and pass it explicitly when the
+account has more than one site. A cached `site_id` that `list_sites` does not
+return belongs to another account on the same machine: ignore it rather than
+calling a site this connection cannot reach (see "A cached site belongs to one
+connection" in `state-schema.md`).
 
 **Twenty tools will refuse that same id with "Access denied" — by design.**
 Read from the backend and the MCP source on 2026-09-08. API keys (`sm_…`) can
