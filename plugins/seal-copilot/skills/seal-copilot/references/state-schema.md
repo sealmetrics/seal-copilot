@@ -283,8 +283,9 @@ The full grammar, the four families and what each field means live in the
 ## `install-plan.json` and `simulations/` — written by seal-install (local only)
 
 The installer writes these; Seal Copilot only reads them. They are the record
-of what the user agreed to measure, which is what `setup-audit` can compare
-against the data once traffic arrives.
+of what the user agreed to measure, which `setup-audit` compares against the data
+once traffic arrives (its step 10): planned events not seen, events seen but not
+planned, planned properties missing, and revenue lost on planned conversions.
 
 `install-plan.json` — the last plan the user approved:
 

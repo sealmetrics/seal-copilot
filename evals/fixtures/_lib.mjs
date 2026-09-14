@@ -200,7 +200,7 @@ export const rawEvents = (events) => {
       device_type: e.device_type || 'desktop', browser: 'Chrome', os: 'macOS', country: 'ES', country_name: 'Spain',
       channel_group: e.channel_group || 'Paid Search', landing_page: e.landing_page || '/',
       utm_source: e.utm_source || 'google', utm_medium: 'cpc', utm_campaign: '(not set)', utm_content: '', utm_term: '',
-      properties: e.properties || {} };
+      properties: e.properties || {}, ...(e.amount !== undefined ? { amount: e.amount } : {}) };
   });
   return { data, has_next: false, page: 1, page_size: data.length, total: data.length };
 };

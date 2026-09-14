@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.14.0 — 2026-09-15 (seal-install unchanged)
+
+`setup-audit` audits a site against its approved install plan. E9 of
+`docs/PRD-plan-simulate-v1.md` (F5).
+
+### Why
+An install that was planned, simulated and verified keeps changing after it ships:
+a checkout refactor sends the total as a string again, a component loses its
+`product_id`, someone adds a call nobody planned. The canonical funnel does not
+catch any of that on a site that already has the events — only the plan says what
+each event is supposed to carry.
+
+### Changed — `setup-audit`
+- **Step 10.** When `<state-dir>/<site_id>/install-plan.json` exists, four checks
+  against it:
+  - **Instrumented, not seen:** planned events with zero volume, with a "too
+    early" note under 7 days since approval.
+  - **Drift:** events arriving that the plan does not contain; named, never
+    renamed.
+  - **Lost property:** a planned key missing from `list_property_keys`
+    (`conversion_items` for purchase items).
+  - **Broken revenue:** more than 5% of the last 200 rows of a planned revenue
+    conversion with amount 0, from `get_conversions_raw`; one call.
+- Those gaps are tagged with the `plan_id`, and their fix is always a planning and
+  simulation round with `seal-install`, never a snippet written in the audit
+  (RF-902).
+- Budget 13 → 14 only when the plan exists; the reference output shows two plan
+  gaps.
+- `state-schema.md` names what `setup-audit` reads from the plan.
+
+### Evals
+- `setup-audit-checks-the-install-plan`, fixture `ecommerce-plan-drift`. A store
+  three weeks after its install:
+  - `begin_checkout` never arrives;
+  - `cta_click` was never planned;
+  - `product_id` is gone;
+  - 26 of 200 purchases have amount 0.
+- The case asserts the `plan_id`, each of the four findings, 13% (or 26/200), and
+  `seal-install` with a simulation as the fix.
+- `rawEvents` in `_lib.mjs` carries `amount` when a fixture gives one.
+
 ## seal-install 1.15.0 — 2026-09-15 (Seal Copilot unchanged)
 
 The installer verifies each event against the approved plan, not just for

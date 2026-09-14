@@ -695,6 +695,45 @@ export default [
     mustCall: ['list_microconversion_types', 'list_property_keys', 'get_tracking_code'],
     maxCalls: 15,   // skill budget 13, plus list_sites and one call of headroom
   },
+  // ---- PRD-058 F5 (E9): the approved install plan is the contract the audit checks ----
+  {
+    id: 'setup-audit-checks-the-install-plan',
+    fixture: 'ecommerce-plan-drift',
+    prompt: 'Audit my tracking. What am I not measuring?',
+    seedState: {
+      'acct_demo/install-plan.json': JSON.stringify({
+        plan_id: 'a3f9c21e7b04', approved_at: '2026-08-24T10:02:11Z', approval_quote: 'Looks good, go ahead with that plan.',
+        plan: {
+          account_id: 'acct_demo', vertical: 'ecommerce', site: { domain: 'demo-store.com' },
+          loader: { file: 'app/layout.tsx', snippet_url: 'https://t.sealmetrics.com/t.js?id=acct_demo' },
+          events: [
+            { kind: 'micro', name: 'view_item', trigger: { type: 'page', where: 'components/ViewItem.tsx' }, properties: { product_id: { type: 'string', example: 'tee-01' }, price: { type: 'number', example: 19.9 } } },
+            { kind: 'micro', name: 'add_to_cart', trigger: { type: 'click', where: 'components/AddToCartButton.tsx' }, properties: { product_id: { type: 'string', example: 'tee-01' }, quantity: { type: 'number', example: 1 } } },
+            { kind: 'micro', name: 'begin_checkout', trigger: { type: 'page', where: 'app/checkout/page.tsx' }, properties: {} },
+            { kind: 'conv', name: 'purchase', trigger: { type: 'page', where: 'app/checkout/success/page.tsx' }, value: { source: 'Number(order.total)', type: 'number', example: 149.99 },
+              properties: { currency: { type: 'string', example: 'EUR' }, items: { type: 'list', max_items: 20, item: { product_id: 'string', quantity: 'number', price: 'number' } } } },
+          ],
+          product_identifier: { key: 'product_id', applies_to: ['view_item', 'add_to_cart', 'purchase.items'] },
+        },
+      }, null, 2),
+    },
+    mustCall: ['get_conversions_raw', 'list_property_keys'],
+    callArgs: [{ tool: 'get_conversions_raw', which: 'any', mustMatch: [/purchase/] }],
+    mustMatch: [
+      /\b([0-9]|10)\s*\/\s*10\b/,
+      /a3f9c21e7b04/,                                   // findings tied to the plan
+      /begin_checkout/,                                 // planned, not seen
+      /cta_click/,                                      // seen, not planned
+      /product_id/,                                     // planned property lost
+      /1[23](\.\d)?\s*%|26\s*(of|\/)\s*200/,            // revenue lost on 13% (26 of 200)
+      /seal-install/,                                   // the fix is a planning round
+      /simulat/i,
+    ],
+    mustNotMatch: [
+      /renam(e|ing) `?cta_click/i,                      // drift is named, never renamed
+    ],
+    maxCalls: 16,   // budget 14 with a plan, plus list_sites and one of headroom
+  },
   {
     id: 'watchdog-refuses-without-a-baseline',
     fixture: 'ecommerce-watchdog',
