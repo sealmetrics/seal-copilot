@@ -1572,5 +1572,35 @@
         "micro"
       ]
     }
+  },
+  "plan_install": {
+    "params": [
+      "account_id",
+      "events",
+      "loader",
+      "product_identifier",
+      "repo_path",
+      "site",
+      "vertical"
+    ],
+    "enums": {
+      "vertical": [
+        "ecommerce",
+        "hotel",
+        "saas",
+        "leadgen",
+        "content"
+      ]
+    }
+  },
+  "simulate_install": {
+    "params": [
+      "cases",
+      "plan",
+      "plan_id",
+      "repo_path",
+      "scenarios"
+    ],
+    "enums": {}
   }
 }

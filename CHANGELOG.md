@@ -1,5 +1,86 @@
 # Changelog
 
+## 1.13.3 — 2026-09-14 (seal-install 1.13.0)
+
+The installer plans an install with the user before it edits a file, and
+simulates the calls it wrote against the real tracker before it asks anyone to
+deploy. F2 of `docs/PRD-plan-simulate-v1.md`; the tools shipped in
+`@sealmetrics/mcp` 1.9.0 (sealmetrics2 PRD-058).
+
+### Why
+Until now the only test of an install was production. pixel-service answers
+204 to hits it rejects, so a purchase sent with the total as a string arrived,
+passed `verify_event_instrumented`, and stored revenue 0; a hit from a domain the
+site does not list, or a body over 15 KB, disappeared without an error; and the
+user approved nothing between "install Sealmetrics" and a diff across five files.
+
+### Changed — `install-sealmetrics`
+- **Step 3, plan.** The skill calls `plan_install` with the loader and every event
+  it intends to write, fixes every `block` finding without showing a blocked plan
+  to the user, shows `summary_markdown`, and waits for approval in the user's own
+  words. "Install Sealmetrics" is not approval of a plan. The approved plan is
+  saved as `install-plan.json` with `plan_id` and `approval_quote`; a change after
+  approval is a new plan with its own approval.
+- **Steps 4–5.** Only planned events are written.
+- **Step 6, simulate.** `simulate_install` with the call as written and synthetic
+  `vars` typed as the site produces them — a string total stays a string, which is
+  the point. Failures are fixed and re-simulated, at most three rounds; a stale plan
+  goes back to planning. Nobody is asked to deploy while a simulation fails.
+- **One deploy.** The pixel and the events ship together; `verify_setup` and then
+  `verify_event_instrumented` run on the live site.
+- **Planned, simulated, verified** are three columns in the final table and three
+  words the skill never merges.
+- On a connector without the new tools (before 1.9.0) the skill still asks for
+  approval of a written plan and marks events "not simulated".
+- Budget 15 → 22 calls. The reference output shows the three turns, including a
+  string total caught in simulation.
+- `state-schema.md` documents `install-plan.json` and `simulations/`.
+
+### Fixed — seal-install knows where its state goes
+The skill has always written `profile.json` and `runs.jsonl` under
+`<state-dir>`, but only Seal Copilot had the SessionStart hook that announces
+that directory. In seal-install sessions the model was never told it, and the
+first eval that asserted on the approved plan found the state directory empty.
+seal-install now carries a minimal SessionStart hook with the same resolution
+(`$SEAL_COPILOT_STATE_DIR`, else `~/.seal-copilot`), so both plugins share one
+state root.
+
+### Evals
+- Three cases on a seeded Next.js store whose orders API types the total as a
+  string: `install-plans-before-editing` (the repository is byte-identical after
+  the planning turn, and the plan carries the taxonomy names, the real snippet and
+  a product identifier, with no order id and no route pageview),
+  `install-simulates-then-replans-a-change` (simulates with the string total and
+  ends with `Number()` in the file, never verifies before a deploy, and replans a
+  change requested after approval), and `install-refuses-legacy-event-names`
+  (explaining the rejection and asking first is correct; whatever it plans must
+  not carry the rejected names). The first run failed two cases on the eval, not
+  the skill: the seeded store had no newsletter form to instrument, and the
+  legacy case demanded a plan where asking the user is the documented step.
+- Harness: `seedRepo`, step-level `repoUnchanged` and `repoMustMatch`, and
+  `callArgs` (with `which` and `optional`), which asserts on the arguments of a
+  tool's calls rather than its name. Seeded cases also get Edit, Glob and Grep.
+- Resuming a step used the first session id in the stream. Once seal-install
+  had a SessionStart hook, the hook's events came first with an id no
+  conversation is stored under, and every third step died with "No conversation
+  found". The runner now resumes the id the CLI's result event names. An error
+  result with no text also stops reading "unknown CLI error": the subtype and
+  stderr are reported, which is how this one was found. Both resuming cases
+  (`install-simulates-then-replans-a-change`, `explicit-rerun-actually-runs`)
+  pass after the change.
+- `fixtures/_install.mjs`: real-shaped `get_tracking_code` and instrumentation
+  guide (the old fixture taught `sealmetrics.pageview()` on route changes and an
+  invented CDN URL), and a test double of `plan_install` / `simulate_install` with
+  the real response shape and the rules the cases exercise. The rules themselves
+  are tested in setup-core against the real tracker.
+- `mcp-schema.json` gains the two tools, dumped from the 1.9.0 build;
+  `tool-availability.json` gates them. The self-test counts tools from the
+  snapshot instead of a literal 62 / 42.
+
+**Until `@sealmetrics/mcp` 1.9.0 is on npm,** `check-schema-drift.mjs --online`
+reports `plan_install` and `simulate_install` as removed. That is the expected
+result of this change landing first.
+
 ## 1.13.2 — 2026-09-14 (seal-install 1.12.1)
 
 The installer no longer recommends event names that its own verifier rejects,

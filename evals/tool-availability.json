@@ -10,7 +10,7 @@
     ]
   },
   "gated": {
-    "_why": "Hidden by the remote (OAuth) connector, which is what .mcp.json declares and therefore what nearly every user has. They reach the backend routers that require the generic `read` or `write` scope, and no API key or OAuth grant can carry those. A mention passes only if its sentence carries a refusal marker, or its block is marked `(local only)`, or it lives under a local-only root.",
+    "_why": "Hidden by the remote (OAuth) connector, which is what .mcp.json declares and therefore what nearly every user has. They reach the backend routers that require the generic `read` or `write` scope, and no API key or OAuth grant can carry those. plan_install and simulate_install (PRD-058) are gated for another reason: simulate_install runs agent-written JavaScript in node:vm, acceptable only on the user's own machine, so the remote transport never registers them. A mention passes only if its sentence carries a refusal marker, or its block is marked `(local only)`, or it lives under a local-only root.",
     "tools": [
       "get_channels",
       "get_bot_stats",
@@ -31,7 +31,9 @@
       "import_channel_rules",
       "verify_setup",
       "get_instrumentation_guide",
-      "verify_event_instrumented"
+      "verify_event_instrumented",
+      "plan_install",
+      "simulate_install"
     ]
   },
   "markers": {

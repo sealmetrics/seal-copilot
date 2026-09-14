@@ -120,6 +120,12 @@ ok('over budget fails', assess(c, 'on track', [...good, { tool: 'a' }, { tool: '
 ok('rejected call fails', assess(c, 'on track', [...good, { tool: 'x', rejected: 'bad param' }]).some(f => f.includes('invalid call')));
 ok('allowRejected tolerates rejections', assess({ ...c, allowRejected: true }, 'on track', [...good, { tool: 'x', rejected: 'bad' }]).length === 0);
 ok('empty answer fails', assess(c, '   ', good).some(f => f.includes('empty')));
+const planCalls = [{ tool: 'plan_install', args: { events: [{ name: 'product_view' }] } }, { tool: 'plan_install', args: { events: [{ name: 'view_item' }] } }];
+const argsSpec = { callArgs: [{ tool: 'plan_install', mustMatch: [/view_item/], mustNotMatch: [/product_view/] }] };
+ok('callArgs judges the last call by default', assess(argsSpec, 'ok', planCalls).length === 0);
+ok('callArgs which:every sees an earlier bad call', assess({ callArgs: [{ ...argsSpec.callArgs[0], which: 'every' }] }, 'ok', planCalls).some(f => f.includes('forbidden')));
+ok('callArgs fails when the tool was never called', assess(argsSpec, 'ok', good).some(f => f.includes('never called plan_install')));
+ok('optional callArgs tolerates no call', assess({ callArgs: [{ ...argsSpec.callArgs[0], optional: true }] }, 'ok', good).length === 0);
 
 
 // The connector a user actually has announces forty-two tools, not sixty-two.
@@ -146,8 +152,14 @@ console.log('\ntransport gating');
   });
   const localTools = await list({ SEAL_TRANSPORT: 'local' });
   const remoteTools = await list({ SEAL_TRANSPORT: 'remote' });
-  ok('local announces every tool in the schema', localTools.length === 62, `${localTools.length}`);
-  ok('remote withholds the twenty gated tools', remoteTools.length === 42, `${remoteTools.length}`);
+  // Counted from the snapshot and the availability file, not hardcoded: the
+  // local connector gained plan_install and simulate_install (PRD-058) and a
+  // literal 62 would have turned that into a harness failure.
+  const schemaCount = Object.keys(JSON.parse(readFileSync(join(here, 'mcp-schema.json'), 'utf8'))).length;
+  const gatedCount = JSON.parse(readFileSync(join(here, 'tool-availability.json'), 'utf8')).gated.tools.length;
+  ok('local announces every tool in the schema', localTools.length === schemaCount, `${localTools.length} of ${schemaCount}`);
+  ok('remote withholds every gated tool', remoteTools.length === schemaCount - gatedCount, `${remoteTools.length}, expected ${schemaCount - gatedCount}`);
+  ok('remote hides the install plan and simulation', !remoteTools.includes('plan_install') && !remoteTools.includes('simulate_install'));
   ok('remote still offers the replacement', remoteTools.includes('get_top_channels'));
   ok('remote hides list_alerts', !remoteTools.includes('list_alerts'));
   const r = await rpc('ecommerce-healthy', [{ name: 'list_alerts', arguments: {} }], { SEAL_TRANSPORT: 'remote' });

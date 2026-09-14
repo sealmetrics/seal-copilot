@@ -85,8 +85,8 @@ Add `--online` to also diff the MCP schema against the live server. The eval
 suite itself is `node evals/run-evals.mjs`.
 
 The linter does more than check that a tool exists. `evals/tool-availability.json`
-names two tools no skill may ever call, and the twenty the default connector
-does not announce; a reference to either fails the build unless the sentence
+names the tools no skill may ever call, and the ones the default connector
+does not announce (including the install plan and simulation, local only); a reference to either fails the build unless the sentence
 says it is unavailable, or the step is marked `(local only)`. That is the check
 that would have caught `get_channels` sitting in four procedures while the
 methodology said never to call it.
