@@ -48,7 +48,7 @@ const SEP = '[\\s\\u2010-\\u2015\\u2212-]?';   // space, any dash, or nothing
 // fixture pinned to a date only passes on the day it was written.
 const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const rule = (over) => JSON.stringify({
-  id: 'eval-rule', site_id: 'acct_demo', filter: {}, cadence_minutes: 60,
+  id: 'eval-rule', site_id: 'acct_demo', filter: {},
   timezone: 'Europe/Madrid', expected: null, deliver: ['app'],
   created_at: '2026-09-12', expires_at: '2027-03-12', status: 'active', ...over,
 }, null, 2);
@@ -73,6 +73,10 @@ const firedAt = (d = new Date()) => {
 const ask = (r, now, form = 'command') => (form === 'command'
   ? `/seal-copilot:check-alerts\n\nFired at: ${firedAt(now)}\n\n${r}`
   : `Run the check-alerts skill for this rule and output only its result.\n\nFired at: ${firedAt(now)}\n\n${r}`);
+
+// A promise that some process will check the rule later. Since 1.13.0 there is
+// no such process, so any of these is a false claim, whatever the language.
+const SCHEDULE_PROMISE = /\b(first|next) check\b|\bI('| wi)ll (let you know|notify you|alert you|ping you)\b|primera comprobaci[oó]n|compruebo cada|te aviso (en cuanto|cuando)/i;
 
 export const RULE_PROMPT = {
   silence: ({ hours, from, to }, now) => ask(rule({
@@ -556,6 +560,26 @@ export default [
                        /"rules"\s*:\s*\[/, /"skill"\s*:\s*"create-alert"/],
     // Silence until the answer: saving the rule is done, not announced.
     maxTextBlocks: 1,
+    // Nothing schedules the rule, so nothing may promise a check.
+    mustNotMatch: [SCHEDULE_PROMISE],
+  },
+  {
+    // 1.13.0 retired routines: none ever ran an alert end to end. Asked outright
+    // for an hourly check, the skill saves the rule and says it is not watched.
+    // The scheduler is disallowed for every case, so what is under test is the
+    // claim, not the call.
+    id: 'create-alert-does-not-schedule',
+    fixture: 'ecommerce-healthy',
+    prompt: 'Alert me if four hours go by with no purchases, between 8am and midnight. Check it every hour.',
+    maxCalls: 6,
+    mustMatch: [
+      // Any honest wording, in either language: not automatic yet, native
+      // alerts, or run it on request.
+      /not (yet )?(be )?(watched|monitored|scheduled|automatic|checked automatically)|isn'?t (being )?(watched|monitored|scheduled|automatic)|won'?t (be )?(watched|monitored|checked)|no (se )?(vigila|programa|comprueba)|native|nativas?|on (request|demand)|run (my|the|this) alert|when you ask/i,
+    ],
+    mustNotMatch: [SCHEDULE_PROMISE],
+    stateMustContain: [/"rules"\s*:\s*\[/, /"family"\s*:\s*"silence"/],
+    maxTextBlocks: 1,
   },
   {
     id: 'create-alert-refuses-noisy-rule',
@@ -601,6 +625,25 @@ export default [
     ],
     mustNotMatch: [/🟢/],
     mustCall: ['get_conversions_raw'],   // where the last timestamp lives
+  },
+  {
+    // Without routines, a saved rule runs because the user asks, by its id.
+    // The rule lives only in alerts.json; the prompt carries none of it.
+    id: 'check-alerts-runs-a-saved-rule-on-request',
+    fixture: 'alerts-silence-fires',
+    seedState: {
+      'acct_demo/alerts.json': JSON.stringify({ site_id: 'acct_demo', rules: [JSON.parse(rule({
+        id: 'no-purchases-4h', family: 'silence',
+        metric: { kind: 'conversion', type: 'purchase' },
+        condition: { hours: 4 },
+        active_hours: { from: 0, to: 24, days: ALL_DAYS },
+      }))] }, null, 2),
+    },
+    prompt: (now) => `/seal-copilot:check-alerts\n\nFired at: ${firedAt(now)}\n\nRun my alert no-purchases-4h now.`,
+    maxCalls: 4,
+    mustMatch: [/🔴|fired|alert/i, /\b([01]?\d|2[0-3])[:.][0-5]\d\b/],
+    mustNotMatch: [/🟢/],
+    mustCall: ['get_conversions_raw'],
   },
   {
     id: 'check-alerts-silent-when-healthy',

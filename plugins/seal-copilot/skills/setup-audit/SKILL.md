@@ -69,13 +69,14 @@ connector decides which tools exist" in
 7. `get_top_campaigns(30d)` — UTM hygiene: "(not set)" dominating means
    campaigns run untagged.
 8. Is anyone watching? **No call** — do not call `list_alerts`, whose rules
-   this plugin does not manage. Read `<state-dir>/<site_id>/alerts.json` — the rules
-   `create-alert` has registered for this site. No file, or no rule with
-   `status: active`, is a gap: a site nobody is watching finds out about an
-   outage from its customers. Recommend one concrete rule the site's own data
-   justifies (for stores, "tell me if add-to-cart goes quiet for 2 hours"), and
-   for intraday cart cover, `calibrate-watchdog` once and then `cart-watchdog`
-   hourly with `/schedule`.
+   this plugin does not manage. Nothing in this plugin watches a site
+   between reports except `cart-watchdog`: rules in
+   `<state-dir>/<site_id>/alerts.json` are saved, not scheduled. So the gap is
+   intraday cover — a site nobody is watching finds out about an outage from its
+   customers. For stores, recommend `calibrate-watchdog` once and then
+   `cart-watchdog` hourly with `/schedule`; for any site, one concrete rule the
+   site's own data justifies, saved with `create-alert` so it is ready when
+   Sealmetrics' native alerts watch it.
 9. `get_microconversions(period=30d)` — check that each canonical funnel
    stage receives at least 10 events/day; below that the watchdog baseline
    will be too noisy to be useful and that is a gap worth flagging.

@@ -3,8 +3,8 @@
 An AI marketing analyst for [Sealmetrics](https://sealmetrics.com), the
 consentless analytics that measures 100% of your traffic. It diagnoses drops,
 finds revenue left on the table, audits catalog friction per SKU, watches the
-cart during the day, and turns "avísame si paso 4 horas sin ventas" into a
-scheduled check that stays quiet until it matters.
+cart during the day, and turns "avísame si paso 4 horas sin ventas" into an
+alert rule that has been checked against the site's own volume.
 
 Fifteen procedures, one methodology, and a hard rule against inventing a
 number: every figure in an answer comes from a tool result in that session.

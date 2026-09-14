@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.13.0 — 2026-09-14
+
+Alert rules are no longer scheduled. Every scheduled check this plugin created
+failed in the same place: none ran an alert end to end. Claude Code routines
+only load the plugin from a repository, run at most hourly, count against a
+daily cap, and were created with every connector on the account. Automatic
+alerts move to Sealmetrics' own alert engine (PRD addendum 1.2, E15).
+
+### Changed
+- **`create-alert` saves the rule and schedules nothing** — not `/schedule`,
+  not a routine, not a Cowork task, even when asked. It still confirms the event
+  exists and refuses noisy rules, and it says plainly that the rule is not
+  watched automatically yet. Its answer never promises a first check.
+- **`check-alerts` runs a saved rule on request**, by id from `alerts.json` or
+  from JSON in the prompt, and reads the clock once when no `Fired at:` line is
+  given.
+- `setup-audit`, `monday-briefing`, the core skill's scheduling section, the
+  state schema and both READMEs no longer describe saved rules as watched.
+
+### Evals
+- `create-alert-does-not-schedule`: asked for an hourly check, the rule is saved
+  and the answer says it is not watched; no case may promise a check.
+- `check-alerts-runs-a-saved-rule-on-request`: the rule comes only from a seeded
+  `alerts.json`. 34 cases.
+
 ## 1.12.2 — 2026-09-14
 
 The first alert created on a real account refused the right rules and wrote the

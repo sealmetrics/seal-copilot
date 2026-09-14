@@ -90,11 +90,9 @@ Status line: `🟢 normal` / `⚠️ watch — <reason>` / `🔴 act now — <re
 
 ### Block C2 — Alerts (0 calls)
 Read `<state-dir>/<site_id>/alerts.json`. One line, and only when there is
-something to say: how many rules are active, how many fired in the last seven
-days, and any rule expiring within 30 days. A site with **no** active rule gets
-the one line that matters instead — that nothing is watching it between these
-reports — and an offer to set one up with `create-alert`. Omit the block
-entirely if the file is unreadable.
+something to say: how many rules are saved and any expiring within 30 days.
+Saved rules are not watched automatically — never write that they are. Omit
+the block entirely if the file is unreadable or has no active rule.
 
 ## Output format (the one-pager)
 

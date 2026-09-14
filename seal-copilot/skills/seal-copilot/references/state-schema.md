@@ -212,7 +212,6 @@ Written and maintained by `create-alert`, read by `check-alerts`,
       "filter": {},
       "condition": { "hours": 4 },
       "active_hours": { "from": 8, "to": 24, "days": ["mon","tue","wed","thu","fri","sat","sun"] },
-      "cadence_minutes": 60,
       "timezone": "Europe/Madrid",
       "expected": null,
       "deliver": ["app"],
@@ -228,15 +227,15 @@ Written and maintained by `create-alert`, read by `check-alerts`,
 The full grammar, the four families and what each field means live in the
 `create-alert` skill. Three rules matter here:
 
-- **The file is a convenience, never a dependency.** `check-alerts` receives
-  its rule inside the prompt the scheduler fires, because a scheduled run may
-  have no filesystem at all. This file exists so that "what am I watching?" and
-  "stop watching X" can be answered without the user remembering.
+- **Nothing watches these rules automatically.** `create-alert` saves them
+  here; `check-alerts` runs one when the user asks. When Sealmetrics' native
+  alert engine ships, the server becomes the source of truth and this file is
+  history. Never describe a rule in it as being watched.
 - `status` is `active` | `paused` | `deleted`. Deleted rules stay in the file
   with the date, so a later "did I have an alert on that?" has an answer.
-- `last_fired` is an ISO timestamp or `null`, used for the cooldown. A rule
-  that fired an hour ago and is still failing does not fire again until it has
-  recovered and broken a second time.
+- `last_fired` is an ISO timestamp or `null`: when a run on request last
+  found the rule firing. A rule that fired an hour ago and is still failing is
+  reported as "still open since", not as a new incident.
 
 ## `runs.jsonl`
 

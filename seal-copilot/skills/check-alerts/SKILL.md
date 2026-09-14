@@ -1,12 +1,12 @@
 ---
 name: check-alerts
 description: >
-  Evaluates one alert rule created by `create-alert` and answers in a single
-  line when the site is healthy. Runs from a scheduled task, with the rule in
-  its prompt, so it needs no stored state. Trigger only when a scheduled alert
-  check fires, or when the user asks to run a named alert now — never from a
-  general question about traffic.
-short-description: 'Evaluate one alert rule and stay silent unless it fires. Runs from a scheduled task with the rule in its prompt. Use for "run my alert now" or a scheduled check.'
+  Evaluates one alert rule saved by `create-alert` and answers in a single
+  line when the site is healthy. Runs on request — "run my alert X now" — with
+  the rule read from alerts.json or given as JSON in the prompt. Trigger only
+  when the user asks to run a named alert, never from a general question about
+  traffic.
+short-description: 'Evaluate one saved alert rule now: one line while healthy, evidence when it fires. Use for "run my alert now", "pasa la alerta".'
 ---
 
 # Check Alerts
@@ -30,17 +30,18 @@ connector nearly every user has.
 
 ## Step 0 — Read the rule and the clock
 
-The rule arrives as JSON in the prompt. If it did not, say in one line that
-this skill runs from a rule and point at `create-alert`. Do not invent a rule,
+The rule arrives as JSON in the prompt, or by its id or description ("run
+no-purchases-4h", "pasa la alerta de ventas"): then read it from
+`<state-dir>/<site_id>/alerts.json`. If there is no such rule, say in one line
+that this skill runs a saved rule and point at `create-alert`. Do not invent a rule,
 and do not fall back to a general health check.
 
 **Take the current time from the `Fired at:` line in this prompt** and convert
 it to `rule.timezone`. When that line is present, it is the clock: do not look
 for another one.
 
-**When the line is absent** — Claude Code routines send their prompt verbatim
-and cannot stamp it — read the runner's clock once, with
-`date -u +%Y-%m-%dT%H:%M:%SZ`. That is the only shell command this skill ever
+**When the line is absent** — a run on request has none — read the clock once,
+with `date -u +%Y-%m-%dT%H:%M:%SZ`. That is the only shell command this skill ever
 runs. If it is not available either, derive what you can from the data — the
 latest `date` in a `period=today` response bounds the day — and treat the hour
 as unknown rather than assuming one.
@@ -49,12 +50,12 @@ as unknown rather than assuming one.
 calls. **Not 🟢** — a green tick means you looked and the site is fine, and here
 you did not look. An operations log full of green ticks for hours nobody watched
 is how a watchdog stops being believed. Say which window the rule watches and
-what today is, so the reader can see why nothing ran. Most of a day's runs end here, and that is correct.
+what today is, so the reader can see why nothing ran.
 
 ## Step 1 — Evaluate, by family
 
-State-free by design: a scheduled run may have no filesystem, so everything the
-verdict needs is either in the rule or in the calls below.
+Everything the verdict needs is either in the rule or in the calls below; no
+other stored state.
 
 ### `silence`
 
@@ -124,8 +125,8 @@ the start of a line reads as a typo.
 miniature: a reader who sees it can check your arithmetic, and a reader who
 sees a clock time cannot. This holds for 🟢, ⚠️ and 🔴 alike.
 
-No greeting, no preamble, no offer to look deeper. A scheduled run that prints
-a paragraph on a healthy site is a defect.
+No greeting, no preamble, no offer to look deeper. A run that prints a
+paragraph on a healthy site is a defect.
 
 **Firing.** Twelve lines at most:
 
@@ -154,8 +155,7 @@ With a writable filesystem, read and write `last_fired` in
 **not** fire again until it has recovered and broken a second time; say "still
 open since <time>" instead, in one line.
 
-Without a filesystem, the cadence is the only limit. Say "still open since
-<time>" using the incident start you just computed from the data — never from a
+Without a filesystem, say "still open since <time>" using the incident start you just computed from the data — never from a
 remembered previous run, because there is none.
 
 ## What you do NOT do

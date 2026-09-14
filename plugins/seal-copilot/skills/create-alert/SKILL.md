@@ -2,14 +2,15 @@
 name: create-alert
 description: >
   Turns a sentence like "tell me if I go four hours without conversions" into a
-  scheduled check that stays quiet while the site is healthy and warns with
-  evidence when it is not. Also lists, pauses and deletes the rules already
-  watching a site. Trigger on: "alert me if", "tell me when", "warn me if",
+  sound alert rule: confirms the event exists, measures whether the rule would
+  be noise, and saves it. It does not schedule anything — automatic delivery
+  arrives with Sealmetrics' own alert engine; until then a saved rule runs on
+  request through check-alerts. Also lists, pauses and deletes saved rules. Trigger on: "alert me if", "tell me when", "warn me if",
   "avísame si", "quiero saber cuándo", "notify me when", "set up an alert",
   "create an alert", "crea una alerta", "my alerts", "qué alertas tengo",
   "stop watching", "delete the alert", "pause the alert".
 argument-hint: "[the condition to watch]"
-short-description: 'Create, list or delete an alert from a sentence: "tell me if 4 hours pass with no conversions". Use for "alert me if", "avísame si", "my alerts", "stop watching".'
+short-description: 'Turn a sentence into a sound alert rule and save it — "tell me if 4 hours pass with no conversions". Nothing is scheduled. Use for "alert me if", "avísame si", "my alerts", "delete the alert".'
 ---
 
 # Create Alert
@@ -28,8 +29,7 @@ Budget: ≤3 Sealmetrics calls — up to two to find the event and measure it, o
 for the expectation a `drop` rule needs. The output of a successful run is
 under 10 lines.
 
-**The only other tools this skill uses are Read and Write** (for state), plus
-the scheduler in step 5. No shell: not `ls` to look for a state directory, not
+**The only other tools this skill uses are Read and Write** (for state). No shell: not `ls` to look for a state directory, not
 `echo` as a placeholder between calls. A real run spent two shell calls doing
 nothing; Read answers whether a file exists.
 
@@ -38,9 +38,19 @@ of the tools the remote connector withholds; `list_alerts` and the other
 dashboard-alert tools are not available to it and are a different product. Do
 not tell a user on the remote connector that alerts need the local one.
 
-This skill writes the rule. `check-alerts` evaluates it, on a schedule. The two
-share the grammar below and nothing else — deliberately, because a scheduled
-run may have no filesystem and must carry everything it needs in its prompt.
+**This skill schedules nothing.** Not `/schedule`, not a routine, not a cron,
+not a Cowork task — even when the user asks for one. Routines were tried: none
+ever ran an alert end to end, and they cannot. A routine only has the plugin if
+a repository declares it, runs at most hourly, counts against a daily cap of
+runs on the account, and was created with every connector the account has —
+mail and payments included — to read one counter. Alerts that watch on their
+own arrive with Sealmetrics' native alert engine. Until then, say so plainly:
+the rule is saved, and "run my alert X" checks it now through `check-alerts`.
+If the user asks you to schedule it, that one sentence is the answer; do not
+offer a workaround.
+
+This skill writes the rule. `check-alerts` evaluates it when the user asks. The
+two share the grammar below and nothing else.
 
 ## The rule grammar
 
@@ -53,7 +63,6 @@ run may have no filesystem and must carry everything it needs in its prompt.
   "filter": {},
   "condition": { "hours": 4 },
   "active_hours": { "from": 8, "to": 24, "days": ["mon","tue","wed","thu","fri","sat","sun"] },
-  "cadence_minutes": 60,
   "timezone": "Europe/Madrid",
   "expected": null,
   "deliver": ["app"],
@@ -72,7 +81,6 @@ run may have no filesystem and must carry everything it needs in its prompt.
 | `filter` | Only filters the tool for that metric actually accepts. A filter the tool does not support is refused at creation, never passed and ignored |
 | `condition` | `{ "hours": N }` for `silence`; `{ "ratio": 0.5 }` for `drop` and `spike`; `{ "below": 2000 }` or `{ "above": N }` for `threshold` |
 | `active_hours` | **Mandatory for `silence` and `drop`.** Local hours `from`–`to` and the days it applies |
-| `cadence_minutes` | How often the check runs. Never more than half the window: `condition.hours × 30`, floor 30 |
 | `expected` | `drop` and `spike` only. The expectation **embedded at creation time**, so the check needs no stored state |
 | `deliver` | `["app"]`, or add `"slack"` / `"email"` when the user has that connector and asks for it |
 | `expires_at` | Six months out. An alert nobody revisits becomes noise |
@@ -104,8 +112,8 @@ not assume**, and ask everything in a single message:
   the hours where the median is above zero and let the user confirm.
 - Where the alert should arrive, if they have more than one option.
 
-Sensible defaults you may apply without asking: `cadence_minutes` from the
-formula, `expires_at` six months out, `deliver: ["app"]`, `filter: {}`.
+Sensible defaults you may apply without asking: `expires_at` six months out,
+`deliver: ["app"]`, `filter: {}`.
 
 ### 2. Verify the metric exists, and that the rule will not be noise (1–2 calls)
 
@@ -168,57 +176,7 @@ afternoon.
 Never leave `expected` null on a `drop` or `spike` rule. A check that has to
 invent its own expectation is the guessed threshold this plugin refuses to use.
 
-### 4. Compile the prompt the scheduler will run
-
-The scheduled task must work with no filesystem, so everything travels in the
-prompt, and **the prompt starts with the command**, not a sentence:
-
-```
-/seal-copilot:check-alerts
-
-Fired at: <the scheduler's local time, ISO 8601 with offset>
-
-<the rule, as JSON>
-```
-
-The command is what reaches the skill directly. A sentence asking to "run the
-check-alerts skill" leaves the model to find and load it on its own, and a run
-that could not load it spent six minutes searching the disk with `find` and
-evaluated nothing. On a surface where commands are named differently, use that
-surface's command for the skill; never a paraphrase.
-
-**The firing time matters.** The verdict is a comparison against the hours
-elapsed so far today, so a check that has to guess the hour guesses the
-verdict. Where the scheduler substitutes the time into the prompt, include the
-`Fired at:` line. **Claude Code routines do not** — the prompt is sent
-verbatim on every run — so leave the line out rather than filling it with a
-note; `check-alerts` then reads the runner's clock itself.
-
-### 5. Register it
-
-- **Claude Code (`/schedule`, a cloud routine).** The routine runs in a fresh
-  session that has none of this one's setup, so four things must hold, or the
-  alert is not live:
-  1. **The seal-copilot plugin is enabled in the routine.** Without it
-     `/seal-copilot:check-alerts` is not a command and the run evaluates
-     nothing.
-  2. **Only the Sealmetrics connector is attached.** A routine created with
-     every account connector — mail, calendar, CRM, payments — hands a
-     scheduled prompt far more reach than a read-only check needs.
-  3. **Tools are Read, Write and `Bash(date:*)`**, the last only so the check
-     can read the clock. Nothing else.
-  4. **The cron is in UTC.** Convert `active_hours` from `rule.timezone`, and
-     cover one extra hour on each side: daylight saving moves local time
-     against UTC twice a year, and `check-alerts` answers ⏸ for any run that
-     lands outside the watch hours, so the extra runs cost nothing.
-  Then **read the routine back** and check all four. Only if they hold is the
-  alert live; if one does not, say which, and do not claim it is running.
-- **Cowork:** the equivalent scheduled task, with the same four conditions.
-- **Codex, Claude.ai:** there is no scheduler you can write to. Print the prompt
-  and the cadence, say plainly that they have to register it themselves, and do
-  not claim the alert is live.
-
-### 6. Persist, if you can
+### 4. Save it
 
 Add the rule to `<state-dir>/<site_id>/alerts.json`. **The file is an object
 with a `rules` array, never a bare list:**
@@ -231,31 +189,37 @@ Read the file first; if it exists, append to its `rules` and write the whole
 object back. The session-start hook, `monday-briefing` and `setup-audit` read
 `rules` — a bare array written by a real run was invisible to all three. Full
 schema in `skills/seal-copilot/references/state-schema.md`. This file is what
-makes "what am I watching?" and "stop watching X" answerable later. If the
-filesystem is not writable, say once that the rule is live but not listed, and
-move on.
+makes "my alerts", "run my alert X" and "delete the alert" answerable later.
+If the filesystem is not writable, say once that the rule could not be saved,
+and print it as JSON so the user can keep it.
 
 ## Managing what exists
 
 - **"My alerts"** — read `alerts.json`, list `status: active` rules one line
-  each: what it watches, the condition, the cadence, when it last fired. Name
-  any rule expiring within 30 days.
-- **"Stop watching X" / "delete the alert"** — name the rule you are about to
-  remove and wait for confirmation. Then cancel the scheduled task and set
-  `status: "deleted"` with the date; keep the entry. Never cancel a task you
-  have not named, and never cancel one the user did not mean.
-- **"Pause it"** — `status: "paused"`, task cancelled, rule kept so it can be
-  restored verbatim.
+  each: what it watches, the condition, the hours. Name any rule expiring
+  within 30 days. Never describe them as being watched.
+- **"Run my alert X now"** — that is `check-alerts`, with the rule read from
+  `alerts.json`.
+- **"Delete the alert" / "stop watching X"** — name the rule you are about to
+  remove and wait for confirmation. Then set `status: "deleted"` with the date;
+  keep the entry.
+- **"Pause it"** — `status: "paused"`, rule kept so it can be restored verbatim.
+- **Scheduled tasks from an earlier version.** If the user mentions one, say it
+  can be deleted at claude.ai/code/routines. Do not change or delete it
+  yourself.
 
 ## Output format
 
 Under 10 lines on a successful creation:
 
-1. The rule in one sentence, in the user's own terms.
-2. When it checks, and during which hours.
-3. Where the alert will arrive.
-4. When the first check runs.
-5. One line on how to stop it.
+1. The rule in one sentence, in the user's own terms, with the hours it covers.
+2. One honest line: it is saved, not watched automatically yet — automatic
+   alerts arrive with Sealmetrics' native alert engine.
+3. How to use it today: "run my alert <id>" checks it now.
+4. One line on how to delete it.
+
+**Never** a first check time, a cadence, or "I'll let you know": no process
+exists that would keep that promise.
 
 Then nothing. No summary of the JSON, no explanation of the grammar.
 
@@ -267,8 +231,8 @@ would be too noisy".
 
 - Do not create a rule on an event you did not confirm exists.
 - Do not create a `silence` or `drop` rule without active hours.
-- Do not promise delivery to a channel the session cannot reach.
-- Do not claim a rule is scheduled on a surface where you could not schedule it.
+- Do not create a scheduled task, routine, cron or Cowork task for a rule, and
+  do not say or imply that a rule is being watched automatically.
 - Do not create a second rule that duplicates one already active; say which
   existing rule covers it.
 
@@ -280,7 +244,7 @@ Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.json
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
 ceiling, a number — `3` here), `verdict` (one of `on_track`, `watch`, `act`,
-`kpis_only`, `refused`, `error`), `scheduled` (boolean), `notes` (one line).
+`kpis_only`, `refused`, `error`), `scheduled` (always `false` here), `notes` (one line).
 Use `on_track` for a rule created, `refused` for a rule declined as noisy or on
 an untracked event. A real run logged its first refusal and skipped the second,
 so the log said one alert request had happened when two had. A run that only
