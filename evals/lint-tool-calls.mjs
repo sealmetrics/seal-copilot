@@ -22,6 +22,15 @@ const REFUSAL = availability.markers.refusal;
 const LOCAL_ONLY = availability.markers.localOnly.toLowerCase();
 const LOCAL_ROOTS = availability.localOnlyRoots;
 
+// The closed event taxonomy. A tool call can be schema-perfect and still write
+// an event verify_event_instrumented rejects; seal-install 1.12.0 recommended
+// eight such names. See evals/taxonomy.json and docs/PRD-plan-simulate-v1.md, E1.
+const taxonomy = JSON.parse(readFileSync(join(here, 'taxonomy.json'), 'utf8'));
+const EVENTS = { conv: new Set(taxonomy.conversions), micro: new Set(taxonomy.microconversions) };
+const LEGACY = taxonomy.legacyNames.names;
+const WRITERS = taxonomy.writers.paths;
+const EXISTING_NAME = taxonomy.writers.existingNameMarkers;
+
 // Emphasis sits inside phrases we match on: "It is **not** supported on" has to
 // read as "not supported". Strip the markers before looking for one.
 const plain = (text) => text.toLowerCase().replace(/[*_]+/g, '');
@@ -167,6 +176,42 @@ for (const file of files) {
       if (localRoot || isLocalOnly(u)) continue;
       errors.push({ file: rel, line: u.line, kind: 'gated-tool',
         msg: `\`${name}\` is not announced by the remote connector. Mark the step \`${availability.markers.localOnly}\` or say it is unavailable: "${u.text.trim().slice(0, 70)}"` });
+    }
+  }
+
+  // 4. Tracker calls. A literal event name must be in the closed taxonomy for
+  //    its kind, anywhere: a snippet in any skill or golden output gets pasted.
+  const trackerRe = /\b(?:window\.)?(?:sealmetrics|_?sm)\??\.(conv|micro)\(\s*['"]([^'"]+)['"]/g;
+  while ((m = trackerRe.exec(flat))) {
+    const [, kind, name] = m;
+    if (name.endsWith('_') || EVENTS[kind].has(name)) continue;
+    const other = kind === 'conv' ? 'micro' : 'conv';
+    const hint = EVENTS[other].has(name) ? ` It is a ${other === 'conv' ? 'conversion' : 'microconversion'}: use sealmetrics.${other}().`
+      : LEGACY[name] ? ` Write ${LEGACY[name]}.` : '';
+    errors.push({ file: rel, line: lineOf(`.${kind}(`), kind: 'event-name',
+      msg: `sealmetrics.${kind}('${name}') — not in the closed ${kind} taxonomy; verify_event_instrumented rejects it.${hint}` });
+  }
+  //    The tracker has no command-style API. `sm('event', …)` was written from
+  //    memory into a golden output and is exactly what a developer would paste.
+  const inventedRe = /\b_?(?:sm|sealmetrics)\(\s*['"](?:event|track|conversion|micro)['"]/g;
+  while ((m = inventedRe.exec(flat))) {
+    errors.push({ file: rel, line: lineOf(m[0]), kind: 'invented-api',
+      msg: `\`${m[0]}…\` is not the tracker API. Use the fetched js_api signatures: sealmetrics.conv(type, amount, props) / sealmetrics.micro(type, props)` });
+  }
+
+  // 5. Files that tell someone which event to write must not recommend a legacy
+  //    name, unless the sentence says it is what the site already fires. Analysis
+  //    skills are outside this rule: they have to recognise those names in data.
+  const writer = WRITERS.some((p) => rel === p || rel.startsWith(p + '/'));
+  if (writer) {
+    for (const u of units(raw)) {
+      for (const [name, instead] of Object.entries(LEGACY)) {
+        // A quoted value is a property ('demo_request' as a form_name), not an event.
+        if (!new RegExp(`(?<!['"])\\b${name}\\b(?!['"])`).test(u.text)) continue;
+        if (EXISTING_NAME.some((k) => plain(u.text).includes(plain(k)))) continue;
+        errors.push({ file: rel, line: u.line, kind: 'legacy-event',
+          msg: `\`${name}\` is outside the closed taxonomy and cannot be verified. Recommend ${instead}, or say it is the site's existing name: "${u.text.trim().slice(0, 70)}"` });
+      }
     }
   }
 }

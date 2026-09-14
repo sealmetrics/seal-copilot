@@ -55,8 +55,10 @@ cached site belongs to one connection".
    say it needs `SEALMETRICS_API_KEY` in the environment.
 3. `list_microconversion_types` — which funnel stages are instrumented?
    Compare against the canonical funnel for the vertical (stores:
-   product_view/add_to_cart/start_checkout; hotels: search/room_view/
-   booking_start).
+   `view_item` / `add_to_cart` / `begin_checkout`; hotels: `search` /
+   `view_item` / `begin_checkout`). Older sites already fire pre-taxonomy
+   names for the same stages (`product_view`, `start_checkout`, `room_view`,
+   `booking_start`): count those as instrumented, not as gaps.
 4. `list_property_keys(table=conversion_items)` first, then `(table=both)` — what
    enrichment exists? Flag high-value missing properties for the vertical
    (stores: category, price_range; hotels: room_type, lead_time). For
@@ -111,11 +113,15 @@ Rules that are not negotiable:
 - **No invented numbers inside code.** A value like `1200` presented as
   "average deal size" will be pasted as-is. Use a visibly non-literal
   placeholder — `<average deal size in EUR>` — and say the developer replaces it.
-- Name the event with the site's own convention when one exists (the
-  microconversion list shows it); otherwise use the canonical name for the
-  vertical: stores fire `product_view`, `add_to_cart`, `start_checkout` and
-  `purchase`; hotels `room_view`, `booking_start` and `booking`; SaaS
-  `pricing_view`, `form_view` and `signup` / `demo_request` / `trial_start`.
+- Name a missing event from the closed taxonomy, even when the site already
+  fires older names for other stages: the installer's event verifier rejects
+  anything else as `out_of_taxonomy`. Stores fire `view_item`, `add_to_cart`,
+  `begin_checkout` and `purchase`; hotels `view_item` (with
+  `item_type: 'room'`), `begin_checkout` and `booking`; SaaS `cta_click`
+  (`cta: 'pricing'`), `form_submit`, and `signup` or `lead`, with the
+  distinction in a property (`plan: 'trial'`, `form_name: 'demo_request'`).
+  Never recommend renaming an event the site already fires: that splits its
+  history, and it is the user's decision.
 
 Confirm each canonical funnel event is really arriving by its volume in step 9:
 an event declared in the tracker and firing zero times is the finding, and

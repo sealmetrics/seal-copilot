@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.13.2 — 2026-09-14 (seal-install 1.12.1)
+
+The installer no longer recommends event names that its own verifier rejects,
+and its reference output no longer teaches a double pageview.
+
+### Fixed — one event taxonomy
+`verify_event_instrumented` accepts a closed list of names (`CONV_TYPES` and
+`MICRO_TYPES` in `setup-core`) and returns `rejected: out_of_taxonomy` for
+anything else. The funnel table in `install-sealmetrics` recommended thirteen
+events, and eight of them were not on that list: `product_view`,
+`start_checkout`, `room_view`, `booking_start`, `demo_request`, `trial_start`,
+`pricing_view` and `form_view`. An install that followed the skill wrote events
+that could never be verified, and the reference output marked two of them
+"✅ confirmed" anyway.
+
+The table now uses the taxonomy: `view_item`, `add_to_cart` and
+`begin_checkout` for stores and hotels, and for SaaS `signup`, `lead`,
+`subscription`, `cta_click` and `form_submit`, with what used to be the event
+name carried in a property (`plan: 'trial'`, `form_name: 'demo_request'`,
+`item_type: 'room'`). Sites that already fire the older names keep them: the
+skill says which ones the verifier rejects and never renames a working call
+without asking, because renaming splits the history.
+
+`setup-audit` recommended the same eight names for missing stages. It now
+recommends taxonomy names, and counts the older names as instrumented rather
+than as gaps. Its reference output also carried a snippet in an API the tracker
+does not have (`sm('event', 'add_to_cart', …)`); it is `sealmetrics.micro()`.
+
+### Fixed — the installer's reference output
+- It wired App Router route changes to a pageview call. The tracker records
+  History API navigations by itself, so that counts every navigation twice —
+  the double counting of PRD-034. The skill now says not to, and when `&spa=0`
+  is the exception.
+- It confirmed the pixel while saying nothing was deployed. The pixel service
+  rejects hits from domains the site does not list, `localhost` and previews
+  included, so the skill now asks for the deploy before `verify_setup` and
+  before verifying events.
+- The snippet URL was invented (`cdn.sealmetrics.com/sm.js`). It is
+  `t.sealmetrics.com/t.js`.
+- New rule: pass revenue as a number. The tracker drops a non-numeric amount
+  without an error, so a string total arrives, verifies and carries revenue 0.
+
+### Checks
+- `evals/taxonomy.json`: the closed list, the older names with what to write
+  instead, and the files that tell someone which event to write.
+- The linter fails on a literal `sealmetrics.conv('…')` / `micro('…')` name
+  outside the taxonomy in any skill, on a command-style tracker call
+  (`sm('event', …)`), and on an older name recommended in a writer file
+  (`seal-install`, `setup-audit`) unless its sentence says the site already
+  fires it. Analysis skills are outside the last rule: they have to recognise
+  those names in real data. Before this fix it reported 18 errors.
+- `check-schema-drift.mjs` (`--online`) now also reads the event names from the
+  live `get_instrumentation_guide` and fails if they differ from
+  `taxonomy.json`. On 2026-09-14 they match: 5 conversions, 15
+  microconversions.
+
+This is F0 of `docs/PRD-plan-simulate-v1.md`.
+
 ## 1.13.1 — 2026-09-14
 
 A profile left on the machine by another Sealmetrics account no longer sends a

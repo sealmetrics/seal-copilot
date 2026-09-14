@@ -1,0 +1,51 @@
+{
+  "_why": "The closed event taxonomy that verify_event_instrumented enforces. Any other name is returned as `rejected: out_of_taxonomy`, so a skill that tells the agent to write one ships an event that can never be verified. seal-install 1.12.0 recommended eight of them. Snapshot of CONV_TYPES / MICRO_TYPES in sealmetrics2 setup-core/src/instrument.ts at 57b2f55c; `check-schema-drift.mjs` re-reads the names from the live get_instrumentation_guide. See docs/PRD-plan-simulate-v1.md, E1.",
+  "conversions": ["purchase", "lead", "signup", "subscription", "booking"],
+  "microconversions": [
+    "view_item",
+    "add_to_cart",
+    "begin_checkout",
+    "form_submit",
+    "newsletter_signup",
+    "cta_click",
+    "video_play",
+    "video_complete",
+    "scroll_50",
+    "scroll_100",
+    "file_download",
+    "search",
+    "404_error",
+    "article_read",
+    "feature_use"
+  ],
+  "legacyNames": {
+    "_why": "Names real accounts already fire, from before the taxonomy was closed. Analysis skills must keep recognising them in data. Writer files must never recommend them: each maps to what to write instead.",
+    "names": {
+      "product_view": "view_item",
+      "start_checkout": "begin_checkout",
+      "room_view": "view_item with item_type: 'room'",
+      "booking_start": "begin_checkout",
+      "demo_request": "lead with form_name: 'demo_request'",
+      "trial_start": "signup with plan: 'trial'",
+      "pricing_view": "cta_click with cta: 'pricing'",
+      "form_view": "form_submit (there is no view-level form event)"
+    }
+  },
+  "writers": {
+    "_why": "Files that tell the agent or the developer which event to write. Here a legacy name is an instruction to ship an unverifiable event, so it fails the linter unless its sentence says it is the site's existing name. Paths are relative to the repo root; a directory covers everything under it.",
+    "paths": [
+      "seal-install",
+      "seal-copilot/skills/setup-audit"
+    ],
+    "existingNameMarkers": [
+      "already fire",
+      "already fires",
+      "own convention",
+      "legacy",
+      "older",
+      "rejects",
+      "out_of_taxonomy",
+      "instead of"
+    ]
+  }
+}

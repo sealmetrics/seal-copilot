@@ -9,7 +9,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { connect } from './mcp-client.mjs';
+import { connect, unwrap } from './mcp-client.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const file = join(here, 'mcp-schema.json');
@@ -29,6 +29,26 @@ try {
       enums: Object.fromEntries(Object.entries(t.inputSchema?.properties || {})
         .filter(([, v]) => v.enum).map(([k, v]) => [k, v.enum])),
     };
+  }
+  // The event taxonomy is not in the schema, so it drifts invisibly too. The
+  // live instrumentation guide is built from the same source as the verifier's
+  // closed list; every name it writes has to be in evals/taxonomy.json and back.
+  const taxDrift = [];
+  if (live.get_instrumentation_guide) {
+    const u = unwrap(await c.call('get_instrumentation_guide', {}));
+    const text = typeof u.value === 'string' ? u.value : JSON.stringify(u.value);
+    const seen = { conv: new Set(), micro: new Set() };
+    for (const m of text.matchAll(/sealmetrics\.(conv|micro)\(\s*\\?['"]([^'"\\]+)\\?['"]/g)) {
+      if (m[2] !== 'event_name') seen[m[1]].add(m[2]);   // the guide's own placeholder
+    }
+    const taxonomy = JSON.parse(readFileSync(join(here, 'taxonomy.json'), 'utf8'));
+    for (const [kind, key] of [['conv', 'conversions'], ['micro', 'microconversions']]) {
+      const saved = new Set(taxonomy[key]);
+      for (const n of seen[kind]) if (!saved.has(n)) taxDrift.push(`+ ${kind} event in the live guide, not in taxonomy.json: ${n}`);
+      for (const n of saved) if (!seen[kind].has(n)) taxDrift.push(`- ${kind} event in taxonomy.json, gone from the live guide: ${n}`);
+    }
+  } else {
+    taxDrift.push('? get_instrumentation_guide is not announced; event taxonomy not checked');
   }
   c.close();
 
@@ -54,7 +74,18 @@ try {
     }
   }
 
-  if (!drift.length) { console.log(`No drift — ${Object.keys(live).length} tools match the snapshot.`); process.exit(0); }
+  if (taxDrift.length) {
+    console.log('Event taxonomy has drifted from evals/taxonomy.json:\n');
+    for (const d of taxDrift) console.log('  ' + d);
+    console.log('\nEdit taxonomy.json by hand (there is no --update for it), then re-run the linter:\n' +
+                'a removed name means some skill now writes an event the verifier rejects.\n');
+  }
+  const taxFails = taxDrift.filter((d) => !d.startsWith('?')).length;
+  if (!drift.length) {
+    console.log(`No drift — ${Object.keys(live).length} tools match the snapshot` +
+      (taxDrift.length ? '.' : ', and the event taxonomy matches the live guide.'));
+    process.exit(taxFails ? 1 : 0);
+  }
   console.log('MCP schema has drifted from evals/mcp-schema.json:\n');
   for (const d of drift) console.log('  ' + d);
   console.log('\nRun with --update to accept, then re-run the linter: a removed parameter\n' +
