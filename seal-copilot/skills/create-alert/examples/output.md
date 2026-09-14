@@ -10,13 +10,14 @@
 
 **Run 1 — "avísame si paso 4 horas seguidas sin ventas"**
 
-Listo. Vigilo `purchase` en demo-store.com y te aviso si pasan 4 horas sin
-ninguna, entre las 8:00 y medianoche (hora de Madrid).
+Guardada: 4 horas sin ninguna `purchase` en demo-store.com, entre las 8:00 y
+medianoche (hora de Madrid). Con 32 compras al día esperas unas 8 en esa
+ventana; saltaría sin motivo menos de una vez al año.
 
-Compruebo cada hora. El aviso te llega aquí, en la app.
-La primera comprobación es a las 15:00.
+Todavía no se vigila sola: el aviso automático llega con las alertas nativas
+de Sealmetrics. Hoy, "pasa la alerta no-purchases-4h" la comprueba al momento.
 
-Para pararla: "deja de vigilar las ventas".
+Para borrarla: "borra la alerta de ventas".
 
 ---
 

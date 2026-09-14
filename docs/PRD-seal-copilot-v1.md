@@ -417,6 +417,8 @@ Que un cliente escriba *"avísame si durante 4 horas seguidas no tengo conversio
 
 `create-alert` se diseña para la vía A y usa la vía B cuando el MCP anuncie `create_alert`: misma gramática de reglas, distinto destino. El cliente no nota el cambio.
 
+> **Actualizado el 14/09 ([Addendum 1.2](#addendum-12--14-septiembre-2026), E15):** la vía B pasa a ser la principal. El email y los webhooks "ya existentes" existen como API, pero ninguna regla se evalúa hoy, y la vía A choca con los límites de las rutinas.
+
 ### Gramática de reglas
 
 Una regla es un objeto que cualquier skill puede leer y que cabe en un prompt:
@@ -557,3 +559,207 @@ Ambos conocidos antes de la auditoría; aquí queda la solución acordada, sin t
 | D1 punto 2 (`seal-install`) | Un día | Publicación en marketplace |
 | D1 punto 7 (mock en dos transportes) | Un día | Certificación de la versión |
 | E13 `create-alert` + `check-alerts` + 7 evals | Una semana, tras verificar las tres incógnitas | Versión 1.12.0 |
+
+---
+
+# Addendum 1.2 — 14 septiembre 2026
+
+Sustituye la vía A de E13 (rutinas programadas del host) por la vía B (motor de alertas de Sealmetrics) como camino principal. La gramática de reglas, las cuatro familias y la regla de ruido de E13 se mantienen; cambia dónde se evalúan.
+
+## E15 · Alertas nativas de Sealmetrics — P0
+
+### Por qué se cambia de vía
+
+La vía A no ha funcionado nunca de principio a fin. La prueba real del 14/09 y la documentación de rutinas de Claude Code lo explican:
+
+| Límite de las rutinas | Consecuencia para una alerta |
+|---|---|
+| Tope diario de ejecuciones por cuenta | Una regla horaria son hasta 24 ejecuciones al día; dos o tres reglas agotan el tope |
+| Intervalo mínimo de 1 hora | "4 h sin compras" se detecta con hasta una hora de retraso, y la cadencia de 30 min de E13 se rechaza |
+| El plugin solo llega si un repositorio lo declara en `.claude/settings.json` o si se activa como plugin sincronizado | Un marketing manager no va a crear un repositorio para tener una alerta |
+| Cada ejecución es una sesión de modelo con consumo de suscripción | Contar clics cada hora con un LLM es caro y no determinista |
+| Al crear la rutina se incluyen todos los conectores de la cuenta | Las rutinas creadas en pruebas llevaban Gmail, Stripe y Drive para leer un contador |
+| Solo existe en Claude Code y Cowork | Codex y Claude.ai no tienen alertas |
+
+Un evaluador en el backend no tiene ninguno de estos límites: está siempre encendido, es barato, es determinista, entrega por email, Slack o webhook y no depende del cliente de IA que use el cliente.
+
+### Estado real del backend (verificado en `sealmetrics2`, main 57b2f55c, 10/09)
+
+El producto tiene la **superficie** de alertas y webhooks, pero **ninguna regla se evalúa**. La documentación pública (`docs.sealmetrics.com/api/alerts`, `/api/webhooks`) describe un sistema que no existe.
+
+| Pieza | Estado | Evidencia |
+|---|---|---|
+| CRUD de reglas, historial, stats, test | Existe | `api/src/sealmetrics_api/routers/alerts.py`, tablas en `postgres/migrations/20251229000007_anomaly_alerts.sql` |
+| Evaluación de reglas | **No se ejecuta nunca**: `check_and_trigger()` no tiene llamadas fuera de los tests; ni cron, ni consumer, ni servicio | `services/alerts.py:228`; `config/crons.yaml` no lo nombra |
+| Fuente de datos del evaluador | **Rota**: lee `sealmetrics.events`, que es `ENGINE = Null()`, y columnas `is_entrance`/`is_bounce` que no existen | `services/alerts.py:392,425,445`; `clickhouse/init/production/001_schema_cluster.sql:51` |
+| Condiciones | Solo `percentage_change` y `absolute_threshold`; `std_deviation` y `rate_of_change` nunca disparan; un baseline de 0 no dispara nunca, así que **"cero conversiones" es imposible de expresar** | `services/alerts.py:258,268-282` |
+| Métricas y filtros | Sin `revenue`, sin microconversiones, sin `conversion_type`, sin campaña, canal, país ni dispositivo | `models/alerts.py:23-33`; `services/alerts.py:389-402` |
+| Zona horaria, horas activas, severidad | No existen; se evalúa en UTC | — |
+| Email / Slack / webhook por regla | Existe, envío en línea, sin reintentos ni firma | `services/alerts.py:469-588` |
+| Subsistema de webhooks firmado | Existe y está desplegado (RabbitMQ + `consumer-webhook`, HMAC, reintentos 60 s/300 s/1800 s, dead letter), pero solo lo usa `/test`: de los cinco tipos de evento, solo `alert.triggered` tiene llamada, y está en el camino que nunca corre | `services/webhook_dispatcher.py`; `models/webhooks.py:12-19` |
+| Permisos | Leer y escribir alertas exige los scopes `read`/`write`, que **solo tiene una sesión del dashboard**. Ni API key ni OAuth pueden ni siquiera listar | `models/api_tokens.py:35`; `auth/models.py:14-19` |
+| MCP | 6 herramientas, todas de lectura, que con API key siempre dan 403 y que el conector remoto oculta | `mcp-server/src/tools/alerts.ts`, `webhooks.ts`; `remote/gate.ts:18-36` (RF-RMT25) |
+| Dashboard | Hay un hook `use-alerts.ts` que ningún componente usa | `dashboard/src/hooks/index.ts:80-89` |
+| LENS | Sistema aparte de anomalías automáticas, documentado como "built but not active" | `docs/docs/lens/anomaly-detection/index.mdx:17-19` |
+
+Dos hallazgos más que afectan al diseño:
+
+- **Las vistas "horarias" de conversiones no son horarias.** `conversions_hourly_mv` y `microconversions_hourly_mv` calculan `toStartOfHour(toDateTime(date))` sobre una columna `Date`: todas las filas caen a las 00:00. El evaluador no puede usarlas; debe leer las tablas crudas por `timestamp_utc` (columna presente desde la migración 026, 03/05/2026).
+- **La documentación de webhooks contradice al código**: dice que el `secret` se devuelve al crear (no se devuelve; solo `rotate-secret` lo da), 5 intentos (son 4), que se rechaza HTTP (se acepta), y muestra un payload plano con `severity` y `expected_value` que no es el real. Sus ejemplos usan `X-API-Key`, que recibe 403.
+
+### Reparto de responsabilidades
+
+| Capa | Hace | No hace |
+|---|---|---|
+| **Backend** | Guarda la regla, la evalúa cada pocos minutos, abre y cierra incidentes, entrega el aviso con evidencia | Interpretar lenguaje natural |
+| **MCP** | Expone crear, previsualizar, listar, pausar, borrar y reconocer reglas, en local y en remoto | Evaluar nada |
+| **Plugin** | Convierte la frase en regla, verifica que el evento existe, enseña cuántas veces habría saltado, pide confirmación, crea, y explica un aviso cuando llega | Programar tareas del host ni evaluar reglas |
+
+### Modelo de regla v2 (backend)
+
+Se extiende `alert_rules` en lugar de crear una tabla nueva; los campos v1 siguen aceptándose y se traducen.
+
+```json
+{
+  "name": "Sin compras 4 h",
+  "source_text": "avísame si paso 4 horas seguidas sin ventas",
+  "family": "silence",
+  "metric": "conversions",
+  "filters": { "conversion_type": "purchase", "utm_campaign": null, "utm_source": null, "utm_medium": null, "country": null, "device_type": null },
+  "condition": { "window_minutes": 240 },
+  "timezone": "Europe/Madrid",
+  "active_hours": { "from": 8, "to": 24, "days": ["mon","tue","wed","thu","fri","sat","sun"] },
+  "channels": { "email_user_ids": [12], "webhook_endpoint_ids": [], "slack_integration_id": null },
+  "expires_at": "2027-03-14",
+  "created_via": "mcp"
+}
+```
+
+| Campo | Regla |
+|---|---|
+| `family` | `silence`, `drop`, `spike`, `threshold`: las cuatro de E13 |
+| `metric` | `entrances`, `conversions`, `microconversions`, `revenue`. Añade las dos últimas al enum |
+| `filters.conversion_type` | Obligatorio para `conversions` y `microconversions` cuando el site tiene más de un tipo: "sin ventas" no es "sin conversiones" |
+| `condition` | `silence`: `window_minutes` (60–10080, libre, no el enum 15m/1h/6h/24h). `drop`/`spike`: `ratio` frente a lo esperado. `threshold`: `below`/`above` y `evaluate_at` (`end_of_active_day` o `immediately`) |
+| `timezone` | Por defecto, la zona de la cuenta (`accounts.timezone` ya existe) |
+| `active_hours` | Obligatorio en `silence` y `drop`, igual que en E13. Una ventana `silence` solo cuenta horas activas |
+| `channels` | **Referencias, no direcciones.** Emails solo a usuarios de la cuenta; webhooks y Slack solo a endpoints ya registrados desde el dashboard. Ver *Seguridad* |
+| `expires_at` | Seis meses; se avisa por email 14 días antes |
+| `created_via`, `source_text` | Auditoría: quién la creó y con qué frase |
+
+Lo esperado en `drop`/`spike` lo calcula el servidor: acumulado por hora del mismo día de la semana en las últimas 4 semanas, en la zona de la regla. No se embebe en la regla, porque el servidor tiene los datos.
+
+### Evaluador
+
+- **Servicio `alerts-evaluator`**, bucle cada 5 minutos (entrada nueva en `config/crons.yaml` o consumer dedicado). Cada regla guarda `next_evaluation_at`; `silence` se evalúa cada 5 min, `drop`/`spike` cada 15, `threshold` según `evaluate_at`.
+- **Fuente**: tablas crudas `conversions` y `microconversions` filtradas por `account_id`, `date` (prefijo de la clave de ordenación) y `timestamp_utc`; `entrances` desde el agregado que ya usan los informes. Nunca `sealmetrics.events`.
+- **`silence`**: `max(timestamp_utc)` del evento con sus filtros; dispara cuando las horas activas transcurridas desde ese instante alcanzan `window_minutes`.
+- **Retraso de ingesta**: se evalúa hasta `now − lag`, con `lag` medido, no supuesto (pregunta abierta 1). Sin esto, cada evaluación ve un silencio falso de unos minutos.
+- **Guarda de plataforma**: antes de disparar ningún `silence`, comprobar que la ingesta global está al día. Si el pipeline de Sealmetrics se retrasa, cada cliente con una regla de silencio recibiría un aviso a la vez. En ese caso se suprime y se alerta internamente.
+- **Evidencia en el aviso**: valor actual, esperado, **hora a la que empezó el silencio o la caída**, y entradas en la misma ventana. Esto último separa los dos diagnósticos que el cliente necesita: "no entra tráfico" (el tracker o la web están caídos) de "entra tráfico y no convierte" (el checkout está roto).
+- **Incidentes**: una fila de historial por incidente, no por evaluación. El incidente se cierra cuando la condición se recupera y emite `alert.resolved`. El cooldown pasa a significar "no reabrir antes de X minutos tras cerrar".
+- **Ruido en vivo**: si una regla abre más de 2 incidentes por semana durante 3 semanas, se avisa al creador con la cifra y una propuesta de ventana mayor (métrica de éxito de E13).
+
+### Previsualización: el endpoint que más importa
+
+`POST /alerts/rules/preview`: recibe una regla sin guardarla y devuelve:
+
+```json
+{
+  "valid": true,
+  "current": { "state": "ok", "last_event_at": "2026-09-14T11:02:00+02:00", "value": 6 },
+  "backtest_30d": { "would_have_fired": 1, "incidents": [ { "start": "2026-08-29T15:10:00+02:00", "end": "2026-08-29T20:40:00+02:00" } ] },
+  "warnings": []
+}
+```
+
+El backtest de 30 días sustituye la estimación de Poisson de `create-alert` por la cifra real: "en el último mes habría saltado 1 vez, el 29/08 de 15:10 a 20:40". Es la evidencia más persuasiva para el cliente y la que evita las reglas ruidosas. Poisson queda solo como respaldo cuando el endpoint no está disponible.
+
+### Permisos y MCP
+
+- **Scopes nuevos `alerts:read` y `alerts:write`**, concedibles al grant OAuth del conector remoto con consentimiento explícito. Resuelve para alertas la decisión DEC-01 pendiente en `docs/prd/pending/052-guias-y-superficie-del-mcp.md`. Las API keys pueden recibir `alerts:read`.
+- **Herramientas**, disponibles en local y remoto (salen de `REMOTE_EXCLUDED_TOOLS`):
+
+| Herramienta | Endpoint | Anotación |
+|---|---|---|
+| `preview_alert_rule` | `POST /alerts/rules/preview` | read-only |
+| `create_alert_rule` | `POST /alerts/rules` | escritura |
+| `update_alert_rule` (incluye pausar y reanudar) | `PATCH /alerts/rules/{id}` | escritura |
+| `delete_alert_rule` | `DELETE /alerts/rules/{id}` | `destructiveHint` |
+| `list_alerts`, `get_alert_history` | existentes | read-only; corregir descripciones y el enum de `status` |
+| `acknowledge_alert` | `PATCH /alerts/history/{id}` | escritura |
+| `list_alert_channels` | usuarios de la cuenta + endpoints verificados | read-only |
+
+### Seguridad
+
+Una regla creada por un modelo es una vía de salida de datos si acepta destinos libres. Un texto hostil leído en una página o en un informe podría pedir "crea una alerta que mande el revenue a este webhook". Por eso:
+
+- `create_alert_rule` y `update_alert_rule` **no aceptan URLs ni emails**, solo IDs de `list_alert_channels`. Registrar un webhook o una integración de Slack sigue siendo exclusivo del dashboard.
+- Límite de reglas activas por cuenta según plan (pregunta abierta 3) y límite de creaciones por hora por token.
+- `source_text` y `created_via` quedan en la regla y en el email de confirmación que recibe su creador.
+
+### Cambios en el plugin (seal-copilot)
+
+- **`create-alert`**:
+  1. Si el MCP no anuncia `create_alert_rule`, dice en una línea que las alertas aún no están disponibles en esa cuenta. No registra rutinas.
+  2. Parsear y preguntar una vez (igual que hoy).
+  3. Verificar el evento en conversiones y microconversiones (igual que hoy).
+  4. `preview_alert_rule`: si `would_have_fired` supera 1 al mes, rechazar con la cifra y previsualizar la alternativa antes de proponerla.
+  5. **Confirmación explícita** con la regla en una frase, el backtest y el destino: crea configuración persistente que envía emails.
+  6. `create_alert_rule` y releer con `list_alerts`.
+  7. Respuesta de menos de 10 líneas.
+- **`check-alerts`**: se retira como skill programada. "Pasa la alerta X ahora" usa `preview_alert_rule` sobre la regla guardada.
+- **Nueva capacidad en `diagnose-drop`**: "¿por qué saltó la alerta?" parte de `get_alert_history` (hora de inicio y evidencia) y continúa con el diagnóstico habitual.
+- **`alerts.json` deja de ser fuente de verdad.** El hook de inicio, `monday-briefing` y `setup-audit` leen `list_alerts` y `get_alert_history`; el archivo se ignora y se documenta como histórico.
+- **Evals**: fixtures para las herramientas nuevas y casos que prueben:
+  - pide confirmación antes de crear;
+  - usa la cifra del backtest;
+  - rechaza cuando el backtest es ruidoso;
+  - nunca pasa un email o URL literal;
+  - funciona en el conector remoto;
+  - no registra ninguna rutina.
+  `tool-availability.json` saca las herramientas de alertas de `gated`.
+
+### Mapeo de frases a reglas v2
+
+| Frase | `family` | `metric` + filtros | `condition` |
+|---|---|---|---|
+| "4 h seguidas sin ventas, de 8 a 24" | `silence` | `conversions`, `conversion_type: purchase` | `window_minutes: 240` |
+| "2 días sin clics en CTA" | `silence` | `microconversions`, `conversion_type: cta_click` | `window_minutes: 1440` (24 h activas = 2 días de 9 a 21) |
+| "si a media tarde llevo menos de la mitad de lo normal" | `drop` | `conversions` | `ratio: 0.5` |
+| "si una campaña triplica su tráfico en una hora" | `spike` | `entrances`, `utm_campaign` | `ratio: 3` |
+| "si el revenue de hoy no llega a 2.000 €" | `threshold` | `revenue` | `below: 2000`, `evaluate_at: end_of_active_day` |
+
+### Fases y estimación (orientativa)
+
+| Fase | Contenido | Esfuerzo |
+|---|---|---|
+| 0 · Hacer que funcione lo que ya se anuncia | Evaluador que corre, lee tablas reales y respeta zona horaria; `absolute_threshold` y `percentage_change` correctos; medir el retraso de ingesta; corregir la documentación de alertas y webhooks | 4–6 días |
+| 1 · Modelo v2 | `silence` con horas activas, `conversion_type` y filtros, `revenue` y microconversiones, lo esperado por día y hora, incidentes con `alert.resolved`, guarda de plataforma | 8–12 días |
+| 2 · Previsualización y permisos | `/rules/preview` con backtest, scopes `alerts:*` en OAuth, herramientas MCP, `list_alert_channels`, límites | 5–7 días |
+| 3 · Plugin | `create-alert` sobre el MCP, retirada de `check-alerts` y de las rutinas, lecturas en hook, briefing y auditoría, evals | 3–4 días |
+| 4 · Dashboard (opcional para lanzar) | Pantalla de alertas sobre `use-alerts.ts` | 3–5 días |
+
+Ruta crítica: fases 0 → 1 → 2 en el backend. El plugin no puede lanzar nada hasta la 2.
+
+### Qué hacer con la vía A mientras tanto
+
+**Recomendación: retirar ya el registro de rutinas de `create-alert`.** La skill sigue convirtiendo la frase en regla, verificando el evento y aplicando la regla de ruido. Guarda la regla en `alerts.json` y dice claramente que el aviso automático llegará con las alertas nativas. Mantener rutinas que nunca han funcionado es prometer una vigilancia que no existe.
+
+### Preguntas abiertas
+
+1. **Retraso de ingesta** entre el evento y su fila en `conversions`: define el `lag` del evaluador y la precisión mínima de `silence`.
+2. **Relación con LENS**: ¿las anomalías automáticas de LENS se entregan por el mismo canal y historial, o siguen separadas?
+3. **Límite de reglas por plan** y si las alertas requieren suscripción activa (hoy el router de alertas sí la exige y el de webhooks no).
+4. **Idioma del email**: el de la cuenta o el de la frase.
+5. **Consentimiento OAuth**: ¿`alerts:write` en el grant por defecto del conector o como ampliación que el usuario acepta al crear la primera alerta?
+
+### Métricas de éxito
+
+Las de E13 se mantienen (≥70 % de reglas activas a 30 días, ≤2 avisos por regla y semana, 100 % con hora de inicio). Se añaden:
+
+| Métrica | Objetivo |
+|---|---|
+| Latencia de detección de un `silence` | ≤ `lag` + 5 min |
+| Avisos suprimidos por la guarda de plataforma que resultaron ser caídas del pipeline | 100 % |
+| Reglas creadas cuyo backtest estimaba ≤1 aviso al mes y luego avisan más de 2 veces al mes | ≤10 % |

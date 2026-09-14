@@ -23,8 +23,8 @@ on **all** of your traffic — not the fraction that accepted cookies.
 | "Where should I invest?" / "scale or cut" | channel-mix-optimizer — paid-channel RPE reallocation |
 | "What can you analyze?" (first run on a new site) | property-explorer — maps your custom properties |
 | "Reduce expenses" / operational waste | cost-reduction — zombie pages, dead UTMs, tracking decay |
-| "Alert me if four hours pass with no sales" | create-alert — turns the sentence into a scheduled check |
-| (the scheduled check itself, hourly) | check-alerts — one line while healthy, evidence when not |
+| "Alert me if four hours pass with no sales" | create-alert — turns the sentence into a sound, saved rule |
+| "Run my alert now" | check-alerts — one line while healthy, evidence when not |
 | "Is my tracking set up right?" | setup-audit — implementation score + fixes |
 | Anything else about your traffic | seal-copilot — the core analyst |
 
@@ -44,9 +44,9 @@ provisioning tools, which the connector here deliberately does not expose.
 > "Avísame si paso 4 horas seguidas sin ventas."
 
 `create-alert` turns that into a rule — the metric, the window, the hours it
-watches, how often it checks — verifies the event exists and has enough volume
-to be worth watching, and registers a scheduled check. `check-alerts` runs it
-and answers in one line while the site is healthy:
+covers — verifies the event exists and has enough volume to be worth watching,
+and saves it. `check-alerts` runs it when you ask and answers in one line while
+the site is healthy:
 
 ```
 🟢 no-conversions-4h: 6 purchases today, last one 18 minutes ago.
@@ -61,8 +61,14 @@ a window that would mean something.
 
 Four kinds of rule: **silence** (N hours with no event), **drop** and **spike**
 (against what this site normally does at this hour), and **threshold** (a flat
-number for the day). Ask "what am I watching?" to list them, and "stop watching
-X" to remove one.
+number for the day). Ask "my alerts" to list them, and "delete the alert" to
+remove one.
+
+**Rules are not watched automatically yet.** Scheduling them as Claude Code
+routines was tried and does not hold up: routines run at most hourly, count
+against a daily cap, and only load the plugin from a repository. Automatic
+alerts will come from Sealmetrics' own alert engine; the rules you save now use
+the same grammar.
 
 ## Install
 

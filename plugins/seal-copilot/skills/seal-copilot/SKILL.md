@@ -198,7 +198,7 @@ properties, then load the matching playbook:
 | "What can you analyze?" / first-time onboarding for a site | `property-explorer` |
 | "Reduce expenses" / operational waste / fix the bleeding | `cost-reduction` |
 | "Alert me if…" / "tell me when…" / "my alerts" / "stop watching X" | `create-alert` |
-| A scheduled alert check firing | `check-alerts` |
+| "Run my alert X now" / "pasa la alerta" | `check-alerts` |
 
 **Installing tracking is a different plugin.** `install-sealmetrics` needs
 `provision_site`, `verify_setup` and `verify_event_instrumented`, which are not
@@ -216,7 +216,7 @@ site profile, the property map, the recommendation ledger — read
 
 ## Scheduling
 
-Four things are designed to run on a schedule:
+Three things are designed to run on a schedule:
 
 - `monday-briefing` — once a week, Monday morning in the site timezone.
 - `cart-watchdog` — hourly during business hours. Requires
@@ -224,17 +224,15 @@ Four things are designed to run on a schedule:
   refuses rather than guessing a threshold.
 - `weekly-health-check` — an alternative to monday-briefing when the user
   wants the full report rather than the one-pager.
-- `check-alerts` — as often as each rule's own cadence says, and never on its
-  own. `create-alert` registers it, one scheduled task per rule, with the rule
-  in the prompt. It answers in one line while the site is healthy.
 
 In Claude Code, set these up with `/schedule`. In Cowork, use the equivalent
 scheduled task. **What gets scheduled is the command, never a sentence:**
-`/seal-copilot:monday-briefing`, `/seal-copilot:cart-watchdog`,
-`/seal-copilot:check-alerts` followed by its rule. `monday-briefing` and
+`/seal-copilot:monday-briefing`, `/seal-copilot:cart-watchdog`. `monday-briefing` and
 `cart-watchdog` cannot be invoked by the model, so a scheduled "run my Monday
 briefing" reaches nothing, and a check that had to find its own skill spent six
-minutes searching the disk. When the user accepts a scheduled run, the skill output is the
+minutes searching the disk. **Alert rules are never scheduled:** `create-alert`
+saves them and `check-alerts` runs one on request, until Sealmetrics' native
+alert engine watches them. When the user accepts a scheduled run, the skill output is the
 **entire** response — no greeting, no preamble. Optimized for forwarding.
 
 ## What you do NOT do
