@@ -1,29 +1,30 @@
 ---
 name: install-sealmetrics
 description: >
-  Install Sealmetrics on a site from scratch: create the site if needed, place
-  the tracking snippet in the codebase, confirm the first hit arrives, then
-  instrument the conversions and microconversions the business actually needs.
-  Trigger on: "install Sealmetrics", "set up Sealmetrics", "add analytics to
-  this site", "instalar Sealmetrics", "configurar el píxel", "I have no
-  tracking yet", "add the tracking code", "instrument my checkout", or when
-  another skill finds that a site has no data at all.
+  Install Sealmetrics on a site from scratch: create the site if needed, plan
+  the snippet and the events with the user, write them, simulate them against
+  the real tracker before anything ships, then confirm the first hit and each
+  event on the live site. Trigger on: "install Sealmetrics", "set up
+  Sealmetrics", "add analytics to this site", "instalar Sealmetrics",
+  "configurar el píxel", "I have no tracking yet", "add the tracking code",
+  "instrument my checkout", or when another skill finds that a site has no data
+  at all.
 argument-hint: "[domain]"
-short-description: 'Install Sealmetrics from scratch: create the site, place the pixel, verify it, instrument events. Use for "install Sealmetrics", "set up tracking", "instalar Sealmetrics".'
+short-description: 'Install Sealmetrics from scratch: plan the events with you, write them, simulate them, verify them live. Use for "install Sealmetrics", "set up tracking", "instalar Sealmetrics".'
 ---
 
 # Install Sealmetrics
 
 Take a site from no analytics to measured and verified. This is the only skill
 that writes code, and the only one that can create an account — both are gated
-below. Budget: ≤15 tool calls plus whatever editing the codebase takes.
+below. Budget: ≤22 tool calls plus whatever editing the codebase takes.
 
 **This skill needs the local connector**, the one this plugin carries:
-`npx @sealmetrics/mcp` with `SEALMETRICS_API_KEY` in the environment. Half the
-procedure — `provision_site`, `verify_setup`, `get_instrumentation_guide`,
-`verify_event_instrumented` — reaches backend routes that the remote OAuth
-connector does not announce, which is why installing lives in its own plugin
-rather than in Seal Copilot.
+`npx @sealmetrics/mcp` with `SEALMETRICS_API_KEY` in the environment. Most of
+the procedure — `provision_site`, `verify_setup`, `get_instrumentation_guide`,
+`plan_install`, `simulate_install`, `verify_event_instrumented` — is not
+announced by the remote OAuth connector, which is why installing lives in its
+own plugin rather than in Seal Copilot.
 
 Check before step 0: if `provision_site` and `verify_setup` are not in your
 tool list, you are on the remote connector. Say so in one line, tell the user
@@ -31,8 +32,19 @@ to install `seal-install` and set `SEALMETRICS_API_KEY`, and stop. Do not hand
 over a snippet you could not fetch — that is how a site ends up with tracking
 that looks right and measures nothing.
 
+If those two are there but `plan_install` and `simulate_install` are not, the
+connector predates them (`@sealmetrics/mcp` before 1.9.0). Say so in one line,
+still write the plan as a table and wait for approval in Step 3, skip Step 6,
+and mark every event "not simulated" in the final table.
+
 Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone.
+
+**Three words, never merged.** An event is *planned* when the user approved it,
+*simulated* when `simulate_install` ran the real tracker on the call you wrote,
+and *verified* when `verify_event_instrumented` saw it arrive from the live
+site. Only verified means it works. Never write "verified", "confirmed" or "it
+works" about an event that was only simulated.
 
 ## Step 0 — Find out where you are starting
 
@@ -65,18 +77,22 @@ to come back with the account id and continue from Step 2.
 After it succeeds, tell them to check their email for the claim link, because
 the account has no password until they set one.
 
-## Step 2 — Work out where the snippet goes
+## Step 2 — Discover what to install
 
-`detect_framework(path=<repo root>)` when you have the repository. Without a
-repo it returns `unknown` plus the manual guide, which is fine — you will hand
-the snippet to the user instead of placing it.
-
-`get_tracking_code(site_id=…)` returns `script_tag` (the exact tag to place),
-`tracker_url`, a `js_api` block whose `signatures[].call` strings are the
-pageview, conversion and microconversion calls to use verbatim, an
-`implementation_guide` with `spa_support` and `content_grouping`, and worked
-`examples` per vertical. Use those signatures as written — do not paraphrase
-them into a slightly different API.
+1. `detect_framework(path=<repo root>)` when you have the repository. Without a
+   repo it returns `unknown` plus the manual guide, which is fine — you will
+   hand the snippet to the user instead of placing it.
+2. `get_tracking_code(site_id=…)` returns `script_tag` (the exact tag to place),
+   `tracker_url`, a `js_api` block whose `signatures[].call` strings are the
+   pageview, conversion and microconversion calls to use verbatim, an
+   `implementation_guide` with `spa_support` and `content_grouping`, and worked
+   `examples` per vertical. Use those signatures as written — do not paraphrase
+   them into a slightly different API.
+3. `get_instrumentation_guide(account_id=…)` returns the closed taxonomy with
+   the account id substituted.
+4. Ask what the site is for, and read the code enough to know where each action
+   happens: the product page, the add-to-cart handler, the checkout, the page
+   that only renders after a payment succeeds.
 
 **Placement rules that matter more than the framework:**
 
@@ -92,34 +108,10 @@ them into a slightly different API.
   code per route: load the tracker with `&spa=0`, which turns the automatic
   route pageview off, and fire `sealmetrics({ group })` yourself.
 
-Place it, show the diff, and say which file you edited.
-
-## Step 3 — Prove it works before going further
-
-`verify_setup(account_id=…, timeout_seconds=…)` polls until a real pageview
-arrives. It can only see the live site: hits from `localhost`, staging or a
-preview URL are rejected silently unless that domain is one of the site's
-domains. So the snippet has to be deployed first, and deploying is the user's
-call. Ask them to deploy it and open the site in a browser, then poll.
-
-If it times out, do not guess: call `get_troubleshooting_guide` and work the
-matching symptom. The usual causes are the snippet sitting outside `<head>`, a
-build that has not been deployed yet, or an ad blocker on the only browser
-being tested.
-
-**Do not instrument events until a pageview is confirmed.** Everything after
-this depends on the tracker loading at all.
-
-## Step 4 — Instrument what the business actually measures
-
-`get_instrumentation_guide(account_id=…)` returns the canonical taxonomy with
-the account id substituted. Follow it — the conversion and microconversion
-names are a closed set. `verify_event_instrumented` rejects any other name as
-`out_of_taxonomy`, so an invented name is an event that can never be verified.
-
-Ask what the site is for, then instrument the funnel for that vertical. What
-distinguishes a room from a product, or a demo from a contact form, goes in a
-property, not in a new event name:
+**The funnel per vertical.** The names are a closed set:
+`verify_event_instrumented` rejects any other name as `out_of_taxonomy`, so an
+invented name is an event that can never be verified. What distinguishes a room
+from a product, or a demo from a contact form, goes in a property:
 
 | Vertical | Conversions | Microconversions |
 |---|---|---|
@@ -138,46 +130,151 @@ Two things to get right at install time, because retrofitting them is painful:
 - **Pass revenue** on the conversion where revenue exists, **as a number**.
   Without it every later recommendation is expressed in conversions instead of
   euros. The tracker silently drops an amount that is not a number, and a total
-  read from the DOM or a data layer is usually a string (`"149.99"`): wrap it in
-  `Number()`, or the conversion arrives, verifies, and carries revenue 0.
+  read from the DOM, an API or a data layer is often a string (`"149.99"`): wrap
+  it in `Number()`, or the conversion arrives, verifies, and carries revenue 0.
 - **Pass a product identifier** on *both* the product-view and the
-  add-to-cart events, using the same key and the same value. This single
-  detail is what makes per-SKU analysis possible later. Getting it right now
-  costs nothing; adding it in six months means six months of unusable history.
+  add-to-cart events, and on each purchase item, using the same key and the
+  same value. This single detail is what makes per-SKU analysis possible
+  later. Getting it right now costs nothing; adding it in six months means six
+  months of unusable history.
 
 Never send personal data. Sealmetrics is consentless by design and that
 property depends on no identifiers being passed — no emails, names, user ids,
-order ids, phone numbers or addresses, in any event or property.
+order ids, phone numbers or addresses, in any event, property or list item.
+To avoid counting a purchase twice on a reload, key a `sessionStorage` flag on
+the order id in the browser; never send the id.
 
-## Step 5 — Verify each event, not just the pixel
+## Step 3 — Plan, and get the user's approval
+
+**Do not edit a single file before this step ends with the user's approval.**
+
+Call `plan_install` with the whole install as top-level arguments:
+
+- `account_id`, `vertical`, `repo_path` (absolute, when you have the repo) and
+  `site: { domain }`.
+- `loader: { file, snippet_url, stub }` — `snippet_url` is the `src` of the
+  `script_tag` you fetched, verbatim. `stub: true` only if a tag manager or
+  inline code can call the tracker before it loads.
+- `events` — one entry per call you intend to write: `kind` (`conv`, `micro`,
+  or `pageview` for a manual pageview), `name`, `trigger: { type, where }`
+  (`page`, `click`, `submit`, `route`, `datalayer` or `code`; `where` is the
+  file), `value: { source, type: 'number', example }` for revenue, and
+  `properties: { key: { source, type, example } }`. A list such as purchase
+  items is `{ type: 'list', max_items, item: { product_id: 'string', … } }`.
+  Examples are **synthetic** values; never copy real customer data into them.
+- `product_identifier: { key, applies_to: ['view_item', 'add_to_cart', 'purchase.items'] }`
+  for stores.
+
+It returns `plan_id`, `status`, `findings` and `summary_markdown`.
+
+- **`status: blocked`** — fix every `block` finding (a name outside the
+  taxonomy, an order id, a purchase without revenue, a double pageview, a
+  domain the site does not list) and call `plan_install` again. **Never show a
+  blocked plan to the user as your proposal.** If a block needs the user's
+  decision — a domain missing from the site, an older event name to keep —
+  explain it and ask.
+- **`status: ok`** — show `summary_markdown`, each `warn` finding in one line,
+  and the files you will edit. Then **ask for approval and wait.** Being asked
+  to install Sealmetrics is not approval of this plan; only an answer to the
+  plan is.
+
+When the user approves, write
+`<state-dir>/<site_id>/install-plan.json` — the plan exactly as you passed it,
+`plan_id`, `approved_at` (ISO, UTC) and `approval_quote` (their words, at most
+200 characters) — and `install-plan.md` with `summary_markdown`. If they ask for
+a change, change the plan and go back to the top of this step: a changed plan
+has a new `plan_id` and needs its own approval.
+
+## Step 4 — Place the snippet
+
+Exactly as planned: the file, the tag, and the stub when `stub: true`. Show the
+diff and say which file you edited.
+
+## Step 5 — Instrument the planned events, and only those
+
+Write one call per planned event, where the plan says. An event that is not in
+the approved plan is not written — if one turns out to be needed, that is a
+change: back to Step 3.
+
+## Step 6 — Simulate before anything ships
+
+Call `simulate_install` with the approved `plan` (the same object you passed to
+`plan_install`), its `plan_id`, `repo_path`, and one case per event:
+
+- `event` — the planned name.
+- `code` — the call **exactly as you wrote it**, as plain JavaScript (strip
+  TypeScript types).
+- `vars` — synthetic values for every variable the call reads, **with the
+  types the site really produces**. If the orders API returns the total as a
+  string, `vars.order.total` is `"149.99"`, not `149.99`: the point is to catch
+  the string.
+- `source: { file, line }` — where the call is.
+
+It returns `verdict`, and per case the `hits` with what pixel-service would
+store (`stored_as`) and `checks`:
+
+- **`status: stale_plan`** — the plan changed after approval. Back to Step 3.
+- **A `fail` check** — fix the code (`SM-04` is revenue that is not a number,
+  `SM-02` the tracker not loaded yet, `SM-06` personal data, `SM-08` a hit the
+  server would reject) and simulate again. **At most three rounds.** After the
+  third, stop, show what still fails, and do not ask the user to deploy.
+- **`verdict: pass`** — say the install is simulated, not verified.
+
+Write the result to `<state-dir>/<site_id>/simulations/<simulation_id>.json`.
+
+## Step 7 — Ask the user to deploy
+
+Everything so far is in their working tree. Deploying is their call: ask them to
+ship the snippet and the events, and to tell you when it is live.
+`verify_setup` and `verify_event_instrumented` can only see the live site —
+hits from `localhost`, staging or a preview URL are rejected silently unless
+that domain is one of the site's domains.
+
+## Step 8 — Prove the pixel on the live site
+
+`verify_setup(account_id=…, timeout_seconds=…)` polls until a real pageview
+arrives. Ask the user to open the site in a browser while it runs.
+
+If it times out, do not guess: call `get_troubleshooting_guide` and work the
+matching symptom. The usual causes are the snippet sitting outside `<head>`, a
+build that has not been deployed yet, or an ad blocker on the only browser
+being tested. **Do not verify events until a pageview is confirmed.**
+
+## Step 9 — Verify each event, not just the pixel
 
 For every event you wrote:
 
 `verify_event_instrumented(account_id=…, kind='conv'|'micro', name=…,
 timeout_seconds=…)`
 
-Ask the user to deploy the instrumentation and perform the action on the live
-site — add something to the cart, submit the form — while it polls. An event that was written but never fires is worse than
-a missing one, because it looks instrumented in the code review.
+Ask the user to perform the action on the live site — add something to the
+cart, submit the form — while it polls. An event that was written but never
+fires is worse than a missing one, because it looks instrumented in the code
+review. A purchase needs a real test order; if nobody places one, the event
+stays unverified.
 
-Report each event as confirmed or not confirmed. Do not mark an event done
-because the code looks right.
+## Step 10 — Hand off
 
-## Step 6 — Hand off
+1. The final table, with three status columns that are never merged:
 
-1. Write what you established into
-   `<state-dir>/<site_id>/profile.json` — site id, domain, timezone,
-   vertical, the real event names you used and the product identifier key.
-   Seal Copilot reads that profile, so writing it here is what makes the first
-   analysis cheap. The contract is `skills/seal-copilot/references/state-schema.md`
-   in the Seal Copilot plugin; the fields that matter at install time are
-   `site_id`, `site_name`, `timezone`, `currency`, `vertical`, `events`,
-   `product_identifier` and `discovery_cached_at`.
-2. Tell the user that data takes a few days to become analyzable, and name the
-   first analysis that will be worth running: `property-explorer` once events
-   are flowing, then `weekly-health-check`.
-3. If anything is instrumented but unverified, say so explicitly and offer
-   Seal Copilot's `setup-audit` to re-check once traffic arrives.
+   | Event | Kind | Where | Planned | Simulated | Verified live |
+   |---|---|---|---|---|---|
+
+   `Planned` carries the `plan_id`; `Simulated` is ✓ or what failed; `Verified
+   live` is ✓, or what is still missing (a test order, a deploy).
+2. Write what you established into `<state-dir>/<site_id>/profile.json` — site
+   id, domain, timezone, vertical, the real event names you used and the
+   product identifier key. Seal Copilot reads that profile, so writing it here
+   is what makes the first analysis cheap. The contract is
+   `skills/seal-copilot/references/state-schema.md` in the Seal Copilot plugin;
+   the fields that matter at install time are `site_id`, `site_name`,
+   `timezone`, `currency`, `vertical`, `events`, `product_identifier` and
+   `discovery_cached_at`.
+3. Tell the user that data takes a few days to become analyzable, and name the
+   first analysis worth running: `property-explorer` once events are flowing,
+   then `weekly-health-check`.
+4. If anything is simulated but not verified, say so explicitly and offer Seal
+   Copilot's `setup-audit` to re-check once traffic arrives.
 
 ## What you do NOT do
 
@@ -185,10 +282,14 @@ because the code looks right.
   terms in this conversation. Never infer acceptance from their asking you to
   install Sealmetrics.
 - Do not create a second site for a domain that already has one.
-- Do not pass any personal identifier into any event or property.
-- Do not claim an event works because you wrote the code. Only
-  `verify_event_instrumented` settles that.
+- Do not edit any file before the user approves the plan, and do not write a
+  call for an event the approved plan does not contain.
+- Do not show a `blocked` plan to the user as a proposal.
+- Do not pass any personal identifier into any event, property or list item.
 - Do not invent event names outside the instrumentation guide's taxonomy.
+- Do not say "verified", "confirmed" or "it works" about an event that was only
+  simulated. Only `verify_event_instrumented`, on the live site, settles that.
+- Do not ask the user to deploy while a simulation still fails.
 - Do not deploy. You edit the code; shipping it is the user's call.
 
 ---
@@ -196,7 +297,7 @@ because the code looks right.
 Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `15` here), `verdict` (one of `on_track`, `watch`, `act`,
+ceiling, a number — `22` here), `verdict` (one of `on_track`, `watch`, `act`,
 `kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
 (boolean), `notes` (one line). The first real audit wrote `calls_used` and a
 free-text verdict because this footer said "calls used" in prose; the field

@@ -280,6 +280,39 @@ The full grammar, the four families and what each field means live in the
   found the rule firing. A rule that fired an hour ago and is still failing is
   reported as "still open since", not as a new incident.
 
+## `install-plan.json` and `simulations/` — written by seal-install (local only)
+
+The installer writes these; Seal Copilot only reads them. They are the record
+of what the user agreed to measure, which is what `setup-audit` can compare
+against the data once traffic arrives.
+
+`install-plan.json` — the last plan the user approved:
+
+```json
+{
+  "plan_id": "a3f9c21e7b04",
+  "approved_at": "2026-09-14T10:02:11Z",
+  "approval_quote": "Looks good, go ahead with that plan.",
+  "plan": { "account_id": "acct_demo", "vertical": "ecommerce", "site": { "domain": "demo-store.com" },
+            "loader": { "file": "app/layout.tsx", "snippet_url": "https://t.sealmetrics.com/t.js?id=acct_demo" },
+            "events": [ { "kind": "conv", "name": "purchase", "trigger": { "type": "page", "where": "app/checkout/success/page.tsx" },
+                          "value": { "source": "order.total", "type": "number", "example": 149.99 } } ],
+            "product_identifier": { "key": "product_id", "applies_to": ["view_item", "add_to_cart", "purchase.items"] } }
+}
+```
+
+- `plan` — exactly what was passed to `plan_install`; its hash is `plan_id`.
+- `approval_quote` — the user's own words, at most 200 characters. Never the
+  conversation, and never anything personal.
+- A changed plan replaces the file only after the new plan is approved.
+
+`install-plan.md` holds the same plan as the table the user saw.
+
+`simulations/<simulation_id>.json` — the `simulate_install` result as returned.
+A simulation says what the tracker would send and what the server would do with
+it; it is **not** evidence that an event arrives. Only `verify_event_instrumented`
+and real volume are.
+
 ## `runs.jsonl`
 
 One line per skill execution. Cheap, and it is what makes the call budget

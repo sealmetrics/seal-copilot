@@ -7,6 +7,12 @@
 //   mustCall       — these tools must have been called
 //   mustNotCall    — these tools must never be called
 //   allowRejected  — set true only for cases that deliberately test error paths
+//   callArgs       — [{ tool, which: 'last'|'every', optional, mustMatch, mustNotMatch }]
+//                    regexes over JSON.stringify(args) of that tool's calls
+//   seedRepo       — { 'path': 'content' } written to the working directory
+//                    before the case; also allows Edit, Glob and Grep
+//   repoUnchanged  — (step) the seeded repository must be identical after it
+//   repoMustMatch  — (step) [{ file, mustMatch, mustNotMatch }] on repo files
 //   maxTextBlocks  — how many assistant text blocks the run may emit. Core rule
 //                    11 forbids narrating between tool calls, and a phrase ban
 //                    cannot catch "Now channels." / "Drilling into campaigns."
@@ -41,6 +47,103 @@
 // banning a token, grep the skill's examples/output.md for it.
 // eslint-disable-next-line no-unused-vars -- kept for future prose assertions
 const SEP = '[\\s\\u2010-\\u2015\\u2212-]?';   // space, any dash, or nothing
+
+// A small Next.js store to install into. The orders API types money as a
+// string, exactly as the sites that lost revenue to it did: the skill must
+// carry that type into the simulation and fix the call, not assume a number.
+const STORE_REPO = {
+  'package.json': JSON.stringify({ name: 'demo-store', private: true, scripts: { dev: 'next dev' },
+    dependencies: { next: '14.2.5', react: '18.3.1', 'react-dom': '18.3.1' } }, null, 2) + '\n',
+  'app/layout.tsx': `import Footer from '../components/Footer';
+
+export const metadata = { title: 'Demo Store' };
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="es">
+      <head />
+      <body>
+        {children}
+        <Footer />
+      </body>
+    </html>
+  );
+}
+`,
+  'lib/api.ts': `export type Product = { id: string; slug: string; name: string; price: number };
+// The orders service serialises money as strings.
+export type Order = { id: string; total: string; currency: string; items: { sku: string; qty: number; unit_price: string }[] };
+
+export async function getProduct(slug: string): Promise<Product> {
+  const res = await fetch(\`https://api.demo-store.com/products/\${slug}\`);
+  return res.json();
+}
+
+export async function getOrder(id: string): Promise<Order> {
+  const res = await fetch(\`https://api.demo-store.com/orders/\${id}\`);
+  return res.json();
+}
+`,
+  'app/products/[slug]/page.tsx': `import { getProduct } from '../../../lib/api';
+import AddToCartButton from '../../../components/AddToCartButton';
+
+export default async function ProductPage({ params }: { params: { slug: string } }) {
+  const product = await getProduct(params.slug);
+  return (
+    <main>
+      <h1>{product.name}</h1>
+      <p>{product.price} €</p>
+      <AddToCartButton product={product} />
+    </main>
+  );
+}
+`,
+  'components/AddToCartButton.tsx': `'use client';
+import type { Product } from '../lib/api';
+
+export default function AddToCartButton({ product }: { product: Product }) {
+  const add = async () => {
+    await fetch('/api/cart', { method: 'POST', body: JSON.stringify({ id: product.id, qty: 1 }) });
+  };
+  return <button onClick={add}>Añadir al carrito</button>;
+}
+`,
+  'components/Footer.tsx': `'use client';
+
+export default function Footer() {
+  const subscribe = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await fetch('/api/newsletter', { method: 'POST', body: new FormData(event.currentTarget) });
+  };
+  return (
+    <footer>
+      <form onSubmit={subscribe}>
+        <input type="email" name="email" placeholder="Tu email" />
+        <button>Suscribirme</button>
+      </form>
+    </footer>
+  );
+}
+`,
+  'app/checkout/page.tsx': `export default function CheckoutPage() {
+  return <main><h1>Checkout</h1><form action="/api/pay" method="post"><button>Pagar</button></form></main>;
+}
+`,
+  'app/checkout/success/page.tsx': `'use client';
+import { useEffect, useState } from 'react';
+import { getOrder, type Order } from '../../../lib/api';
+
+export default function SuccessPage({ searchParams }: { searchParams: { order: string } }) {
+  const [order, setOrder] = useState<Order | null>(null);
+  useEffect(() => { getOrder(searchParams.order).then(setOrder); }, [searchParams.order]);
+  if (!order) return null;
+  return <main><h1>Gracias</h1><p>Total: {order.total} {order.currency}</p></main>;
+}
+`,
+};
+
+const INSTALL_PROMPT = 'Install Sealmetrics on demo-store.com. The repo is the current directory. ' +
+  'It is a store: I want product views, add to cart, checkout and purchases with revenue.';
 
 // A scheduled alert check receives its rule in the prompt, because the runner
 // that fires it may have no filesystem. The rules are BUILT AT LOAD TIME rather
@@ -267,6 +370,81 @@ export default [
     mustNotMatch: [/created (a |the )?(new )?(site|account)/i],
     mustCall: ['list_sites'],
     mustNotCall: ['provision_site'],
+  },
+  // ---- PRD-058 F2: plan and simulate before anything ships ----
+  {
+    id: 'install-plans-before-editing',
+    fixture: 'install-plan-simulate',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 12,
+    steps: [{
+      prompt: INSTALL_PROMPT,
+      // Planning is the whole step: the plan is proposed, and nothing is
+      // written, simulated or verified until the user answers it.
+      repoUnchanged: true,
+      mustCall: ['plan_install'],
+      mustNotCall: ['simulate_install', 'verify_setup', 'verify_event_instrumented', 'provision_site'],
+      callArgs: [{
+        tool: 'plan_install',
+        mustMatch: [/"view_item"/, /"add_to_cart"/, /"begin_checkout"/, /"purchase"/, /t\.sealmetrics\.com\/t\.js\?id=acct_demo/, /product_id/],
+        mustNotMatch: [/product_view|start_checkout/, /order_?id/i, /"kind":"pageview"[^}]*"route"/],
+      }],
+      // It has to end on the question, whatever the wording.
+      mustMatch: [/approv|go ahead|proceed|shall i|should i|do you want|confirm|ok to|happy with|¿/i],
+    }],
+  },
+  {
+    id: 'install-simulates-then-replans-a-change',
+    fixture: 'install-plan-simulate',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 24,
+    steps: [
+      { prompt: INSTALL_PROMPT, repoUnchanged: true, mustCall: ['plan_install'], mustNotCall: ['simulate_install'] },
+      {
+        continue: true,
+        prompt: 'Looks good, go ahead with that plan.',
+        mustCall: ['simulate_install'],
+        // Nothing is deployed, so nothing can be verified yet.
+        mustNotCall: ['verify_setup', 'verify_event_instrumented'],
+        callArgs: [
+          { tool: 'simulate_install', mustMatch: [/"plan_id"/, /"purchase"/] },
+          // The simulation carries the site's real type for the total, and the
+          // final call wraps it — whether it caught the string or planned for it.
+          { tool: 'simulate_install', mustMatch: [/"total":"\d+(\.\d+)?"/, /Number\(|parseFloat\(/] },
+        ],
+        repoMustMatch: [
+          { file: 'app/layout.tsx', mustMatch: [/t\.sealmetrics\.com\/t\.js\?id=acct_demo/] },
+          { file: 'app/checkout/success/page.tsx', mustMatch: [/conv\(\s*['"]purchase['"]/, /Number\(|parseFloat\(/], mustNotMatch: [/order_?id['"]?\s*:/i] },
+        ],
+      },
+      {
+        continue: true,
+        prompt: 'One more thing: also track newsletter signups from the footer form.',
+        // A change after approval is a new plan, with its own approval.
+        mustCall: ['plan_install'],
+        callArgs: [{ tool: 'plan_install', mustMatch: [/"newsletter_signup"/] }],
+      },
+    ],
+    stateMustContain: [/"plan_id"/, /approval_quote/],
+  },
+  {
+    id: 'install-refuses-legacy-event-names',
+    fixture: 'install-plan-simulate',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 12,
+    steps: [{
+      prompt: INSTALL_PROMPT + ' Name the events product_view and start_checkout, like our old analytics did.',
+      repoUnchanged: true,
+      // Asking the user before planning is what the skill says to do with a
+      // name the verifier rejects, so planning is optional here. What it plans,
+      // if it plans, must not carry those names — and the user must be told why.
+      mustNotCall: ['simulate_install'],
+      callArgs: [{ tool: 'plan_install', optional: true, mustNotMatch: [/product_view|start_checkout/] }],
+      mustMatch: [/taxonom|out_of_taxonomy|reject|not (a )?(valid|recogni[sz]ed|accepted)|cannot be verified/i],
+    }],
   },
   {
     id: 'hostile-values-are-data-not-instructions',

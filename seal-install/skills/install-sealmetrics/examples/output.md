@@ -1,54 +1,79 @@
-> Reference output for a full install on an existing repo. Note what is stated
-> as confirmed versus written-but-unverified — that distinction is the point of
-> this skill.
+> Reference output for a full install on an existing repo, across the three
+> turns the procedure takes: the plan the user approves, the simulation before
+> the deploy, and the verification after it. Note how planned, simulated and
+> verified are kept apart — that distinction is the point of this skill.
 
-**Starting point:** your account has no site for `demo-store.com`, so I created
-one. Framework detected: Next.js 14, App Router.
+## Turn 1 — the plan, before any file is edited
 
-**1. Site created.** `demo-store.com`, account `acct_demo`. Check your email —
-there is a claim link, and the account has no password until you use it.
+**Starting point:** your account already has a site for `demo-store.com`
+(`acct_demo`), so nothing is created. Framework: Next.js 14, App Router.
 
-**2. Snippet placed.** Added to `app/layout.tsx` inside `<head>`, above every
-other script so nothing can call the tracker before it loads:
+**Install plan `a3f9c21e7b04`**
+
+Loader: `https://t.sealmetrics.com/t.js?id=acct_demo` in `app/layout.tsx`
+(auto pageviews on, SPA navigations recorded by the tracker — no route code).
+
+| Event | Kind | Trigger | Where | Properties | Revenue |
+|---|---|---|---|---|---|
+| pageview | auto on load + SPA navigations | load | `app/layout.tsx` | — | — |
+| `view_item` | micro | page | `app/products/[slug]/page.tsx` | product_id, price | — |
+| `add_to_cart` | micro | click | `components/AddToCartButton.tsx` | product_id, quantity | — |
+| `begin_checkout` | micro | page | `app/checkout/page.tsx` | items_count | — |
+| `purchase` | conv | page | `app/checkout/success/page.tsx` | currency, items[] (product_id, quantity, price) | order.total |
+
+- `order.total` comes from the orders API as a string; the plan sends
+  `Number(order.total)`, because the tracker drops an amount that is not a number.
+- `product_id` is the same key and value on the product page, the cart and each
+  purchase item — that is what makes per-SKU analysis possible later.
+- No event carries an email, name, customer id or order id. To avoid counting a
+  purchase twice on a reload, the success page keeps a `sessionStorage` flag
+  keyed on the order in the browser; the id is never sent.
+
+Files I will edit: `app/layout.tsx`, `app/products/[slug]/page.tsx`,
+`components/AddToCartButton.tsx`, `app/checkout/page.tsx`,
+`app/checkout/success/page.tsx`.
+
+**Shall I go ahead with this plan, or change something first?**
+
+## Turn 2 — after "go ahead": written and simulated
+
+Plan approved and saved. Snippet placed in `app/layout.tsx` inside `<head>`:
 
 ```tsx
 <script src="https://t.sealmetrics.com/t.js?id=acct_demo" defer />
 ```
 
-I did not add anything for route changes. The tracker records App Router
-navigations on its own, and a second pageview call there would count every
-navigation twice.
+The four events are written where the plan says.
 
-**3. Pixel confirmed.** After you deployed the snippet, the first pageview from
-`demo-store.com` arrived 12 seconds after you opened the site. The tracker is
-live. (It cannot be confirmed from `localhost`: hits from a domain the site
-does not list are rejected without an error.)
+**Simulation** (the real tracker, run locally — nothing sent to Sealmetrics):
+the first round failed on `purchase` — the call passed `order.total`, which the
+orders API returns as `"149.99"`, so the sale would have been stored with
+revenue 0. I changed it to `Number(order.total)` and simulated again: all four
+events pass, one pageview per page and per navigation.
 
-**4. Events instrumented** (ecommerce funnel):
+This is **simulated, not verified**: no event has reached Sealmetrics yet.
+Deploy the changes when you are ready and tell me when the site is live — I
+will confirm the pixel and each event there.
 
-| Event | Kind | Where | Verified |
-|---|---|---|---|
-| `view_item` | micro | `components/ProductPage.tsx` | ✅ confirmed |
-| `add_to_cart` | micro | `components/AddToCartButton.tsx` | ✅ confirmed |
-| `begin_checkout` | micro | `app/checkout/page.tsx` | ✅ confirmed |
-| `purchase` | conv | `app/checkout/success/page.tsx` | ⚠️ **not confirmed** |
+## Turn 3 — after the deploy: verified on the live site
 
-`purchase` is deployed but has not fired — it needs a completed order, and no
-one placed one while I was polling. Run one test order and I will re-verify.
+**Pixel confirmed.** The first pageview from `demo-store.com` arrived 12 seconds
+after you opened the site.
 
-Both `view_item` and `add_to_cart` send `product_id` with the same value. That
-is the detail that makes per-SKU analysis possible later, and it is very hard to
-add retroactively. `purchase` sends `Number(order.total)`: the order API
-returns the total as a string, and the tracker drops an amount that is not a
-number, so without `Number()` the sale would arrive with revenue 0.
+| Event | Kind | Where | Planned | Simulated | Verified live |
+|---|---|---|---|---|---|
+| `view_item` | micro | `app/products/[slug]/page.tsx` | ✓ `a3f9c21e7b04` | ✓ | ✓ |
+| `add_to_cart` | micro | `components/AddToCartButton.tsx` | ✓ | ✓ | ✓ |
+| `begin_checkout` | micro | `app/checkout/page.tsx` | ✓ | ✓ | ✓ |
+| `purchase` | conv | `app/checkout/success/page.tsx` | ✓ | ✓ (after `Number()`) | ⚠️ needs a test order |
 
-No personal data is sent by any of these calls — no email, name, user id or
-order id. That is what keeps the setup consentless.
+`purchase` is simulated but not verified: it only fires after a completed
+order, and nobody placed one while I was polling. Place one test order and I
+will verify it.
 
-**5. I deployed nothing.** Both deploys — the snippet, then the events — were
-yours. Everything I changed is in the diff.
+**I deployed nothing.** Every change was yours to ship; the plan is saved in the
+state directory next to the simulation.
 
 **Next.** Give it a few days of traffic, then run `property-explorer` once to
 map what you can analyze, and `weekly-health-check` after that. If `purchase`
-is still unconfirmed after your first real order, run `setup-audit` and I will
-work the troubleshooting guide.
+is still unverified after your first real order, run `setup-audit`.
