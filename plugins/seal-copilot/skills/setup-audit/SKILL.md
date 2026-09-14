@@ -21,8 +21,8 @@ request always runs the full procedure, even minutes after the last one. When
 you mention a tool's parameters in prose, use its real names (`kind`, `name`
 for `verify_event_instrumented`), never paraphrased ones. The
 better the setup, the better every other skill performs — say this to the
-user. Budget: ≤13 calls, and `get_tracking_code` is the first call after the
-site is resolved.
+user. Budget: ≤13 calls, 14 when an approved install plan exists (step 10), and
+`get_tracking_code` is the first call after the site is resolved.
 
 Steps marked **(local only)** need the local connector; on `remote` they are
 skipped and named once in the gap table as "not checkable from here", never
@@ -93,6 +93,35 @@ cached site belongs to one connection".
 9. `get_microconversions(period=30d)` — check that each canonical funnel
    stage receives at least 10 events/day; below that the watchdog baseline
    will be too noisy to be useful and that is a gap worth flagging.
+10. **The approved install plan, when there is one.** If
+    `<state-dir>/<site_id>/install-plan.json` exists for this site, the install
+    was planned and approved event by event: audit the data against that plan,
+    not only against the canonical funnel. It is written by `seal-install`; its
+    shape is in `skills/seal-copilot/references/state-schema.md`. Four checks,
+    from what steps 3–5 and 9 already returned, plus one call:
+    - **Instrumented, not seen** — a planned `conv` or `micro` with zero events
+      in the period. Planned and written, but not arriving: the deploy dropped
+      it, or it fires under another name. If `approved_at` is less than 7 days
+      old, say it may be too early rather than broken.
+    - **Drift** — an event arriving that the plan does not contain: someone added
+      a call outside the plan. Name it; do not call it wrong, and never
+      recommend renaming it.
+    - **Lost property** — a property key the plan gives an event that
+      `list_property_keys` does not list (for purchase items, check
+      `table=conversion_items`). Planned, and not reaching the data.
+    - **Broken revenue** — for each planned `conv` with a `value`:
+      `get_conversions_raw(period=7d, conversion_type=[name], limit=200)`. More
+      than 5% of rows with `amount` 0 or missing means revenue is being lost —
+      usually a total sent as a string, which the tracker drops. Give the share
+      and the row count. One call per revenue event; with more than one, check
+      the one with the most conversions and say the others were not checked.
+
+    Each of these is a gap in the table, tagged **plan `<plan_id>`**, and its fix
+    is always the same: **plan and simulate the change with `seal-install`**, then
+    deploy and verify — never a code patch written here. The plan is the
+    contract the installer checks calls against; a hand fix drifts from it again.
+    Without the file, skip this step silently: most sites were not installed
+    with a plan.
 
 ## Output format
 
@@ -101,7 +130,8 @@ cached site belongs to one connection".
 **Then a gap table:** gap → why it matters (which analysis it unlocks) →
 how to fix → effort (S/M/L). Order by value unlocked, not by effort.
 
-For fixes, the snippet comes **verbatim** from the `js_api` signatures you
+For a gap tagged with the plan, the fix is the `seal-install` round in step 10,
+not a snippet. For other fixes, the snippet comes **verbatim** from the `js_api` signatures you
 fetched in step 0 — or, **(local only)**, from `get_instrumentation_guide`.
 Rules that are not negotiable:
 
@@ -175,7 +205,7 @@ once volume grows.
 **Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `13` here), `verdict` (one of `on_track`, `watch`, `act`,
+ceiling, a number — `13` here, `14` when step 10 ran), `verdict` (one of `on_track`, `watch`, `act`,
 `kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
 (boolean), `notes` (one line). The first real audit wrote `calls_used` and a
 free-text verdict because this footer said "calls used" in prose; the field
