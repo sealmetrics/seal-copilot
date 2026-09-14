@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.12.0 — 2026-09-12
+## 1.12.0 — 2026-09-14
 
 Alerts a customer writes in their own words, and the end of a class of defect
 the linter could not see: a call that is perfectly valid and still fails in
@@ -122,6 +122,48 @@ Evals: `empty-bot-stats-is-not-zero-percent` is deleted with its fixture;
 cases. This also retires the only two cases that were still flaky in the sixth
 certification — both were the model skipping a bot call it is now forbidden to
 make.
+
+### Fixed — found by nine certification runs
+The first full run of this release scored 28/32 and it took nine to reach
+30/31. Every gate offline was green throughout; each of these needed a model in
+the loop to show.
+
+- **Scheduled alert checks could not load their own skill.** `check-alerts`
+  carried `disable-model-invocation`, so a scheduled "run the check-alerts
+  skill" was refused and the model searched the disk with `find /` until the
+  six-minute timeout. The gate is gone, and `create-alert` now schedules the
+  command `/seal-copilot:check-alerts` rather than a sentence. `monday-briefing`
+  and `cart-watchdog` keep their gate, and every place that tells a user or a
+  scheduler how to run them now names the command. Checks went from five or six
+  minutes to twenty or thirty seconds.
+- **Alerts refused to work on the remote connector.** Fixed in
+  `create-alert` and verified on both connectors.
+- **A watchdog that guesses the hour guesses the verdict.** `check-alerts` takes
+  its clock from a `Fired at:` line the scheduler stamps; `cart-watchdog` must
+  state the hour it compared against and may not answer 🟢 when it cannot
+  establish it. A run had called a cart dead since noon healthy by assuming it
+  was 09:00.
+- **`create-alert` called an event untracked after looking in one place.**
+  `demo_request` was a conversion; it looked only at microconversions.
+- **The traffic-quality step read as optional**, the narration ban sat inside a
+  rule about call budgets, and state writes after the report produced a second
+  message ("Report delivered above", or a recap of the diagnosis). Each rule now
+  leads with the instruction and sits where the model reads it: state first,
+  report last, nothing after.
+- **`get_channels` was still named without a refusal** in the core skill's
+  drill-down rule. It now names `get_top_channels`.
+- **A golden output in Spanish** made the model answer English requests in
+  Spanish. It matches structure now, never language.
+- **Harness:** one clock per case shared by prompt and mock; a 500 from the API
+  is transient; an empty answer is transient; a filter that selects no case is
+  an error rather than "0/0 passed"; and eighteen assertions that failed correct
+  answers over a word were rewritten to assert behaviour.
+
+### Not verified
+No run against a real Sealmetrics account, and no alert registered with a real
+scheduler. Whether `/schedule` can substitute the firing time into the prompt is
+still open; `create-alert` tells the check to treat the hour as unknown when it
+cannot.
 
 ### Not changed
 Nothing in the Sealmetrics API or MCP server.
