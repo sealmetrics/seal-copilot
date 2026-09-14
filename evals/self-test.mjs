@@ -125,6 +125,8 @@ const argsSpec = { callArgs: [{ tool: 'plan_install', mustMatch: [/view_item/], 
 ok('callArgs judges the last call by default', assess(argsSpec, 'ok', planCalls).length === 0);
 ok('callArgs which:every sees an earlier bad call', assess({ callArgs: [{ ...argsSpec.callArgs[0], which: 'every' }] }, 'ok', planCalls).some(f => f.includes('forbidden')));
 ok('callArgs fails when the tool was never called', assess(argsSpec, 'ok', good).some(f => f.includes('never called plan_install')));
+ok('callArgs which:any passes when one call matches', assess({ callArgs: [{ tool: 'plan_install', which: 'any', mustMatch: [/product_view/] }] }, 'ok', planCalls).length === 0);
+ok('callArgs which:any fails when none matches', assess({ callArgs: [{ tool: 'plan_install', which: 'any', mustMatch: [/begin_checkout/] }] }, 'ok', planCalls).some(f => f.includes('no plan_install call')));
 ok('optional callArgs tolerates no call', assess({ callArgs: [{ ...argsSpec.callArgs[0], optional: true }] }, 'ok', good).length === 0);
 
 

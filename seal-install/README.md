@@ -55,7 +55,11 @@ this does not.
 5. Places the snippet and writes the planned events — and only those.
 6. **Simulates them before anything ships:** `simulate_install` runs the real
    Sealmetrics tracker on the calls it wrote, in a local sandbox, and fixes what
-   the server would store wrongly or reject.
+   the server would store wrongly or reject. With your dev server running, it
+   also walks the site in a local browser: the tag placed once, the tracker
+   loading, no CSP or console error, one hit per action, one pageview per
+   navigation. It asks before installing a browser and never touches a
+   non-local URL on its own.
 7. Asks you to deploy, then proves the first pageview and each event on the
    live site.
 8. Writes the approved plan and the site profile Seal Copilot reads, so the
@@ -71,7 +75,9 @@ before you approve the plan · write an event the plan does not contain · pass
 any personal identifier into an event · invent an event name outside the
 instrumentation taxonomy · call a simulated event verified · deploy your site.
 
-Planning and simulation need `@sealmetrics/mcp` 1.9.0 or later. On an older
+Planning and simulation need `@sealmetrics/mcp` 1.9.0 or later; the browser
+simulation needs the release that adds `level: "page"` and a Chrome, Edge or
+Chromium on the machine. On an older
 server the skill still asks for your approval of a written plan, and marks every
 event "not simulated".
 

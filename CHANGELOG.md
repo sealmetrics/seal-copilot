@@ -1,5 +1,43 @@
 # Changelog
 
+## seal-install 1.14.0 — 2026-09-14 (Seal Copilot unchanged)
+
+The installer also simulates the install in a local browser when the site's dev
+server is running. Needs `@sealmetrics/mcp` with `simulate_install` at
+`level: "page"` (sealmetrics2 PRD-058 F3, adinton/sealmetrics2#387).
+
+### Changed — `install-sealmetrics`
+- **Step 6b.** After the call-level simulation passes, and only when the user has
+  said the dev server is running (or asked once), `simulate_install` with
+  `level: 'page'`, the local `base_url` and one flow per event built from the
+  selectors in the code the skill read. The browser run catches what the call
+  level cannot: the tag missing or twice, the tracker not loading, a CSP, a console
+  error, a hit not arriving exactly once, a navigation counted twice. Failures are
+  fixed within the same three rounds; a broken selector is fixed in the flow, not
+  in the site. A purchase that needs a real payment is not walked, and says so.
+- **Never on its own:** no browser or `playwright-core` install (on `unavailable`
+  it shows the commands and asks), no dev server started, no `allow_remote_url`
+  without the user's explicit request.
+- The `Simulated` column says which levels ran (`✓ call · ✓ page`) and why the
+  page level did not. Budget 22 → 24.
+
+### Evals
+- `install-simulates-in-the-browser`: with the dev server announced, a page-level
+  run against `localhost:3000` with flows for the planned events, never a remote
+  target, never a verification before deploy.
+- `install-asks-before-installing-a-browser`: on a machine without a browser the
+  skill names what is missing and asks.
+- Test double: `level: 'page'` answers `unavailable`, `invalid_input` for a
+  non-local `base_url`, or passing flows. New fixture
+  `install-plan-simulate-no-browser`. `callArgs` gains `which: 'any'`.
+- `mcp-schema.json` / `mcp-schema-full.json`: `simulate_install` parameters from
+  the F3 build.
+- All six install cases pass; the two new ones 3/3 each. The first run failed the
+  browser case on its own assertion, which banned the production domain anywhere
+  in the arguments — and the plan always carries it. It now judges `base_url`.
+- The reference output notes that its "Turn" headings are labels, after a run
+  printed them in its answer.
+
 ## 1.13.3 — 2026-09-14 (seal-install 1.13.0)
 
 The installer plans an install with the user before it edits a file, and

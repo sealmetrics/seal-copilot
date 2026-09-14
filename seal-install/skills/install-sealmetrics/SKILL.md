@@ -17,7 +17,7 @@ short-description: 'Install Sealmetrics from scratch: plan the events with you, 
 
 Take a site from no analytics to measured and verified. This is the only skill
 that writes code, and the only one that can create an account — both are gated
-below. Budget: ≤22 tool calls plus whatever editing the codebase takes.
+below. Budget: ≤24 tool calls plus whatever editing the codebase takes.
 
 **This skill needs the local connector**, the one this plugin carries:
 `npx @sealmetrics/mcp` with `SEALMETRICS_API_KEY` in the environment. Most of
@@ -222,6 +222,51 @@ store (`stored_as`) and `checks`:
 
 Write the result to `<state-dir>/<site_id>/simulations/<simulation_id>.json`.
 
+### Step 6b — Simulate in a browser, when the dev server is running
+
+The call-level simulation checks the calls. It cannot see the page: the snippet
+placed twice, a framework that runs the call before the tracker loads, a CSP
+that blocks it, a router that counts a navigation twice. When the site runs
+locally, `simulate_install` with `level: 'page'` walks it in a local browser.
+
+**Only offer it when the dev server is running.** The user said so, or gave you
+its URL. Do not start it yourself, and if they have not mentioned one, ask once
+whether it is running and on which port; if not, skip this step and say so in
+the final table.
+
+Call it with the same `plan` and `plan_id`, and:
+
+- `base_url` — the local address, e.g. `http://localhost:3000`. Never a
+  production, staging or preview URL: `allow_remote_url` is only passed when
+  the user explicitly asks to simulate against a non-local address, and it stays
+  their decision.
+- `flows` — one per planned event, with the steps a person takes to trigger it
+  on that dev server: `{ event: 'add_to_cart', steps: [{ goto: '/products/tee',
+  expect_pageviews: 1 }, { click: '<selector from the code>', expect_hit: { e:
+  'add_to_cart', m: true } }] }`. Take selectors from the components you read;
+  never guess one you did not see. A flow for `pageview` checks the tag and the
+  count on navigation: `[{ goto: '/' , expect_pageviews: 1 }, { click: '<an
+  internal link>', expect_pageviews: 2 }]`. A purchase that needs a real payment
+  cannot be walked: skip that flow and say why.
+
+What comes back:
+
+- **`status: unavailable`** — no browser on this machine, or the optional
+  `playwright-core` is missing. Show the `install` commands, **ask whether to
+  install them, and never run them yourself.** If the user declines, the install
+  stays call-simulated only.
+- **A result without `level: 'page'`** — the connector predates page simulation.
+  Say so in one line and move on.
+- **A `fail` check** — `SP-01` the tag is not there exactly once, `SP-02` the
+  tracker did not load, `SP-03` a CSP blocks it, `SP-04` a console error from the
+  tracker, `SP-05` an expected hit did not arrive exactly once, `SP-06` the
+  pageviews are off. Fix the code and run it again, within the same three rounds
+  as Step 6. A failure in your own steps (a selector that does not exist) is not
+  a finding about the site: fix the flow, not the site.
+- **`verdict: pass`** — still simulated, not verified.
+
+Write it next to the call-level result, under `simulations/`.
+
 ## Step 7 — Ask the user to deploy
 
 Everything so far is in their working tree. Deploying is their call: ask them to
@@ -260,8 +305,10 @@ stays unverified.
    | Event | Kind | Where | Planned | Simulated | Verified live |
    |---|---|---|---|---|---|
 
-   `Planned` carries the `plan_id`; `Simulated` is ✓ or what failed; `Verified
-   live` is ✓, or what is still missing (a test order, a deploy).
+   `Planned` carries the `plan_id`; `Simulated` says which levels ran — `✓ call`,
+   `✓ call · ✓ page`, or what failed — and, when the page level did not run, why
+   (no dev server, no browser, the user declined); `Verified live` is ✓, or what
+   is still missing (a test order, a deploy).
 2. Write what you established into `<state-dir>/<site_id>/profile.json` — site
    id, domain, timezone, vertical, the real event names you used and the
    product identifier key. Seal Copilot reads that profile, so writing it here
@@ -290,6 +337,8 @@ stays unverified.
 - Do not say "verified", "confirmed" or "it works" about an event that was only
   simulated. Only `verify_event_instrumented`, on the live site, settles that.
 - Do not ask the user to deploy while a simulation still fails.
+- Do not install a browser or `playwright-core`, start a dev server, or simulate
+  against a non-local URL without the user's explicit say-so.
 - Do not deploy. You edit the code; shipping it is the user's call.
 
 ---
@@ -297,7 +346,7 @@ stays unverified.
 Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `22` here), `verdict` (one of `on_track`, `watch`, `act`,
+ceiling, a number — `24` here), `verdict` (one of `on_track`, `watch`, `act`,
 `kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
 (boolean), `notes` (one line). The first real audit wrote `calls_used` and a
 free-text verdict because this footer said "calls used" in prose; the field
