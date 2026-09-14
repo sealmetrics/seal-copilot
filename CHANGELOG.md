@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.12.2 — 2026-09-14
 
 The first alert created on a real account refused the right rules and wrote the
 right one, and still got six things wrong.
