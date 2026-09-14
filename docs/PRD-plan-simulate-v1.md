@@ -169,7 +169,7 @@ Sin esto, plan y simulate bloquearían la mitad de lo que hoy propone la skill.
   | SaaS / lead-gen | `signup` (`plan: 'trial'` para trials), `lead` (`form_name: 'demo_request'`), `subscription` (revenue) | `cta_click` (`cta: 'pricing'`), `form_submit` |
 
 - **RF-102.** Corregir `examples/output.md`: nombres canónicos, URL real del snippet (`t.sealmetrics.com/t.js?id=`), sin cambios de ruta a mano (el tracker ya lo hace) y sin "pixel confirmed" antes de desplegar.
-- **RF-103.** `evals/taxonomy.json`: snapshot de `CONV_TYPES` y `MICRO_TYPES`. `evals/lint-tool-calls.mjs` falla si un nombre de evento en `sealmetrics.conv('…')`/`micro('…')` o en una tabla de eventos de cualquier skill no está en el snapshot. `check-schema-drift.mjs --online` compara el snapshot con el que devuelve `get_instrumentation_guide`.
+- **RF-103.** `evals/taxonomy.json`: snapshot de `CONV_TYPES` y `MICRO_TYPES`, nombres heredados con su equivalente y archivos "escritores". `evals/lint-tool-calls.mjs` falla con un nombre literal fuera de taxonomía en `sealmetrics.conv('…')`/`micro('…')` en cualquier skill, con llamadas inventadas tipo `sm('event', …)`, y con un nombre heredado recomendado en un archivo escritor (`seal-install`, `setup-audit`) salvo que la frase diga que el sitio ya lo usa. Las skills de análisis quedan fuera de esta última regla porque tienen que reconocer esos nombres en datos reales. `check-schema-drift.mjs --online` compara el snapshot con los nombres del `get_instrumentation_guide` en vivo.
 
 **Aceptación:** `scripts/check.sh` falla con `product_view` en cualquier skill y pasa con la tabla nueva.
 

@@ -84,17 +84,23 @@ them into a slightly different API.
   `sealmetrics.*`. Most "sealmetrics is not defined" reports are a tag manager
   firing before the tracker.
 - One installation per site. Two copies double every pageview.
-- In a single-page app, the tracker must be told about route changes rather
-  than reloading — otherwise you get one pageview per session, or duplicates,
-  depending on how the router is wired. Follow the API reference for the
-  framework you detected.
+- In a single-page app, **do not add a pageview call on route changes.** The
+  tracker already records every History API navigation by itself (React
+  Router, the Next.js router, Vue Router, Nuxt, Angular). A second call on the
+  route change counts every navigation twice, and it looks right in code
+  review. The only exception is a site that must set the content group from
+  code per route: load the tracker with `&spa=0`, which turns the automatic
+  route pageview off, and fire `sealmetrics({ group })` yourself.
 
 Place it, show the diff, and say which file you edited.
 
 ## Step 3 — Prove it works before going further
 
 `verify_setup(account_id=…, timeout_seconds=…)` polls until a real pageview
-arrives. Ask the user to open the site in a browser while it runs.
+arrives. It can only see the live site: hits from `localhost`, staging or a
+preview URL are rejected silently unless that domain is one of the site's
+domains. So the snippet has to be deployed first, and deploying is the user's
+call. Ask them to deploy it and open the site in a browser, then poll.
 
 If it times out, do not guess: call `get_troubleshooting_guide` and work the
 matching symptom. The usual causes are the snippet sitting outside `<head>`, a
@@ -108,21 +114,32 @@ this depends on the tracker loading at all.
 
 `get_instrumentation_guide(account_id=…)` returns the canonical taxonomy with
 the account id substituted. Follow it — the conversion and microconversion
-names are a closed set, and inventing names is what makes later analysis
-impossible.
+names are a closed set. `verify_event_instrumented` rejects any other name as
+`out_of_taxonomy`, so an invented name is an event that can never be verified.
 
-Ask what the site is for, then instrument the funnel for that vertical:
+Ask what the site is for, then instrument the funnel for that vertical. What
+distinguishes a room from a product, or a demo from a contact form, goes in a
+property, not in a new event name:
 
 | Vertical | Conversions | Microconversions |
 |---|---|---|
-| Ecommerce | `purchase` with revenue | `product_view`, `add_to_cart`, `start_checkout` |
-| Hotel / travel | `booking` with revenue | `room_view`, `booking_start` |
-| SaaS / lead-gen | `signup`, `demo_request`, `trial_start` | `pricing_view`, `cta_click`, `form_view` |
+| Ecommerce | `purchase` with revenue | `view_item`, `add_to_cart`, `begin_checkout` |
+| Hotel / travel | `booking` with revenue | `view_item` with `item_type: 'room'`, `begin_checkout` |
+| SaaS / lead-gen | `signup` (`plan: 'trial'` for a trial), `lead` (`form_name: 'demo_request'` for a demo), `subscription` with revenue | `cta_click` (`cta: 'pricing'`), `form_submit` |
+
+Older sites often already fire names from before the taxonomy was closed —
+`product_view`, `start_checkout`, `room_view`, `pricing_view`. Do not write
+new calls with those names, and do not rename working calls without asking:
+renaming splits the site's history in two. Say which ones the verifier rejects
+and let the user decide.
 
 Two things to get right at install time, because retrofitting them is painful:
 
-- **Pass revenue** on the conversion where revenue exists. Without it every
-  later recommendation is expressed in conversions instead of euros.
+- **Pass revenue** on the conversion where revenue exists, **as a number**.
+  Without it every later recommendation is expressed in conversions instead of
+  euros. The tracker silently drops an amount that is not a number, and a total
+  read from the DOM or a data layer is usually a string (`"149.99"`): wrap it in
+  `Number()`, or the conversion arrives, verifies, and carries revenue 0.
 - **Pass a product identifier** on *both* the product-view and the
   add-to-cart events, using the same key and the same value. This single
   detail is what makes per-SKU analysis possible later. Getting it right now
@@ -139,8 +156,8 @@ For every event you wrote:
 `verify_event_instrumented(account_id=…, kind='conv'|'micro', name=…,
 timeout_seconds=…)`
 
-Ask the user to perform the action — add something to the cart, submit the
-form — while it polls. An event that was written but never fires is worse than
+Ask the user to deploy the instrumentation and perform the action on the live
+site — add something to the cart, submit the form — while it polls. An event that was written but never fires is worse than
 a missing one, because it looks instrumented in the code review.
 
 Report each event as confirmed or not confirmed. Do not mark an event done

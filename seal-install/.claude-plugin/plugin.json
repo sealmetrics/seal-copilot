@@ -1,6 +1,6 @@
 {
   "name": "seal-install",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "description": "Installs Sealmetrics on a site from scratch: creates the site, places the tracking snippet in your codebase, confirms the first hit arrives, then instruments the conversions and microconversions the business needs. Carries the local MCP server, which is the only one that exposes the provisioning and verification tools.",
   "author": {
     "name": "Sealmetrics",

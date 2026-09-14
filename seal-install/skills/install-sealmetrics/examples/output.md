@@ -12,38 +12,41 @@ there is a claim link, and the account has no password until you use it.
 other script so nothing can call the tracker before it loads:
 
 ```tsx
-<script async src="https://cdn.sealmetrics.com/sm.js?id=acct_demo" />
+<script src="https://t.sealmetrics.com/t.js?id=acct_demo" defer />
 ```
 
-Because this is the App Router, I also wired route changes in
-`app/providers.tsx` — without it a single-page app records one pageview per
-session instead of one per route.
+I did not add anything for route changes. The tracker records App Router
+navigations on its own, and a second pageview call there would count every
+navigation twice.
 
-**3. Pixel confirmed.** First pageview arrived 12 seconds after you opened the
-site. The tracker is live.
+**3. Pixel confirmed.** After you deployed the snippet, the first pageview from
+`demo-store.com` arrived 12 seconds after you opened the site. The tracker is
+live. (It cannot be confirmed from `localhost`: hits from a domain the site
+does not list are rejected without an error.)
 
 **4. Events instrumented** (ecommerce funnel):
 
 | Event | Kind | Where | Verified |
 |---|---|---|---|
-| `product_view` | micro | `components/ProductPage.tsx` | ✅ confirmed |
+| `view_item` | micro | `components/ProductPage.tsx` | ✅ confirmed |
 | `add_to_cart` | micro | `components/AddToCartButton.tsx` | ✅ confirmed |
-| `start_checkout` | micro | `app/checkout/page.tsx` | ✅ confirmed |
+| `begin_checkout` | micro | `app/checkout/page.tsx` | ✅ confirmed |
 | `purchase` | conv | `app/checkout/success/page.tsx` | ⚠️ **not confirmed** |
 
-`purchase` is written but has not fired — it needs a completed order, and no
+`purchase` is deployed but has not fired — it needs a completed order, and no
 one placed one while I was polling. Run one test order and I will re-verify.
 
-Both `product_view` and `add_to_cart` send `sku` with the same value. That is
-the detail that makes per-SKU analysis possible later, and it is very hard to
-add retroactively. `purchase` sends order revenue, so recommendations will be
-in euros rather than conversion counts.
+Both `view_item` and `add_to_cart` send `product_id` with the same value. That
+is the detail that makes per-SKU analysis possible later, and it is very hard to
+add retroactively. `purchase` sends `Number(order.total)`: the order API
+returns the total as a string, and the tracker drops an amount that is not a
+number, so without `Number()` the sale would arrive with revenue 0.
 
 No personal data is sent by any of these calls — no email, name, user id or
 order id. That is what keeps the setup consentless.
 
-**5. Nothing is deployed.** The changes are in your working tree. Review the
-diff and ship when you are ready; the tracker only records the live site.
+**5. I deployed nothing.** Both deploys — the snippet, then the events — were
+yours. Everything I changed is in the diff.
 
 **Next.** Give it a few days of traffic, then run `property-explorer` once to
 map what you can analyze, and `weekly-health-check` after that. If `purchase`
