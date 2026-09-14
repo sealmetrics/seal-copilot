@@ -48,6 +48,8 @@
 // eslint-disable-next-line no-unused-vars -- kept for future prose assertions
 const SEP = '[\\s\\u2010-\\u2015\\u2212-]?';   // space, any dash, or nothing
 
+import { planId as installPlanId } from './fixtures/_install.mjs';
+
 // A small Next.js store to install into. The orders API types money as a
 // string, exactly as the sites that lost revenue to it did: the skill must
 // carry that type into the simulation and fix the call, not assume a number.
@@ -140,6 +142,82 @@ export default function SuccessPage({ searchParams }: { searchParams: { order: s
   return <main><h1>Gracias</h1><p>Total: {order.total} {order.currency}</p></main>;
 }
 `,
+};
+
+// The same store after the install shipped (PRD-058 F4). A later edit dropped
+// product_id from the add-to-cart call, which the plan requires: production no
+// longer matches the plan, and only a verification against the plan sees it.
+const INSTALLED_PLAN = {
+  account_id: 'acct_demo', vertical: 'ecommerce', repo_path: '.', site: { domain: 'demo-store.com' },
+  loader: { file: 'app/layout.tsx', snippet_url: 'https://t.sealmetrics.com/t.js?id=acct_demo', stub: false },
+  events: [
+    { kind: 'micro', name: 'view_item', trigger: { type: 'page', where: 'components/ViewItem.tsx' },
+      properties: { product_id: { source: 'product.id', type: 'string', example: 'tee-01' }, price: { source: 'product.price', type: 'number', example: 19.9 } } },
+    { kind: 'micro', name: 'add_to_cart', trigger: { type: 'click', where: 'components/AddToCartButton.tsx' },
+      properties: { product_id: { source: 'product.id', type: 'string', example: 'tee-01' }, quantity: { source: '1', type: 'number', example: 1 } } },
+    { kind: 'micro', name: 'begin_checkout', trigger: { type: 'page', where: 'app/checkout/page.tsx' },
+      properties: { items_count: { source: 'cart.items.length', type: 'number', example: 1 } } },
+    { kind: 'conv', name: 'purchase', trigger: { type: 'page', where: 'app/checkout/success/page.tsx' },
+      value: { source: 'Number(order.total)', type: 'number', example: 149.99 },
+      properties: { currency: { source: 'order.currency', type: 'string', example: 'EUR' },
+        items: { type: 'list', max_items: 20, item: { product_id: 'string', quantity: 'number', price: 'number' } } } },
+  ],
+  product_identifier: { key: 'product_id', applies_to: ['view_item', 'add_to_cart', 'purchase.items'] },
+};
+const INSTALLED_PLAN_ID = installPlanId(INSTALLED_PLAN);
+
+const INSTALLED_REPO = {
+  ...STORE_REPO,
+  'app/layout.tsx': STORE_REPO['app/layout.tsx'].replace('<head />', '<head>\n        <script src="https://t.sealmetrics.com/t.js?id=acct_demo" defer />\n      </head>'),
+  'components/ViewItem.tsx': `'use client';
+import { useEffect } from 'react';
+import type { Product } from '../lib/api';
+
+export default function ViewItem({ product }: { product: Product }) {
+  useEffect(() => { window.sealmetrics?.micro('view_item', { product_id: product.id, price: product.price }); }, [product.id]);
+  return null;
+}
+`,
+  'app/products/[slug]/page.tsx': STORE_REPO['app/products/[slug]/page.tsx']
+    .replace("import AddToCartButton from '../../../components/AddToCartButton';", "import AddToCartButton from '../../../components/AddToCartButton';\nimport ViewItem from '../../../components/ViewItem';")
+    .replace('<h1>{product.name}</h1>', '<ViewItem product={product} />\n      <h1>{product.name}</h1>'),
+  'components/AddToCartButton.tsx': `'use client';
+import type { Product } from '../lib/api';
+
+export default function AddToCartButton({ product }: { product: Product }) {
+  const add = async () => {
+    await fetch('/api/cart', { method: 'POST', body: JSON.stringify({ id: product.id, qty: 1 }) });
+    // Quantity picker refactor: the event lost its product id.
+    window.sealmetrics?.micro('add_to_cart', { quantity: 1 });
+  };
+  return <button onClick={add}>Añadir al carrito</button>;
+}
+`,
+  'app/checkout/page.tsx': `'use client';
+import { useEffect } from 'react';
+
+export default function CheckoutPage() {
+  useEffect(() => { window.sealmetrics?.micro('begin_checkout', { items_count: 1 }); }, []);
+  return <main><h1>Checkout</h1><form action="/api/pay" method="post"><button>Pagar</button></form></main>;
+}
+`,
+  'app/checkout/success/page.tsx': STORE_REPO['app/checkout/success/page.tsx']
+    .replace("  if (!order) return null;", `  useEffect(() => {
+    if (!order || sessionStorage.getItem('sm_purchase_' + order.id)) return;
+    sessionStorage.setItem('sm_purchase_' + order.id, '1');
+    window.sealmetrics?.conv('purchase', Number(order.total), {
+      currency: order.currency,
+      items: order.items.map((i) => ({ product_id: i.sku, quantity: i.qty, price: Number(i.unit_price) })),
+    });
+  }, [order]);
+  if (!order) return null;`),
+};
+
+const INSTALLED_STATE = {
+  'acct_demo/install-plan.json': JSON.stringify({ plan_id: INSTALLED_PLAN_ID, approved_at: '2026-09-14T10:02:11Z', approval_quote: 'Looks good, go ahead with that plan.', plan: INSTALLED_PLAN }, null, 2),
+  'acct_demo/simulations/sim_5b1e2c7d9a40.json': JSON.stringify({ status: 'ok', level: 'call', simulation_id: 'sim_5b1e2c7d9a40', plan_id: INSTALLED_PLAN_ID, verdict: 'pass',
+    cases: ['view_item', 'add_to_cart', 'begin_checkout', 'purchase'].map((event) => ({ event, verdict: 'pass', checks: [{ code: 'SM-01', result: 'pass', message: 'Exactly one hit.' }] })),
+    wording: 'Simulated, not verified: nothing has reached Sealmetrics.' }, null, 2),
 };
 
 const INSTALL_PROMPT = 'Install Sealmetrics on demo-store.com. The repo is the current directory. ' +
@@ -472,6 +550,43 @@ export default [
         mustMatch: [/playwright|chromium|browser/i, /\?|would you like|do you want|shall i|should i|want me to|let me know/i],
       },
     ],
+  },
+  // ---- PRD-058 F4: verify against the plan, not just for arrival ----
+  {
+    id: 'install-verifies-against-the-plan',
+    fixture: 'install-verify-live',
+    pluginDir: 'seal-install',
+    seedRepo: INSTALLED_REPO,
+    seedState: INSTALLED_STATE,
+    maxCalls: 14,
+    steps: [{
+      prompt: 'The Sealmetrics install you planned and simulated for demo-store.com is deployed; the repo is the current directory. ' +
+        'I just opened the live site, viewed a product, added it to the cart, went to checkout and placed a test order for 1.23 EUR. Verify it all works.',
+      mustCall: ['verify_event_instrumented'],
+      mustNotCall: ['provision_site'],
+      callArgs: [
+        // The test order's amount, as the user gave it, identifies the purchase.
+        { tool: 'verify_event_instrumented', which: 'any', mustMatch: [/"purchase"/, /"value_exact":"?1\.23"?/] },
+        // The expectation comes from the plan: product_id is required on add_to_cart.
+        { tool: 'verify_event_instrumented', which: 'any', mustMatch: [/"add_to_cart"/, /properties_required[^\]]*product_id/] },
+        // Microconversions carry no amount.
+        { tool: 'verify_event_instrumented', which: 'every', mustNotMatch: [/"kind":"micro".*"value_(min|exact)"|"value_(min|exact)".*"kind":"micro"/] },
+      ],
+      mustMatch: [
+        // The mismatch is named, not smoothed over.
+        /product_id/,
+        /mismatch|missing|without|dropped|lost|no longer/i,
+        // view_item matched by recency: say it is not proven.
+        /recen|real visitor|another visitor|other visitors|may be|cannot (tell|say|be sure)|not (proven|certain|conclusive)/i,
+      ],
+      mustNotMatch: [
+        // A table row that gives add_to_cart or view_item a plain ✓ in its last column.
+        /\badd_to_cart\b[^\n]*\|\s*✓\s*\|\s*$/m,
+        /\bview_item\b[^\n]*\|\s*✓\s*\|\s*$/m,
+        // With add_to_cart broken, nothing may say the install works.
+        /(working|works) end[\s-]to[\s-]end|install(ation)? is (good|confirmed|complete|working)|all (four|4|the) (planned )?events (are )?(live and )?verified/i,
+      ],
+    }],
   },
   {
     id: 'install-refuses-legacy-event-names',

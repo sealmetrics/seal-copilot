@@ -127,6 +127,19 @@ ok('callArgs which:every sees an earlier bad call', assess({ callArgs: [{ ...arg
 ok('callArgs fails when the tool was never called', assess(argsSpec, 'ok', good).some(f => f.includes('never called plan_install')));
 ok('callArgs which:any passes when one call matches', assess({ callArgs: [{ tool: 'plan_install', which: 'any', mustMatch: [/product_view/] }] }, 'ok', planCalls).length === 0);
 ok('callArgs which:any fails when none matches', assess({ callArgs: [{ tool: 'plan_install', which: 'any', mustMatch: [/begin_checkout/] }] }, 'ok', planCalls).some(f => f.includes('no plan_install call')));
+
+// verify_event_instrumented test double (PRD-058 F4): the statuses the install skill must read.
+{
+  const { verifyEvent } = await import('./fixtures/_install.mjs');
+  const rows = { purchase: [{ amount: '89.00', properties: { currency: 'EUR' } }, { amount: '1.23', properties: { currency: 'EUR' } }], add_to_cart: [{ properties: { quantity: '1' } }] };
+  ok('verify double: value_exact picks the test order', verifyEvent({ kind: 'conv', name: 'purchase', expect: { value_exact: 1.23 } }, rows).status === 'verified');
+  ok('verify double: two rows without value_exact is verified_by_recency', verifyEvent({ kind: 'conv', name: 'purchase' }, rows).status === 'verified_by_recency');
+  ok('verify double: a missing planned property is a mismatch', verifyEvent({ kind: 'micro', name: 'add_to_cart', expect: { properties_required: ['product_id'] } }, rows).status === 'mismatch');
+  ok('verify double: value_* on a micro is an error', !!verifyEvent({ kind: 'micro', name: 'add_to_cart', expect: { value_min: 1 } }, rows).__textError);
+  ok('verify double: an unknown expect key is an error', !!verifyEvent({ kind: 'micro', name: 'add_to_cart', expect: { properties: ['product_id'] } }, rows).__textError);
+  ok('verify double: simulation_id alone is needs_expectation', verifyEvent({ kind: 'micro', name: 'add_to_cart', simulation_id: 'sim_x' }, rows).status === 'needs_expectation');
+  ok('verify double: capitalised name is not_lowercase', verifyEvent({ kind: 'conv', name: 'Purchase' }, rows).reason === 'not_lowercase');
+}
 ok('optional callArgs tolerates no call', assess({ callArgs: [{ ...argsSpec.callArgs[0], optional: true }] }, 'ok', good).length === 0);
 
 

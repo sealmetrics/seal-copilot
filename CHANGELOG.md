@@ -1,5 +1,78 @@
 # Changelog
 
+## seal-install 1.15.0 — 2026-09-15 (Seal Copilot unchanged)
+
+The installer verifies each event against the approved plan, not just for
+arriving, and offers to keep the plan in the repository. Needs `@sealmetrics/mcp`
+with `expect` in `verify_event_instrumented` (sealmetrics2 PRD-058 F4,
+adinton/sealmetrics2#389).
+
+### Why
+An event that arrives is not an event that works. A purchase with the total as a
+string arrives with revenue 0; an add-to-cart that lost its `product_id` in a later
+edit arrives and breaks per-SKU analysis; and on a site with traffic, "a row
+with that name in the last minutes" may be a real visitor's. The verifier also
+confirmed microconversions of any name until F4 fixed its filter.
+
+### Changed — `install-sealmetrics`
+- **Step 7.** For each conversion with revenue, the skill asks for one test order
+  with a recognisable total once the site is live, and for the exact amount.
+- **Step 9.** `verify_event_instrumented` gets the last passing `simulation_id`
+  **and** an explicit `expect` built from `install-plan.json` — the deploy usually
+  happens in another session, where the simulation is no longer in memory:
+  `value_min` for a conversion with revenue, `value_exact` with the amount the user
+  paid (never an invented one), `properties_required` with the keys the call
+  always sends. Each status is read literally: only `verified` is ✓;
+  `verified_by_recency` is "✓ by recency" with a request for the test order;
+  `mismatch` is quoted, fixed, re-simulated and redeployed; `warning_pii` says the
+  stored rows carry it; `rejected` (`out_of_taxonomy`, `not_lowercase`) is a plan
+  change. On a connector without expectations: "✓ arrived, not compared".
+- **Step 10.** Offers `.sealmetrics/plan.json` and `.sealmetrics/cases.json` in the
+  repository — reviewed with the code, read by the next agent, and checked in CI
+  by `sealmetrics plan` / `simulate` (CLI 0.2.0). Written only on a yes; a CI
+  workflow only if asked, from the CLI's README.
+- Step 9 shows the exact call for a microconversion and a conversion, says
+  that `expect` takes only `value_min`, `value_exact` and `properties_required`,
+  that every call carries it (microconversions included), and that
+  `properties_required` comes from the plan, never from the code as deployed.
+  Coming back after the deploy starts at Step 8 from the saved plan and simulation.
+- The description triggers on verifying too ("the install is deployed, verify
+  it", "check the events arrive", "comprobar la instalación").
+- Two new "do not" rules: no invented test amount, no `.sealmetrics/` or CI
+  workflow without the user's yes. The reference output's third turn verifies
+  against the plan and shows a match by recency.
+
+### Seal Copilot reference
+- `state-schema.md`: `verified_by_recency` and `mismatch` are not verification;
+  the repository copy of the plan, and what a different `plan_id` there means.
+
+### Evals
+- `install-verifies-against-the-plan`: a deployed store whose add-to-cart lost
+  `product_id`, three recent `view_item` rows and two purchases (a real 89.00 and
+  the user's 1.23 test). Asserts the purchase is verified with `value_exact` 1.23,
+  `add_to_cart` with `properties_required` including `product_id`, no amount on a
+  microconversion, the mismatch named and the recency match not given a plain ✓.
+- Test double `verifyEvent` in `_install.mjs` with the F4 statuses; self-test
+  covers it. Fixture `install-verify-live`. `seedRepo` of the installed store and
+  `seedState` with the approved plan and its simulation.
+- What the first runs found, all fixed before this release:
+  - The skill did not load for "verify it all works", and the answer said the
+    install was "confirmed working end-to-end" with `add_to_cart` broken.
+    Fixed with the description triggers above.
+  - It sent `expect.properties` instead of `properties_required`. The verifier
+    ignored the unknown key and answered `verified`; it now rejects unknown keys
+    (adinton/sealmetrics2#389), and the double does the same.
+  - It took `properties_required` from the deployed code, which no longer sent
+    `product_id`.
+  - It passed only `simulation_id` for microconversions (2 runs in 3). The
+    verifier compared nothing and answered `verified`; it now answers
+    `needs_expectation` (adinton/sealmetrics2#389), the skill reads that status as
+    "call again with `expect`", and the double does the same.
+- `run-evals.mjs` writes every tool call with its arguments into
+  `results/<case>.txt`; a `callArgs` failure was unreadable without them.
+- `mcp-schema.json` / `mcp-schema-full.json`: `verify_event_instrumented` gains
+  `expect`, `simulation_id` and `lookback_minutes` (F4 build).
+
 ## seal-install 1.14.0 — 2026-09-14 (Seal Copilot unchanged)
 
 The installer also simulates the install in a local browser when the site's dev

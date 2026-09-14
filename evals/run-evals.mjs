@@ -274,8 +274,11 @@ async function runCase(c, siteId) {
   }
 
   const state = readState(join(work, 'state'));
+  // The arguments of every call, for the results file: a callArgs failure is
+  // unreadable without them, and the work dir is about to go.
+  const callTrace = existsSync(callLog) ? readFileSync(callLog, 'utf8').trim() : '';
   rmSync(work, { recursive: true, force: true });
-  return { id: c.id, fixture: c.fixture, error: cliError, state, truncated: truncatedStep,
+  return { id: c.id, fixture: c.fixture, error: cliError, state, callTrace, truncated: truncatedStep,
            pass: !cliError && failures.length === 0,
            failures: cliError ? [`the CLI never ran the case: ${cliError}`] : failures,
            calls, rejected, ms, answer, toolNames };
@@ -350,6 +353,7 @@ for (const c of selected) {
       const f = join(here, 'results', `${r.id}.txt`);
       writeFileSync(f, `# ${r.id} (${r.fixture})\n# failures: ${r.failures.join('; ')}\n` +
                        `# tools: ${called}\n\n${r.answer || ''}` +
+                       (r.callTrace ? `\n\n\n===== TOOL CALLS =====\n${r.callTrace}` : '') +
                        (r.state ? `\n\n\n===== STATE DIR AFTER RUN =====\n${r.state}` : '\n\n(state dir empty)'));
       console.log(`    full answer: ${f}\n`);
     } catch { console.log(''); }
