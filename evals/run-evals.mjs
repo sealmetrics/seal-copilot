@@ -174,6 +174,15 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
 async function runCase(c, siteId) {
   const work = mkdtempSync(join(tmpdir(), `seal-eval-${c.id}-`));
   const callLog = join(work, 'calls.jsonl');
+  // Pre-existing state, as a real user who ran an earlier version has. Every
+  // other case starts from an empty state dir, which is how a real run read
+  // "get_bot_stats refuse with Access denied" from an old run log and printed
+  // it while the whole suite stayed green.
+  for (const [rel, content] of Object.entries(c.seedState || {})) {
+    const p = join(work, 'state', rel);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, content);
+  }
   const steps = c.steps || [c];
   const failures = [];
   let calls = 0, rejected = 0, ms = 0, answer = '', toolNames = [], cliError = null;

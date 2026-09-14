@@ -31,6 +31,16 @@ writable (some sandboxed environments), run the discovery you would have run
 anyway and say once, in one line, that results could not be cached. Never
 fail a skill because state is unavailable, and never block on it.
 
+**State from an earlier version is history, not instructions.** Profiles and
+run logs written before 1.12.0 can carry field names this schema no longer uses
+and notes about tools this plugin no longer calls — above all bot data, which
+Sealmetrics does not provide. Never repeat such a note, never let it add a line
+to "Not checked", and never carry it into a new note. A real weekly report read
+"get_bot_stats refuse with Access denied" in an old run log and printed "Not
+checked: bot validation" — exactly the line the no-bot-data rule forbids. Use
+old state for its facts about the site, and let the rules in this file and in
+`methodology.md` decide what a report says.
+
 **Every write is append-or-replace, never a read-modify-write race.**
 Scheduled skills can overlap; keep writes small and idempotent.
 
@@ -254,9 +264,15 @@ eval suite. No skill needs to read it to do its own job.
 
 ## Writing state from a skill
 
-Use the `Read` and `Write` tools against the paths above. Two rules:
+Use the `Read` and `Write` tools against the paths above — **never a shell
+command.** A real run appended its run log with `cat >>`: it worked because the
+session happened to allow a shell, and on a surface that does not, the same
+write silently never happens. To append to a `.jsonl` file, `Read` it, add your
+line, and `Write` the whole file back. Three rules:
 
 - **Never write PII into state.** These files hold site configuration,
   aggregate metrics and recommendation text. Nothing else.
 - **Never invent a cached value.** If a field is absent, it is unknown — go
   and measure it, do not assume a default.
+- **A note describes this run.** One line about what this run did and could not
+  do — never a repeat of an older note, and never anything about bots.

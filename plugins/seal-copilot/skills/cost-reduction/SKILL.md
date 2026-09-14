@@ -20,7 +20,9 @@ run of this skill looks like.
 
 **Before anything else: emit no text until the report.** **Your first action
 is a tool call, not a sentence** — not "State directory is empty, running
-discovery", not "Let me start with the overview". And nothing between calls
+discovery", not "Let me start with the overview", not "Now writing state files,
+then the report". Writing state before the report is something you do, not
+something you announce. And nothing between calls
 either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
 no "Checking seasonality". The user reads every one of those before your answer,
 and a run that narrates its way to a conclusion reads as one that has not
@@ -152,7 +154,7 @@ not be screened is not a pattern that came back empty.
 
 ---
 
-**Before the report, not after it:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
+**Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
 ceiling, a number — `12` here), `verdict` (one of `on_track`, `watch`, `act`,

@@ -65,7 +65,7 @@ ChatGPT and Codex share. Chat and Work both read it.
 | `seal-install/` | The installer: one skill, the local connector, its own key. |
 | `.agents/`, `plugins/` | The Codex marketplace. **Generated and committed.** |
 | `scripts/export-surfaces.mjs` | Renders every other surface from the plugin. |
-| `evals/` | 31 cases against a mock Sealmetrics API, on both connectors. |
+| `evals/` | 32 cases against a mock Sealmetrics API, on both connectors. |
 | `docs/` | The PRD and the specification. |
 
 The Codex tree is the one generated thing that lives in git, because a remote

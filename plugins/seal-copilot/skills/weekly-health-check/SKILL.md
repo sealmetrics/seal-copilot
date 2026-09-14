@@ -16,7 +16,9 @@ run of this skill looks like.
 
 **Before anything else: emit no text until the report.** **Your first action
 is a tool call, not a sentence** — not "State directory is empty, running
-discovery", not "Let me start with the overview". And nothing between calls
+discovery", not "Let me start with the overview", not "Now writing state files,
+then the report". Writing state before the report is something you do, not
+something you announce. And nothing between calls
 either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
 no "Checking seasonality". The user reads every one of those before your answer,
 and a run that narrates its way to a conclusion reads as one that has not
@@ -68,6 +70,13 @@ findings — say why in one line.
 **Then KPI table:** entrances, CR, conversions, revenue, AOV — each with
 delta vs comparable and a one-word direction.
 
+**Then the attribution line, always, in the same language as the rest of the
+report:** "Sealmetrics
+measures last non-direct click, so these figures will not match GA4 or your ad
+platforms." Every weekly report reads channels or campaigns, and a real one
+named a Bing campaign's collapse without it. One line; not optional because the
+week was quiet.
+
 **Then one line for anything the procedure could not do**, whenever a step's
 call was refused, returned an error as text, or was skipped. The first real
 run had a +35% traffic spike at 84% bounce and said nothing about the fact
@@ -77,7 +86,9 @@ complete report from a partial one unless you say so. Format:
 > Not checked: channel split — the API refused the channel breakdown for this
 > site ("Access denied"), so movers above are not broken down by channel.
 
-Omit the line only when every step ran.
+Omit the line only when every step ran. "Not checked" lists calls this run
+made that failed, or steps this connector cannot run — never a product decision
+such as bot data, and never something copied from an older run's notes.
 
 **Then findings (max 3, ordered by revenue impact).** Each finding:
 evidence (numbers + period) → action → estimated impact → how to verify.
@@ -92,7 +103,8 @@ names) **and
 `discovery_cached_at` as today's date** — the 7-day refresh rule reads that
 field, and a profile without it can never be judged fresh or stale. Append every
 finding you issued to `recommendations.jsonl` with its metric, baseline,
-target and `verify_on` date. Log the run in `runs.jsonl` with exactly the
+target and `verify_on` date. Log the run in `runs.jsonl` — with the Read and
+Write tools, never a shell command — with exactly the
 fields the state schema lists: `ts`, `skill`, `calls`, `budget`, `verdict`,
 `scheduled`, `notes`. `ts` is a full ISO timestamp in UTC (`2026-09-08T14:02:11Z`),
 not a date. For this skill `budget` is `8`. `calls` is the number
