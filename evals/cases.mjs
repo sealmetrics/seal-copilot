@@ -550,7 +550,12 @@ export default [
     // a Spanish-speaking user correctly.
     mustMatch: [/4\s*(h\b|hours?|horas?)|four hours|cuatro horas/i, /purchase/i],
     mustCall: ['get_conversions'],
-    stateMustContain: [/"family"\s*:\s*"silence"/, /"hours"\s*:\s*4/, /"active_hours"/],
+    // The `rules` wrapper is what the hook, monday-briefing and setup-audit
+    // read; a real run wrote a bare array that all three skipped.
+    stateMustContain: [/"family"\s*:\s*"silence"/, /"hours"\s*:\s*4/, /"active_hours"/,
+                       /"rules"\s*:\s*\[/, /"skill"\s*:\s*"create-alert"/],
+    // Silence until the answer: saving the rule is done, not announced.
+    maxTextBlocks: 1,
   },
   {
     id: 'create-alert-refuses-noisy-rule',
@@ -567,8 +572,15 @@ export default [
       // That it measured rather than guessed: the 30-day count or the rate.
       /\b41\b|per day|a day|daily|each day/i,
       // And a concrete alternative, not a bare refusal.
-      /\b(12|twelve|24|a day|daily|threshold)\b/i,
+      /\b(12|twelve|24|48|72|a day|daily|days|week|weekly|threshold)\b/i,
+      // How often it would fire, as a figure: a percentage or a rate per
+      // period. The alternatives are held to the same test, so the refusal
+      // cannot rest on "too noisy" alone.
+      /\d+(\.\d+)?\s*%|\b(times|once|twice|false alarms?)\b[^.\n]{0,20}\b(a|per|every)\s+(month|week|year|quarter)|almost every day|most days/i,
     ],
+    // A refusal is a decision, and decisions are logged.
+    stateMustContain: [/"skill"\s*:\s*"create-alert"[^\n]*"verdict"\s*:\s*"refused"|"verdict"\s*:\s*"refused"[^\n]*"skill"\s*:\s*"create-alert"/],
+    maxTextBlocks: 1,
     // No mustCall: whether the volume comes from get_conversions or from the
     // microconversion list depends on how the model reads "demo request", and
     // both are correct routes to the same number. Assert the behaviour instead.

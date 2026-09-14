@@ -14,13 +14,24 @@ short-description: 'Create, list or delete an alert from a sentence: "tell me if
 
 # Create Alert
 
+**Before anything else: emit no text until the answer.** **Your first action
+is a tool call, not a sentence** — not "Checking whether purchases are
+tracked", not "Now saving the rule, then confirming". Saving the rule and
+logging the run are things you do, not things you announce. Make the calls in
+silence; your first and only message is the answer, and nothing comes after it.
+
 Before writing your answer, read `examples/output.md` in this skill directory
 and match its density and tone. It is the reference for what a good run of this
 skill looks like.
 
-Budget: ≤3 tool calls — up to two to find the event and measure it, one
+Budget: ≤3 Sealmetrics calls — up to two to find the event and measure it, one
 for the expectation a `drop` rule needs. The output of a successful run is
 under 10 lines.
+
+**The only other tools this skill uses are Read and Write** (for state), plus
+the scheduler in step 5. No shell: not `ls` to look for a state directory, not
+`echo` as a placeholder between calls. A real run spent two shell calls doing
+nothing; Read answers whether a file exists.
 
 **Works on every connector.** These rules are the plugin's own and need none
 of the tools the remote connector withholds; `list_alerts` and the other
@@ -112,13 +123,39 @@ list; it was the site's macro conversion, 41 of them that month. Set
 `metric.kind` from where you actually found the event, never from the word the
 user used.
 
-**Noise check.** Compute the median events per active window from the 30-day
-volume. **Below 5, refuse the rule as written** and propose either a longer
-window or the `threshold` family on a daily figure. A `silence` rule of four
-hours on an event that happens three times a day fires most afternoons and
-teaches the user to ignore you. Say the arithmetic out loud: "demo_request runs
-at about 1.4 a day, so four quiet hours is normal — at 12 hours it would mean
-something."
+**Noise check: how often would it fire on a normal site?** A `silence` rule of
+four hours on an event that happens three times a day fires most afternoons and
+teaches the user to ignore you. Measure it, from the 30-day count:
+
+1. `rate` = 30-day count ÷ (active hours a day × 30). Use the active hours the
+   user gave, or the ones you are about to propose.
+2. `λ` = `rate` × the window, in active hours. For "fewer than 1 today" the
+   window is one day's active hours.
+3. `p` = e^−λ, the chance that a perfectly normal window holds zero events.
+
+   | λ | 0.5 | 1 | 2 | 3 | 4 | 5 | 6 | 8 |
+   |---|---|---|---|---|---|---|---|---|
+   | e^−λ | 61% | 37% | 14% | 5% | 1.8% | 0.7% | 0.25% | 0.03% |
+
+4. False alarms a month ≈ 30 × max(1, active hours a day ÷ window hours) × `p`.
+
+**Above one false alarm a month, refuse the rule as written.** Say the figure
+in the user's terms — "it would fire about 8 times a month with nothing
+wrong", or "almost every day" when it is 30 or more — and show `λ` behind it.
+
+For a `threshold` below N with N > 1, `p` is the Poisson tail P(count < N).
+Shortcut: an expected count of 10 or more per period, with N at most half of
+it, stays under one false alarm a month on a daily or weekly period.
+
+**Every alternative you propose passes the same test, and you give its
+figure.** A real run refused "4 hours without CTA clicks" on a site doing 2.4 a
+day, then offered a 12-hour silence and a daily "fewer than 1" threshold. Both
+have λ = 2.4 — a false alarm about 9% of days, nearly three a month — so it
+refused one noisy rule by recommending two. At that volume the sound options
+are longer: two days without a click (λ = 4.8, about one false alarm a
+quarter), or a weekly threshold. If nothing short enough to be useful passes,
+say so: at this volume the alert can catch broken tracking, not a bad
+afternoon.
 
 ### 3. Fill `expected`, for `drop` and `spike` only (0–1 calls)
 
@@ -150,27 +187,53 @@ that could not load it spent six minutes searching the disk with `find` and
 evaluated nothing. On a surface where commands are named differently, use that
 surface's command for the skill; never a paraphrase.
 
-**The firing time is not optional.** The verdict is a comparison against the
-hours elapsed so far today, so a check that has to guess the hour guesses the
-verdict. Where the scheduler can substitute the time, have it do so. Where it
-cannot, say in the rule's `notes` that the time is not supplied, so the check
-knows to derive it rather than assume it.
+**The firing time matters.** The verdict is a comparison against the hours
+elapsed so far today, so a check that has to guess the hour guesses the
+verdict. Where the scheduler substitutes the time into the prompt, include the
+`Fired at:` line. **Claude Code routines do not** — the prompt is sent
+verbatim on every run — so leave the line out rather than filling it with a
+note; `check-alerts` then reads the runner's clock itself.
 
 ### 5. Register it
 
-- **Claude Code:** `/schedule`, at `cadence_minutes` in the rule's timezone,
-  running the prompt from step 4.
-- **Cowork:** the equivalent scheduled task.
+- **Claude Code (`/schedule`, a cloud routine).** The routine runs in a fresh
+  session that has none of this one's setup, so four things must hold, or the
+  alert is not live:
+  1. **The seal-copilot plugin is enabled in the routine.** Without it
+     `/seal-copilot:check-alerts` is not a command and the run evaluates
+     nothing.
+  2. **Only the Sealmetrics connector is attached.** A routine created with
+     every account connector — mail, calendar, CRM, payments — hands a
+     scheduled prompt far more reach than a read-only check needs.
+  3. **Tools are Read, Write and `Bash(date:*)`**, the last only so the check
+     can read the clock. Nothing else.
+  4. **The cron is in UTC.** Convert `active_hours` from `rule.timezone`, and
+     cover one extra hour on each side: daylight saving moves local time
+     against UTC twice a year, and `check-alerts` answers ⏸ for any run that
+     lands outside the watch hours, so the extra runs cost nothing.
+  Then **read the routine back** and check all four. Only if they hold is the
+  alert live; if one does not, say which, and do not claim it is running.
+- **Cowork:** the equivalent scheduled task, with the same four conditions.
 - **Codex, Claude.ai:** there is no scheduler you can write to. Print the prompt
   and the cadence, say plainly that they have to register it themselves, and do
   not claim the alert is live.
 
 ### 6. Persist, if you can
 
-Append the rule to `<state-dir>/<site_id>/alerts.json` (schema in
-`skills/seal-copilot/references/state-schema.md`). This is what makes "what am
-I watching?" and "stop watching X" answerable later. If the filesystem is not
-writable, say once that the rule is live but not listed, and move on.
+Add the rule to `<state-dir>/<site_id>/alerts.json`. **The file is an object
+with a `rules` array, never a bare list:**
+
+```json
+{ "site_id": "demo-store", "rules": [ { "id": "no-conversions-4h", … } ] }
+```
+
+Read the file first; if it exists, append to its `rules` and write the whole
+object back. The session-start hook, `monday-briefing` and `setup-audit` read
+`rules` — a bare array written by a real run was invisible to all three. Full
+schema in `skills/seal-copilot/references/state-schema.md`. This file is what
+makes "what am I watching?" and "stop watching X" answerable later. If the
+filesystem is not writable, say once that the rule is live but not listed, and
+move on.
 
 ## Managing what exists
 
@@ -197,7 +260,8 @@ Under 10 lines on a successful creation:
 Then nothing. No summary of the JSON, no explanation of the grammar.
 
 If you refused the rule as noisy, say the number that made you refuse and offer
-the specific alternative — never a bare "that would be too noisy".
+the specific alternative, with its own false-alarm figure — never a bare "that
+would be too noisy".
 
 ## What you do NOT do
 
@@ -210,10 +274,15 @@ the specific alternative — never a bare "that would be too noisy".
 
 ---
 
-**Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
+**Every run that ends in a decision logs it — a rule created, a rule refused as
+noisy, an event not tracked. Before the answer, not after it, with the Read and
+Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
 ceiling, a number — `3` here), `verdict` (one of `on_track`, `watch`, `act`,
 `kpis_only`, `refused`, `error`), `scheduled` (boolean), `notes` (one line).
-Use `refused` when you declined the rule as noisy. Skip silently if the path is
-not writable.
+Use `on_track` for a rule created, `refused` for a rule declined as noisy or on
+an untracked event. A real run logged its first refusal and skipped the second,
+so the log said one alert request had happened when two had. A run that only
+stops to ask the question in step 1 logs when it finishes. Skip silently if
+the path is not writable.

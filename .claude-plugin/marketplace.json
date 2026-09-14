@@ -13,7 +13,7 @@
       "name": "seal-copilot",
       "source": "./seal-copilot",
       "description": "AI marketing optimization analyst for Sealmetrics: diagnoses performance, finds revenue opportunities, audits catalog friction per SKU, monitors carts intraday, and turns a sentence into a scheduled alert — all from 100% of your traffic, no consent sampling.",
-      "version": "1.12.1",
+      "version": "1.12.2",
       "author": {
         "name": "Sealmetrics",
         "url": "https://sealmetrics.com"

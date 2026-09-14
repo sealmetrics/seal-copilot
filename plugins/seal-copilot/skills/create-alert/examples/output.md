@@ -1,6 +1,7 @@
 > Reference output. Two runs: one that creates the rule the user asked for, and
 > one that refuses a rule that would have fired most afternoons. Both are short.
-> Note that the refusal names the arithmetic and offers a specific alternative.
+> Note that the refusal names the arithmetic and offers specific alternatives,
+> each with its own false-alarm figure.
 >
 > **These two happen to be in Spanish because those users wrote in Spanish.**
 > Match the density, the structure and the brevity — never the language. You
@@ -21,17 +22,17 @@ Para pararla: "deja de vigilar las ventas".
 
 **Run 2 — "avísame si paso 4 horas sin solicitudes de demo"**
 
-No te creo esa regla tal como está, porque te avisaría casi cada tarde.
+No te creo esa regla tal como está, porque te avisaría casi cada día.
 
-`demo_request` lleva 61 eventos en 30 días, unos 2 al día. Con ese ritmo, 4
-horas sin ninguno es lo normal, no una señal: saltaría la mayoría de los días
-y acabarías silenciándola.
+`demo_request` lleva 61 eventos en 30 días, unos 0,13 por hora entre las 8:00
+y medianoche. En 4 horas esperas 0,5 (λ), así que el 60% de esas ventanas
+quedan vacías sin que pase nada: unas 70 falsas alarmas al mes.
 
-Dos alternativas que sí distinguen ruido de problema:
+Con ese volumen no se puede detectar una tarde mala, pero sí un tracking roto:
 
-- **12 horas sin `demo_request`**, en horario 8:00–24:00. A ese ritmo, medio
-  día en silencio sí es raro.
-- **Menos de 1 `demo_request` en todo el día**, comprobado a las 20:00. Es la
-  misma preocupación expresada como umbral diario en vez de como silencio.
+- **3 días sin `demo_request`**, en horario 8:00–24:00. Esperas 6 (λ = 6,1);
+  saltaría sin motivo menos de una vez al año.
+- **Menos de 5 `demo_request` en una semana**, comprobado el domingo por la
+  noche. Esperas 14; el mismo margen de falsas alarmas.
 
 Dime cuál y la dejo montada.
