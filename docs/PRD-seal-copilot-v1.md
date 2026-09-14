@@ -2,6 +2,7 @@
 
 **Versión:** 1.0 · **Fecha:** 7 septiembre 2026 · **Autor:** Rafa (Sealmetrics) con Claude
 **Estado:** Borrador para revisión · **Base:** auditoría del plugin v0.3.0 contra el MCP `@sealmetrics/mcp` (61 herramientas, esquemas verificados el 07/09/2026)
+**Addendum 1.1 (12 septiembre 2026):** E13 alertas en lenguaje natural y E14 remediación de D1/D2, al final del documento. Base: [auditoría 1.11.0](auditoria-seal-copilot-2026-09-12.md).
 
 ---
 
@@ -114,6 +115,12 @@ Nota: la spec original afirma que el MCP es solo lectura. Ya no lo es: existen `
 Prioridad: **P0** bloqueante para lanzar · **P1** necesario para "nivel top" · **P2** deseable.
 
 ### E1 · Compatibilidad con el MCP real — P0
+
+> **Superado en parte por 1.6.0 y por el addendum 1.1 (E14, D2).** La fila de
+> `get_channels` de la tabla siguiente propone sustituirlo por dos llamadas a
+> `get_channels` con presets calendario. Eso ya no vale: la herramienta
+> devuelve 403 con cualquier clave moderna y el conector remoto no la anuncia.
+> La sustitución correcta es `get_top_channels`, y el linter lo impone.
 
 Corregir cada llamada inválida de la tabla 3.2. Sustituciones concretas:
 
@@ -367,18 +374,186 @@ seal-copilot/
 
 ## Anexo A · Matriz skill × herramienta (v1.0 objetivo)
 
+> Corregido por el addendum 1.1 (E14, D2): donde decía `get_channels` dice
+> `get_top_channels`. `get_channels` devuelve 403 con cualquier clave moderna y
+> el conector remoto ni siquiera lo anuncia. Las filas que citan herramientas
+> de alertas, segmentos, reglas de canal o verificación de eventos solo aplican
+> al conector local; ver E14, D1.
+
 | Skill | Herramientas principales | Presupuesto |
 |---|---|---|
 | seal-copilot (core) | list_sites, get_site, get_overview, list_property_keys, list_microconversion_types, search_docs | 4 (descubrimiento cacheado) |
-| weekly-health-check | get_overview, get_channels ×2 (presets calendario), get_campaigns, get_bot_stats(days), + seguimiento de recomendaciones | 8 |
+| weekly-health-check | get_overview, get_top_channels ×2 (presets calendario), get_campaigns, get_bot_stats(days), + seguimiento de recomendaciones | 8 |
 | monday-briefing | get_overview, get_top_channels, get_top_campaigns, get_campaigns, get_device_types, get_countries, get_microconversions, get_bot_stats | 15 |
-| diagnose-drop | get_overview, get_bot_stats, get_channels ×2, get_campaigns, get_landing_pages, get_terms, get_devices, get_countries, get_browsers, get_property_breakdown, get_overview(yoy) | 12 |
-| opportunity-scan | get_overview, get_channels, get_conversions, get_campaigns, get_landing_pages, get_device_types, list_property_keys, get_property_breakdown, get_landing_pages_by_content_group, get_bot_stats | 12 |
+| diagnose-drop | get_overview, get_bot_stats, get_top_channels ×2, get_campaigns, get_landing_pages, get_terms, get_devices, get_countries, get_browsers, get_property_breakdown, get_overview(yoy) | 12 |
+| opportunity-scan | get_overview, get_top_channels, get_conversions, get_campaigns, get_landing_pages, get_device_types, list_property_keys, get_property_breakdown, get_landing_pages_by_content_group, get_bot_stats | 12 |
 | funnel-analysis | get_funnel, list_microconversion_types, get_microconversions, get_microconversion_details (filtros), get_property_breakdown | 10 |
 | product-friction | list_property_keys, get_property_breakdown ×2, get_conversion_items_raw, get_microconversions_raw | 12 |
 | calibrate-watchdog (nuevo) | list_microconversion_types, get_microconversions_raw (paginado) o get_microconversions_timeseries | ≤40 (manual) |
 | cart-watchdog | get_microconversions, get_microconversions_raw, get_bot_stats, get_microconversion_details | 6 |
-| channel-mix-optimizer | get_channels ×2, list_channel_rules, get_traffic_mediums, get_conversions (por medio), get_campaigns | 10 |
+| channel-mix-optimizer | get_top_channels ×2, list_channel_rules, get_traffic_mediums, get_conversions (por medio), get_campaigns | 10 |
 | property-explorer | list_property_keys ×3, get_property_breakdown, get_property_values, list_segments | 15 |
 | cost-reduction | get_bot_stats, get_suspicious_sessions, get_pages, get_microconversions, get_campaigns, get_terms, get_countries, list_alerts, get_alert_stats, list_webhooks, get_webhook_stats, list_segments | 12 |
 | setup-audit | get_site, get_overview, list_microconversion_types, list_property_keys, get_conversions, list_channel_rules, get_traffic_sources, get_top_campaigns, list_alerts, get_bot_stats, verify_event_instrumented, get_instrumentation_guide, test_channel_rules | 12 |
+
+---
+
+# Addendum 1.1 — 12 septiembre 2026
+
+Dos epics nuevos sobre el árbol 1.11.0, a partir de la [auditoría del 12/09](auditoria-seal-copilot-2026-09-12.md). Restricciones fijadas por producto: no se hace trabajo alguno sobre bots ni sobre `get_bot_stats`; coste y ROAS entrarán por conectores de Google Ads / Meta Ads o por CSV (epic aparte, fuera de este addendum).
+
+## E13 · Alertas en lenguaje natural — P0
+
+### Objetivo
+
+Que un cliente escriba *"avísame si durante 4 horas seguidas no tengo conversiones"* y a partir de ese momento exista una comprobación programada que calla mientras todo va bien y avisa con evidencia cuando no. Generaliza `cart-watchdog`, que ya es exactamente esa alerta con una única regla fija.
+
+### Dos vías, una interfaz
+
+| Vía | Dónde se evalúa la regla | Entrega | Depende de |
+|---|---|---|---|
+| **A · Plugin** (este epic) | Tarea programada del host que ejecuta `check-alerts` | Notificación de la app; Slack o correo si el cliente tiene ese conector en la sesión | Nada fuera del repo |
+| **B · Producto** (futuro) | Motor de alertas del backend, siempre encendido | Email y webhook nativos, ya existentes | `create_alert` / `update_alert` / `delete_alert` en el MCP, más un scope de escritura que hoy ni API key ni OAuth pueden llevar |
+
+`create-alert` se diseña para la vía A y usa la vía B cuando el MCP anuncie `create_alert`: misma gramática de reglas, distinto destino. El cliente no nota el cambio.
+
+### Gramática de reglas
+
+Una regla es un objeto que cualquier skill puede leer y que cabe en un prompt:
+
+```json
+{
+  "id": "no-conversions-4h",
+  "site_id": "demo-store",
+  "family": "silence",
+  "metric": { "kind": "conversion", "type": "purchase" },
+  "filter": { "utm_source": null, "utm_medium": null, "utm_campaign": null, "device_type": null, "country": null },
+  "condition": { "hours": 4 },
+  "active_hours": { "from": 8, "to": 24, "days": ["mon","tue","wed","thu","fri","sat","sun"] },
+  "cadence_minutes": 60,
+  "timezone": "Europe/Madrid",
+  "expected": null,
+  "deliver": ["app"],
+  "created_at": "2026-09-12",
+  "expires_at": "2027-03-12",
+  "status": "active"
+}
+```
+
+Campos:
+
+- `metric.kind` — `conversion`, `microconversion`, `revenue`, `entrances`. `type` es el nombre real del evento en el site, resuelto contra `list_microconversion_types` o `get_conversions`, nunca el nombre canónico.
+- `filter` — los filtros que las herramientas del MCP aceptan de verdad para esa métrica. Un filtro que la herramienta no soporte se rechaza en la creación, no se ignora en silencio.
+- `family` y `condition` — ver tabla siguiente.
+- `active_hours` — obligatorio en `silence` y `drop`. Cero conversiones a las 4 de la mañana es normal en la mayoría de sites; sin este campo la alerta es ruido y se apaga a la semana.
+- `cadence_minutes` — frecuencia de la comprobación. Regla: nunca mayor que la mitad de la ventana (`condition.hours × 30`), con mínimo 30 minutos.
+- `expected` — solo en `drop` y `spike`: la expectativa se **embebe en la regla al crearla** (del baseline del watchdog si existe, si no del mismo día de la semana anterior), para que la evaluación no necesite ningún archivo.
+- `expires_at` — seis meses. Una alerta que nadie revisa caduca; el briefing del lunes avisa el mes anterior.
+
+### Familias soportadas en v1
+
+| Familia | Ejemplo del cliente | Evaluación (sin estado) | Llamadas |
+|---|---|---|---|
+| **silence** | "4 h seguidas sin conversiones", "2 h sin add_to_cart en móvil" | Total del día con `get_conversions(period=today, …filtros)` o `get_microconversions(conversion_type=T, period=today)`. Si es 0, el silencio dura desde el inicio de las horas activas de hoy; si el inicio fue hace menos de N horas, se amplía la ventana a ayer con `start_date`/`end_date`. Si es >0, una llamada `*_raw` a la **última página** (`page = ceil(total/100)`) da `timestamp_local` del último evento. Dispara cuando `ahora − último evento ≥ N horas` dentro de horas activas | 1–2 |
+| **drop** | "si a media tarde llevo menos de la mitad de lo normal", "si el revenue de hoy va un 40% por debajo del martes pasado" | Total del día hasta ahora frente a `expected[dow][hour]` embebido. Con baseline del watchdog, la expectativa es la acumulada por celda; sin él, la del mismo día de la semana pasada repartida linealmente por horas activas, y el aviso dice que la comparación es gruesa. Dispara bajo el ratio pedido, con mínimo de 5 eventos esperados para juzgar | 1 |
+| **spike** | "si el tráfico de una campaña se triplica en una hora" | Espejo de `drop`. Sin validación de bots (fuera de alcance): el aviso dice que el pico no está validado y sugiere mirar el referrer | 1–2 |
+| **threshold** | "si el revenue de hoy no llega a 2.000 €", "si `brand-es` baja de 10 conversiones al día" | `get_overview(period=today)` o `get_campaigns(period=today, utm_campaign=…)`. Se evalúa solo en la última comprobación de las horas activas, o en cada una si el cliente pide "en cuanto pase" | 1 |
+
+Fuera de v1, y dicho al cliente cuando lo pida: reglas sobre bots, sobre segmentos guardados, sobre métricas que exijan más de dos llamadas, y comparaciones multi-site.
+
+### Skill `create-alert`
+
+`disable-model-invocation: true` no procede: el cliente la invoca en lenguaje natural. Triggers: "avísame si", "crea una alerta", "quiero saber cuando", "alert me when", "notify me if", "mis alertas", "borra la alerta".
+
+Procedimiento, presupuesto ≤3 llamadas:
+
+1. **Parsear** la frase a la gramática. Lo que no esté dicho se pregunta, no se supone: la métrica exacta si hay ambigüedad, las horas activas, y el destino de la entrega. Una pregunta, con todas las dudas juntas.
+2. **Verificar que la métrica existe** en el site (una llamada: `list_microconversion_types` o `get_conversions(period=30d)`), y que tiene volumen suficiente para la familia elegida: una regla `silence` de 4 h sobre un evento que ocurre 3 veces al día dispararía cada tarde. Regla: la mediana de eventos por ventana activa debe ser ≥5; si no, proponer una ventana mayor o la familia `threshold` diaria.
+3. **Calcular `expected`** para `drop`/`spike`: del `watchdog-baseline.json` si existe y no ha caducado; si no, una llamada al mismo día de la semana pasada.
+4. **Compilar** la regla en un prompt autocontenido: la regla en JSON, el nombre de la skill que la evalúa (`check-alerts`) y la instrucción de que la salida es la respuesta entera. Ese prompt no depende de ningún archivo.
+5. **Registrar** la comprobación en el programador del host. En Claude Code, la rutina programada con la cadencia y la zona horaria del site; en Cowork, la tarea programada equivalente; en Codex y Claude.ai, entregar el prompt y las instrucciones para programarlo, porque el plugin no puede hacerlo por el cliente allí.
+6. **Persistir** la regla en `<state-dir>/<site_id>/alerts.json` cuando hay sistema de archivos, para que "mis alertas" y "borra la alerta X" funcionen. Sin sistema de archivos, la lista vive en el programador del host y la skill lo dice.
+7. **Responder** en ≤8 líneas: la regla en una frase, la cadencia, el destino, la primera comprobación, y cómo borrarla.
+
+Gestión: "mis alertas" lista `alerts.json` y las rutinas registradas; "borra la alerta X" cancela la rutina y marca `status: deleted`. Nunca se borra una rutina sin nombrarla y sin confirmación.
+
+### Skill `check-alerts`
+
+`disable-model-invocation: true`. Se ejecuta solo desde una tarea programada, con la regla dentro del prompt. Presupuesto ≤3 llamadas por regla.
+
+1. **Fuera de horas activas** → una línea y fin. Ninguna llamada.
+2. **Evaluar** según la familia (tabla anterior).
+3. **Si no dispara** → la respuesta entera es una línea: `🟢 <regla>: <valor actual> · último evento hace <t>`. En ejecución programada, ni saludo ni contexto.
+4. **Si dispara** → formato fijo, ≤12 líneas: `🔴 <regla>` · evidencia con números y ventana · **hora en que empezó el silencio o la caída** (es lo que el cliente cruza con su log de despliegues) · una acción concreta ("abre una ficha de producto en móvil y prueba a comprar ahora") · qué no se ha comprobado (bots, siempre).
+5. **Entrega**: si la regla pide Slack o correo y la sesión tiene ese conector, publicar el bloque tal cual; si no lo tiene, decirlo una vez y dejar el aviso en la app.
+6. **Cooldown**: con sistema de archivos, `last_fired` en `alerts.json` y no repetir hasta que la condición se resuelva y vuelva; sin él, la cadencia acota la repetición y el aviso lleva "sigue activa desde <hora>" calculada de la evidencia, no de un estado.
+7. Registrar en `runs.jsonl` con los campos exactos del esquema; `budget` es `3` por regla.
+
+### Interacción con el resto del plugin
+
+- `cart-watchdog` y `calibrate-watchdog` no cambian: el watchdog es una regla `drop` premium con baseline de 168 celdas. `create-alert` lo reutiliza como `expected` cuando existe y lo recomienda cuando el cliente pide una regla `drop` sin baseline.
+- `monday-briefing` gana un bloque `🔔 ALERTAS` de una línea: cuántas activas, cuántas dispararon la semana pasada, cuáles caducan el mes que viene.
+- `setup-audit` paso 8 ("¿alguien vigila?") deja de mirar `list_alerts` (oculto en el conector por defecto, ver E14) y mira `alerts.json`: un site sin ninguna alerta es un gap S con la acción "crea una con `create-alert`".
+
+### Evals (fixtures nuevas: `alerts-silence-fires`, `alerts-silence-quiet-hours`, `alerts-drop-with-baseline`)
+
+| Caso | Prueba |
+|---|---|
+| `create-alert-writes-a-valid-rule` | La frase "avísame si 4 h sin conversiones" produce una regla válida contra un JSON Schema de la gramática, con `active_hours` preguntadas o inferidas del baseline, y `stateMustContain` la regla |
+| `create-alert-refuses-noisy-rule` | Evento con 3 eventos/día y ventana de 2 h → no crea la regla, propone ventana o familia alternativa |
+| `check-alerts-fires-with-start-time` | Fixture con último evento hace 5 h dentro de horas activas → 🔴, nombra la hora del último evento, ≤3 llamadas |
+| `check-alerts-silent-when-healthy` | Último evento hace 20 min → la respuesta es una sola línea |
+| `check-alerts-respects-active-hours` | Ejecución a las 03:00 → una línea, cero llamadas |
+| `check-alerts-drop-uses-embedded-expected` | Sin sistema de archivos, la regla lleva `expected` y el veredicto sale de él |
+| `check-alerts-never-claims-bots` | Ningún caso de alerta contiene una cifra de bots en tabla; el aviso dice "no validado" |
+
+Test de fidelidad numérica (auditoría §5.3.14) aplicado a todos.
+
+### Qué hay que verificar antes de escribir una línea
+
+1. **Dónde corre la tarea programada en cada superficie y si ve el conector OAuth del cliente.** Si la rutina de Claude Code corre en la nube sin el conector, la vía A solo vale en Cowork y en sesiones locales, y el README lo tiene que decir. Es la incógnita que decide el alcance.
+2. **Orden de las filas de `*_raw`.** La evaluación de `silence` asume que la última página contiene el evento más reciente. Capturar contra el servidor real, como se hizo con las formas de respuesta el 08/09.
+3. **Zona horaria de `period=today`.** La metodología dice que es la del site; confirmarlo para un site en América con cuenta en Europa.
+
+### Métricas de éxito
+
+| Métrica | Objetivo |
+|---|---|
+| Reglas creadas que siguen activas a los 30 días | ≥70% (una regla que se borra es una regla que hizo ruido) |
+| Avisos por regla y semana | ≤2 de media; por encima, la creación fue demasiado sensible |
+| Avisos con hora de inicio nombrada | 100% |
+| Llamadas por comprobación | ≤3, medido en `runs.jsonl` |
+
+## E14 · Remediación de D1 y D2 — P0
+
+Ambos conocidos antes de la auditoría; aquí queda la solución acordada, sin trabajo sobre bots.
+
+### D1 · El conector por defecto no anuncia 20 herramientas
+
+**Principio:** el plugin no promete nada que el conector con el que se instala no pueda cumplir, y no gasta una llamada en descubrirlo.
+
+1. **La metodología pasa a ser consciente del transporte.** Nueva regla en `methodology.md`, sección "A successful call can still be a failure": *una herramienta que no aparece en tu lista de herramientas está ocultada por el conector; no la intentes, no la menciones más de una vez, y anota `connector: "remote"` en `profile.json`*. El perfil gana el campo `connector` (`remote` | `local`), escrito por la primera skill que corra, deducido de si `get_channels` está o no en la lista anunciada. Con eso cada skill sabe de antemano qué pasos saltar. El intento único de `get_bot_stats` queda solo para `connector: local`; en remoto la línea "Not checked" se emite sin llamada, una vez, y se deja de recomendar activar agent analytics.
+2. **`install-sealmetrics` sale del plugin.** Pasa a un plugin hermano `seal-install` en el mismo marketplace, con su propio `.mcp.json` sobre stdio y `SEALMETRICS_API_KEY`, y con la skill tal como está. El plugin principal deja de disparar con "instala Sealmetrics": el core responde con una línea que nombra `seal-install` y por qué necesita el servidor local. El eval `install-reuses-existing-site` se muda con la skill.
+3. **`cost-reduction`** pierde los patrones 1, 6 y 7 en remoto. La lista de patrones se declara con una columna `requires: local`, y la línea "Remaining patterns" del informe dice "no disponible con este conector" en lugar de "clean". Quedan 5 patrones que sí ejecutan.
+4. **`setup-audit`** reescribe tres pasos: el 6 (reglas de canal) detecta cpc bajo "Referral" cruzando `get_traffic_mediums` con `get_top_channels`, que sí están, y propone el texto de la regla para que el cliente lo pegue en el dashboard, sin `test_channel_rules` ni escritura; el 8 mira `alerts.json` de E13; la verificación de eventos con `verify_event_instrumented` pasa a ser "cuenta ≥10 eventos/día" desde `get_microconversions`, que es lo que ya hace el paso 9. La sección "Channel rules — the one place this plugin can write" se marca `local only`.
+5. **`property-explorer`** elimina el paso de segmentos en remoto; **`channel-mix-optimizer`** hace del fallback por medios la vía principal.
+6. **Linter.** `evals/gated-tools.json` con las 20 herramientas. Regla nueva: una referencia a una herramienta ocultada solo pasa si la misma frase contiene el marcador `(local only)` o está en un archivo de `seal-install`. Hoy el linter solo comprueba existencia; esto habría detectado los pasos afectados de tres skills.
+7. **Evals en los dos transportes.** El mock gana `SEAL_TRANSPORT=remote|local`: en remoto anuncia 42 herramientas y rechaza el resto como "unknown tool". Los casos de informe (`healthy-says-so`, `drop-isolates-campaign`, `opportunity-scan-finds-the-leak`, `monday-briefing-is-one-page`, `refused-calls-are-named-not-hidden`) corren en ambos y deben pasar en ambos. Un caso nuevo, `remote-never-attempts-hidden-tools`, exige cero llamadas rechazadas y una única línea "Not checked".
+8. **Lado MCP, sin cambios de scope:** aplicar en el transporte local el mismo gate que en el remoto, tal como está redactado en `docs/mcp-server-local-gate.md`. Con eso `connector` pasa a tener un único valor y los puntos 1 y 6 se simplifican en la siguiente versión.
+
+### D2 · Referencias activas a `get_channels`
+
+1. **Cuatro sustituciones.** `methodology.md` jerarquía de causas paso 2, `opportunity-patterns.md` patrón 8, `hotels-playbook.md` análisis 1, y la fila "Entrances: from get_channels" de `channel-mix-optimizer`: todas a `get_top_channels` sobre un par de calendario. Añadir `get_marketing_playbook` a la misma revisión: solo puede aparecer en la frase que lo prohíbe.
+2. **Linter.** `FORBIDDEN_TOOLS = ['get_channels', 'get_marketing_playbook']`. Una referencia pasa solo si la frase que la contiene incluye una negación (`never`, `not`, `do not`, `403`, `refuse`, `hidden`). Verificar el linter reintroduciendo el patrón 8 tal como está hoy: debe fallar.
+3. **Evals.** `assess.mjs` gana `globalMustNotCall`, aplicado a todos los casos, con esas dos herramientas. Ningún caso puede pasar habiéndolas llamado, tenga o no `mustNotCall` propio.
+4. **Anexo A** de este PRD: las filas de weekly-health-check, diagnose-drop, opportunity-scan y channel-mix-optimizer siguen listando `get_channels`; corregirlas a `get_top_channels` en la misma revisión.
+
+### Esfuerzo y orden
+
+| Bloque | Esfuerzo | Va antes de |
+|---|---|---|
+| D2 completo | Medio día | Todo lo demás: es la corrección más barata y la que hoy produce "Access denied" en informes |
+| D1 puntos 1, 3, 4, 5, 6 | Un día | E13, porque `setup-audit` paso 8 y la regla de transporte son prerrequisito |
+| D1 punto 2 (`seal-install`) | Un día | Publicación en marketplace |
+| D1 punto 7 (mock en dos transportes) | Un día | Certificación de la versión |
+| E13 `create-alert` + `check-alerts` + 7 evals | Una semana, tras verificar las tres incógnitas | Versión 1.12.0 |

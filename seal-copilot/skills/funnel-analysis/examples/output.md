@@ -23,8 +23,9 @@ did not.
 2. **A trust or pricing change on the form page.** If the page was edited in
    the last month, diff it. Test: compare the deploy date against the day the
    ratio broke.
-3. **Bot filtering of submissions.** Less likely — bot share is 9% and flat —
-   but worth one check if the first two come back clean.
+3. **A spam filter or CAPTCHA rejecting real submissions.** Less likely, but
+   worth one check if the first two come back clean: submit the form yourself
+   from a clean browser on mobile.
 
 Device is not the split: form views ran 323 desktop to 288 mobile, close to the
 site mix.

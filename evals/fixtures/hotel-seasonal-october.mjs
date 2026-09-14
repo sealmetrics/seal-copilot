@@ -14,7 +14,6 @@ export const tools = {
   list_microconversion_types: f.microTypes(['room_view', 'booking_start', 'booking']),
   get_countries: (a) => f.rows('country', [['GB', 5200, 71, 34100, 0.44], ['DE', 3900, 48, 23800, 0.47], ['ES', 4100, 52, 19900, 0.45]],
     { stringRevenue: true, prev: a.compare ? [['GB', 5100, 70, 33500, 0.44], ['DE', 3800, 47, 23100, 0.47], ['ES', 4000, 50, 19200, 0.45]] : null }),
-  get_bot_stats: f.botStats({ total: 18400, botShare: 0.08 }),
   get_conversions: f.conversions([['booking', 214, 96300]]),
   get_campaigns: f.rows('utm_campaign', [['brand-uk', 1400, 14, 5600, 0.4], ['summer-de', 900, 6, 2400, 0.58]]),
 };

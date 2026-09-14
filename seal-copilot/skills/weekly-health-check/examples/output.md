@@ -13,8 +13,8 @@
 | AOV | €77.49 | €77.01 | +0.6% |
 
 **Findings:** none. Every channel moved within ±3%, the widest campaign spread
-(brand-es at 3.66% CR vs retarget-es at 1.09%) is unchanged from last week, and
-bot share held at 6%. Padding this report with a "watch item" would be noise.
+(brand-es at 3.66% CR vs retarget-es at 1.09%) is unchanged from last week.
+Padding this report with a "watch item" would be noise.
 
 Attribution is last non-direct click, so these figures will not match GA4 or
 your ad platform dashboards.

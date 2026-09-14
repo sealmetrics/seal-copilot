@@ -1,6 +1,6 @@
 import * as f from './_lib.mjs';
 export const meta = { name: 'ecommerce-setup-gaps',
-  summary: 'Tracking is half-done: no product id on add_to_cart, no checkout event, no revenue, paid traffic misclassified as Referral, agent analytics off. setup-audit must find these and not invent a score.' };
+  summary: 'Tracking is half-done: no product id on add_to_cart, no checkout event, no revenue, paid traffic misclassified as Referral. setup-audit must find these and not invent a score.' };
 export const tools = {
   list_sites: f.site(),
   get_site: f.siteDetail(),
@@ -16,7 +16,6 @@ export const tools = {
   get_top_campaigns: f.top('utm_campaign', [['(not set)', 9200, 190, 0, 0.6], ['brand-es', 3900, 142, 0, 0.38]]),
   get_microconversions: f.micro({ product_view: 25600, add_to_cart: 3020 }),
   list_alerts: { alerts: [] },
-  get_bot_stats: f.botStatsDisabled(),
   get_tracking_code: { site_id: 'acct_demo', script_tag: '<script async src="https://cdn.sealmetrics.com/sm.js?id=acct_demo"></script>', tracker_url: 'https://cdn.sealmetrics.com/sm.js',
     js_api: { conversion: { description: '', signatures: [{ call: 'sealmetrics.conv("purchase", {revenue})', description: '' }] },
               microconversion: { description: '', signatures: [{ call: 'sealmetrics.micro("add_to_cart", {sku, price})', description: '' }] },

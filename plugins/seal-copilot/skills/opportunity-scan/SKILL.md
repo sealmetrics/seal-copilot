@@ -15,6 +15,19 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** **Your first action
+is a tool call, not a sentence** — not "State directory is empty, running
+discovery", not "Let me start with the overview". And nothing between calls
+either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
+no "Checking seasonality". The user reads every one of those before your answer,
+and a run that narrates its way to a conclusion reads as one that has not
+reached it. Make the calls in silence; your first and only message is the
+finished report. **And nothing after it:** write the profile, the ledger and the
+run log *before* the report, never once it is written. A tool call after the
+report forces a second message, and a run that logged its diagnosis first and
+then added "Diagnosis complete: the drop traces to /collections/sale" made the
+user read the same finding twice.
+
 Run the pattern library against current data and report what fires.
 Patterns and detection logic:
 `skills/seal-copilot/references/opportunity-patterns.md` (14 patterns
@@ -55,9 +68,11 @@ Budget: ≤12 tool calls.
    microconversions are tracked, RPE gap (12) for accounts running
    multiple paid channels, intraday gap (13) only if a watchdog baseline
    already exists (`calibrate-watchdog` has run).
-7. Validate any anomaly with `get_bot_stats(days=30)` — pattern 9 — before
-   reporting. An empty result means agent analytics is off, not 0% bots:
-   mark the finding "unvalidated for bots".
+7. Before reporting any rise as an opportunity, screen pattern 9 with
+   `get_top_referrers(period=30d)`: a referrer carrying the rise at 90%+
+   bounce and almost no conversions is not demand, and a finding built on it
+   is not a finding. Name it by what it did. No bot data — never call
+   `get_bot_stats` and never say bots (see "No bot data" in `methodology.md`).
 
 ## Output format
 
@@ -73,7 +88,7 @@ an opinion, and it cannot go into the ledger.
 - **Verify:** the tool to re-run, the metric that should move, and when
   (2–4 weeks; one booking cycle for hotels). Write the word "Verify".
 
-Do not report how many tool calls you used.
+Do not report how many tool calls you used either.
 
 Then one line listing patterns checked that did NOT fire (transparency
 builds trust), and one line for any pattern suppressed as an already-open

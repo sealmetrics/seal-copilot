@@ -15,6 +15,19 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** **Your first action
+is a tool call, not a sentence** — not "State directory is empty, running
+discovery", not "Let me start with the overview". And nothing between calls
+either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
+no "Checking seasonality". The user reads every one of those before your answer,
+and a run that narrates its way to a conclusion reads as one that has not
+reached it. Make the calls in silence; your first and only message is the
+finished report. **And nothing after it:** write the profile, the ledger and the
+run log *before* the report, never once it is written. A tool call after the
+report forces a second message, and a run that logged its diagnosis first and
+then added "Diagnosis complete: the drop traces to /collections/sale" made the
+user read the same finding twice.
+
 Isolate the root cause of a metric change. Budget: ≤12 tool calls.
 Follow the cause hierarchy from
 `skills/seal-copilot/references/methodology.md` strictly — work down,
@@ -27,16 +40,17 @@ stop at the first isolated cause.
    is `traffic_change` / `conversions_change`; the daily `*_series` show
    exactly which day it broke. If the user's claim is not visible in data, say so
    and show what you see instead.
-1. **Bots/tracking:** `get_bot_stats(days=30)`. Read it with the
-   three-outcome rule in `methodology.md` — an empty result means agent
-   analytics is off, not 0% bots. **When bots are the cause the diagnosis is
-   not finished until you have named the source.** Call `get_top_referrers`
-   yourself — a single referrer at 90%+ bounce is the usual shape — and put
-   its name in the cause statement. Do not tell the user to go and look:
-   "it is bots" is an observation, "it is bots from cheap-traffic.example,
-   block it at the CDN" is the finding they asked for. That call takes
-   priority over every optional one, including anything gathered only to fill
-   `profile.json`. Sudden near-zero on one page →
+1. **Tracking, or a rise that is not demand.** No bot data here — never call
+   `get_bot_stats` or `get_suspicious_sessions`, and never say traffic comes
+   from bots (see "No bot data" in `methodology.md`). **For a spike**, call
+   `get_top_referrers` before you go looking at channels: a single referrer
+   carrying the rise at 90%+ bounce and almost no conversions is not demand,
+   and the diagnosis is not finished until its name is in the cause statement
+   with what it did — "cheap-traffic.example sent 21,900 entrances at 95%
+   bounce and 5 conversions; exclude it from decisions and block it at the CDN
+   if you control the source". Do not tell the user to go and look. That call
+   takes priority over every optional one, including anything gathered only to
+   fill `profile.json`. Sudden near-zero on one page →
    check `get_pages(path_filter=...)` for a tag lost in a deploy. For a
    broken microconversion event (cart, checkout), compare
    `get_microconversions(period=30d, compare=previous)` per type — a single type
@@ -47,7 +61,13 @@ stop at the first isolated cause.
    `get_top_channels(period=last_week)` (or the `this_month`/`last_month` pair for
    a monthly drop) — `get_top_channels` has no `compare`, so diff the pair
    yourself. All channels down evenly → jump to step 7.
-3. **Campaign:** `get_campaigns(compare=previous, utm_source/medium filters)`.
+3. **Campaign:** `get_campaigns(compare=previous, sort_by=conversions)`,
+   filtered with `utm_source` / `utm_medium` to the channel that moved.
+   **It has to be this tool.** `get_top_campaigns` is compact and tempting, and
+   it ignores `compare` silently — it would hand you the campaign's 2
+   conversions today and nothing to compare them against, and the cause
+   statement this skill owes is "230 → 2", not "2". A drill-down that cannot
+   show the prior period has not isolated anything.
 4. **Landing/term:** `get_landing_pages(compare=previous)` and/or
    `get_terms(compare=previous)` filtered to the campaign.
 5. **Device/country/browser:** `get_devices(compare=previous)` returns
@@ -83,16 +103,16 @@ cannot act on "it was campaign X" without the evidence, the fix and the check.
 4. **Verification** — what to re-check and when. Never omit this. A diagnosis
    the user cannot confirm in a week is an opinion, not a finding.
 
-Do not report how many tool calls you used. The budget is an internal
+Do not report how many tool calls you used either. The budget is an internal
 constraint on you, not information for the user.
 
-If the change is a spike, validate bots first (rule 1) before celebrating.
+If the change is a spike, check it converts and name the referrer carrying it (step 1) before celebrating.
 Never speculate beyond the data — if two causes remain plausible, present
 both with their evidence.
 
 ---
 
-Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
+**Before the report, not after it:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
 ceiling, a number — `12` here), `verdict` (one of `on_track`, `watch`, `act`,

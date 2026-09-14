@@ -31,7 +31,6 @@ export const tools = {
   get_top_channels: (a) => f.top('channel', ['last_week', 'last_month', 'last_quarter'].includes(a.period) ? pick(a).channelsPrev : pick(a).channels),
   get_campaigns: (a) => f.rows('utm_campaign', pick(a).campaigns, { prev: cmp(a, pick(a).campaigns, pick(a).campaignsPrev) }),
   get_top_campaigns: (a) => f.top('utm_campaign', pick(a).campaigns),
-  get_bot_stats: (a) => f.botStats({ total: (a.days || 30) <= 7 ? 9850 : 41200, botShare: 0.06 }),
   list_microconversion_types: f.microTypes(['product_view', 'add_to_cart', 'start_checkout']),
   list_property_keys: (a) => a.table === 'conversion_items'
     ? f.propertyKeys(['sku', 'price', 'quantity', 'category'], { sku: { conv: 968, micro: 0 } })

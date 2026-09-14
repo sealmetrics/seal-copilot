@@ -37,6 +37,11 @@ const REQUIRED_RATE = 1.0;
 const skipIdx = new Set([jsonIdx + 1, runsIdx + 1].filter(i => i > 0));
 const filters = argv.filter((a, i) => !a.startsWith('--') && !skipIdx.has(i));
 const selected = filters.length ? cases.filter(c => filters.some(f => c.id.includes(f))) : cases;
+if (filters.length && !selected.length) {
+  console.error(`No case matches ${filters.map(f => JSON.stringify(f)).join(', ')}. ` +
+    'Nothing ran, so nothing passed. (One argument holding several ids? zsh does not split unquoted variables.)');
+  process.exit(2);
+}
 
 // Every mock tool is pre-allowed so the run never blocks on a permission prompt.
 const allowedTools = [
@@ -73,6 +78,9 @@ function readState(dir) {
 
 function runStep(c, step, siteId, work, callLog, resumeId = null) {
   return new Promise((resolve) => {
+    // One instant per attempt, shared by the prompt and the mock. See cases.mjs.
+    const now = new Date();
+    const promptText = typeof step.prompt === 'function' ? step.prompt(now) : step.prompt;
     const mcpConfig = JSON.stringify({
       mcpServers: {
         sealmetrics: {
@@ -81,16 +89,27 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
           // the server's environment. An absolute interpreter removes the doubt.
           command: process.execPath,
           args: [join(here, 'mock-server', 'server.mjs')],
-          env: { SEAL_FIXTURE: c.fixture, SEAL_CALL_LOG: callLog, PATH: process.env.PATH || '' },
+          env: {
+            SEAL_FIXTURE: c.fixture, SEAL_CALL_LOG: callLog,
+            // Which connector to imitate. Default `local` keeps every existing
+            // case serving all sixty-two tools; cases that set `transport:
+            // 'remote'` get the forty-two the OAuth connector announces, which
+            // is what nearly every user actually has.
+            SEAL_TRANSPORT: c.transport || 'local',
+            SEAL_NOW: now.toISOString(),
+            PATH: process.env.PATH || '',
+          },
         },
       },
     });
 
     const args = [
-      '-p', step.prompt,
+      '-p', promptText,
       '--mcp-config', mcpConfig,
       '--strict-mcp-config',
-      '--plugin-dir', join(root, 'seal-copilot'),
+      // Installing tracking lives in its own plugin, because the connector this
+      // one declares cannot reach the provisioning tools. A case says which.
+      '--plugin-dir', join(root, c.pluginDir || 'seal-copilot'),
       '--allowed-tools', allowedTools,
       '--output-format', 'stream-json', '--verbose',
     ];
@@ -121,7 +140,10 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
     proc.stdout.on('data', d => out += d);
     proc.stderr.on('data', d => err += d);
 
-    const timer = setTimeout(() => { proc.kill('SIGKILL'); }, 240000);
+    // 240s killed a case that reasons about clock arithmetic often enough to
+    // retry in every run. The budget assertions are what bound a slow skill;
+    // this only bounds a hung process.
+    const timer = setTimeout(() => { proc.kill('SIGKILL'); }, 360000);
 
     proc.on('close', () => {
       clearTimeout(timer);
@@ -143,6 +165,7 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
       const rejected = calls.filter(c2 => c2.rejected);
 
       resolve({ cliError, calls, rejected, ms, answer, sessionId, truncated,
+                textBlocks: parsed.textBlocks ?? 1,
                 toolNames: [...new Set(calls.map(x => x.tool))] });
     });
   });
@@ -170,7 +193,8 @@ async function runCase(c, siteId) {
     if (r.cliError) { cliError = r.cliError; break; }
     if (step.continue && !lastSession) failures.push(`step ${i + 1}: could not resume — no session id from step ${i}`);
     const label = steps.length > 1 ? `step ${i + 1}: ` : '';
-    for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected }, r.answer, stepCalls))
+    for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected },
+                           r.answer, stepCalls, r.textBlocks))
       failures.push(label + f);
   }
 
@@ -196,9 +220,14 @@ async function runCase(c, siteId) {
 // A session that never really ran: no answer, no tool call and no error — or
 // an error the API itself labels transient (stream idle timeout, overloaded,
 // rate limit). Neither is a verdict on the skill; retry once.
-const TRANSIENT = /stream idle timeout|partial response|overloaded|rate limit|529|503|ECONNRESET|ETIMEDOUT/i;
+// A 500 from the API is the server's failure, not the skill's. hostile-values
+// took one mid-certification and it scored as a verdict — and ended the case
+// after one of three runs — because the list stopped at 503.
+const TRANSIENT = /stream idle timeout|partial response|overloaded|rate limit|internal server error|api_error|\b50[0234]\b|529|ECONNRESET|ETIMEDOUT/i;
 const isTransient = (r) =>
-  (!r.error && !r.calls && !(r.answer || '').trim())   // never started
+  // Empty is empty, whether or not it got as far as calling anything. Every
+  // skill here owes an answer, including the ones whose answer is one line.
+  (!r.error && !(r.answer || '').trim())               // said nothing at all
   || (r.error && TRANSIENT.test(r.error))                // the API said so
   // No result event means the session never finished, so whatever text arrived
   // is a fragment: one attempt made nine calls and left "Let me check remaining

@@ -1,20 +1,23 @@
-> Reference output. Numbers from `evals/fixtures/ecommerce-bot-spike.mjs`.
+> Reference output. Numbers from `evals/fixtures/ecommerce-referrer-spike.mjs`.
 > Note that savings are stated as formulas the user completes, never as invented
 > infrastructure costs.
 
 Found 2 patterns firing. Estimated monthly saving: **€X of infrastructure cost
-on 23,400 non-human sessions** (multiply by your own €/1k sessions) **+ roughly
-3 developer hours/month** in false-alarm investigation.
+on 21,900 entrances that neither stay nor buy** (multiply by your own €/1k
+sessions) **+ roughly 3 developer hours/month** in false-alarm investigation.
 
-**1. Bot tax — one referrer is 39% of your traffic**
-- **Evidence:** 22,600 of 57,100 sessions came from `cheap-traffic.example` in
-  30 days, at 94% bounce and 9 conversions. Bot detection scores 41% of all
-  sessions as suspicious, flagged on `headless_user_agent` and `no_mouse_events`.
-- **Action:** block that referrer at the CDN or WAF. It is not a traffic source,
-  it is load.
-- **Saving:** 22,600 sessions/month × your CDN and log cost per session. Also
-  every report you have read this month was wrong — that is the real cost.
-- **Verify:** bot share should fall below 15% within a week of the block.
+**1. Non-engaging referrer — one referrer is 38% of your traffic**
+- **Evidence:** 21,900 of 57,100 entrances came from `cheap-traffic.example` in
+  30 days, at 95% bounce and 5 conversions — against a site conversion rate
+  near 1.5%.
+- **Action:** block that referrer at the CDN or WAF if you control it, and
+  exclude it from every growth and channel decision. It is not a traffic
+  source, it is load.
+- **Saving:** 21,900 entrances/month × your CDN and log cost per session. Also
+  every rate on the site this month was computed with it in the denominator —
+  that is the real cost.
+- **Verify:** its share of entrances should fall below 5% within a week of the
+  block, and the site bounce rate should drop with it.
 
 **2. Zombie pages**
 - **Evidence:** 2 pages with ≥1,000 entrances, zero conversions and bounce
@@ -26,8 +29,9 @@ on 23,400 non-human sessions** (multiply by your own €/1k sessions) **+ roughl
 - **Verify:** re-run in 30 days; entrances should convert or stop arriving.
 
 **Clean:** broken tracking (no microconversion type dropped more than 8%),
-dead UTM tax, country flood, stale alerts, webhook failures, unused segments,
-over-tracked microconversions.
+dead UTM tax, country flood, over-tracked microconversions.
+**Not checked:** stale alerts and webhooks, unused segments — they need the
+local connector.
 
 Note: I did not estimate ad spend. Sealmetrics does not ingest cost — plug your
 CPC into the formulas above.

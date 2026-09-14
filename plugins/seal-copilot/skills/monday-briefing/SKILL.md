@@ -17,6 +17,19 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** **Your first action
+is a tool call, not a sentence** — not "State directory is empty, running
+discovery", not "Let me start with the overview". And nothing between calls
+either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
+no "Checking seasonality". The user reads every one of those before your answer,
+and a run that narrates its way to a conclusion reads as one that has not
+reached it. Make the calls in silence; your first and only message is the
+finished report. **And nothing after it:** write the profile, the ledger and the
+run log *before* the report, never once it is written. A tool call after the
+report forces a second message, and a run that logged its diagnosis first and
+then added "Diagnosis complete: the drop traces to /collections/sale" made the
+user read the same finding twice.
+
 The Monday-morning one-pager. Combines the highlights of three skills
 into a 6-block report the user can forward to their team. Budget: ≤15
 calls. Designed for **scheduled execution** — `/schedule` in Claude Code, or
@@ -64,20 +77,22 @@ Pick the **single highest-impact pattern** that fires from this short list
 
 Pick one only — the one with the largest € impact. Do not list the others.
 
-### Block C — Watchdog status (2 calls)
+### Block C — Watchdog status (1 call)
 - `get_microconversions(conversion_type=<atc-equivalent>, period=today)` —
   today's volume so far, compared against the stored watchdog baseline if
   `calibrate-watchdog` has run. Without a baseline, compare to
   `get_microconversions(conversion_type=<atc>, period=yesterday)` and say the
   comparison is coarse.
-- `get_bot_stats(days=7)` — bot share trend. Empty means agent analytics is
-  off, not 0%.
 
 Status line: `🟢 normal` / `⚠️ watch — <reason>` / `🔴 act now — <reason>`.
 
-### Block D — Validation (0 calls)
-Reuse the `get_bot_stats(days=7)` result from Block C. If it was empty or
-returned 403, mark every mover in Block A "unvalidated for bots".
+### Block C2 — Alerts (0 calls)
+Read `<state-dir>/<site_id>/alerts.json`. One line, and only when there is
+something to say: how many rules are active, how many fired in the last seven
+days, and any rule expiring within 30 days. A site with **no** active rule gets
+the one line that matters instead — that nothing is watching it between these
+reports — and an offer to set one up with `create-alert`. Omit the block
+entirely if the file is unreadable.
 
 ## Output format (the one-pager)
 
@@ -107,13 +122,13 @@ number that moved and verified/failed. Omit the whole block if nothing was due.>
 
 ⛔ NOT CHECKED
 <only if a step's call was refused or skipped: one line naming it, e.g.
-"channel split and bot validation — API refused get_channels / get_bot_stats
-for this site; movers above are unvalidated for bots". Omit if all ran.>
+"channel split — the API refused the channel breakdown for this site".
+Omit if all ran.>
 
 🚨 WATCHDOG
 Add-to-cart: <🟢/⚠️/🔴 + one-line context>
 Tracking decay (microconversions): <🟢/⚠️/🔴>
-Bot share: X% (last week Y%)
+Alerts: <N active, M fired this week — or "none set up">
 
 ➡️ NEXT
 Suggested follow-up: "<one concrete next prompt the user can paste>"
@@ -133,12 +148,19 @@ On first successful run, offer:
 > "Want this every Monday at 8 am? Reply 'schedule monday-briefing' and I
 > will set it up."
 
+**The scheduled task runs the command `/seal-copilot:monday-briefing`**, not a
+sentence asking for the briefing. This skill is not invocable by the model — so
+that it does not fire on a passing "how was my week" — which means a scheduled
+sentence reaches the model and never reaches the skill. Only the command does.
+
 When the scheduler fires this skill, the output is the entire response —
 no preamble, no "Hi! Here is your briefing", just the one-pager above.
 
 ## What you do NOT do
 
 - Do not include >1 opportunity. Monday is for focus.
+- No bot data, anywhere in the one-pager: no bot-share line, no "not bots",
+  no mention of bots at all. Sealmetrics does not give that data.
 - Do not run the full opportunity-scan, full health-check, or full
   watchdog procedures here — call them by name as follow-ups if the user
   wants depth.

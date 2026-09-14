@@ -2,9 +2,7 @@
 //
 // Shapes are copied from a live capture of the Sealmetrics MCP on 2026-09-08
 // (evals/real-shapes/shapes.json). Where the real server returns a string for a
-// money field, so do these — skills must Number() them. Two things could not be
-// captured and remain UNVERIFIED: get_bot_stats and get_suspicious_sessions
-// (the account-id tool family refused every identifier the key could see).
+// money field, so do these — skills must Number() them.
 
 const r2 = (n) => Math.round(n * 100) / 100;
 const pct = (now, prev) => prev ? r2(((now - prev) / prev) * 100) : 0;
@@ -206,12 +204,3 @@ export const rawEvents = (events) => {
   });
   return { data, has_next: false, page: 1, page_size: data.length, total: data.length };
 };
-
-// ---- UNVERIFIED: the account-id family could not be captured live. ----
-export const botStats = ({ total, botShare, top = [] }) => ({
-  total_hits: total,
-  score_distribution: total ? { '0-25': Math.round(total * (1 - botShare)), '75-100': Math.round(total * botShare) } : { '0-25': 0, '75-100': 0 },
-  bot_share: total ? botShare : 0,
-  top_flags: top,
-});
-export const botStatsDisabled = () => botStats({ total: 0, botShare: 0 });

@@ -14,6 +14,19 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** **Your first action
+is a tool call, not a sentence** — not "State directory is empty, running
+discovery", not "Let me start with the overview". And nothing between calls
+either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
+no "Checking seasonality". The user reads every one of those before your answer,
+and a run that narrates its way to a conclusion reads as one that has not
+reached it. Make the calls in silence; your first and only message is the
+finished report. **And nothing after it:** write the profile, the ledger and the
+run log *before* the report, never once it is written. A tool call after the
+report forces a second message, and a run that logged its diagnosis first and
+then added "Diagnosis complete: the drop traces to /collections/sale" made the
+user read the same finding twice.
+
 Produce a tight weekly performance report. Budget: ≤8 tool calls.
 Apply the operating rules, thresholds, MCP call rules and failure modes from
 `skills/seal-copilot/references/methodology.md`.
@@ -37,9 +50,11 @@ findings — say why in one line.
    two calendar-pair calls yourself (see `methodology.md`, MCP call rules).
 3. `get_campaigns(period=7d, compare=previous, sort_by=revenue, limit=20)`
    — winners and losers.
-4. If any anomaly (±25%): `get_bot_stats(days=7)` to validate it is human.
-   An empty result means agent analytics is off, not 0% bots — mark the
-   finding "unvalidated for bots" (see `methodology.md`).
+4. If traffic rose ≥25% without conversions rising with it, call
+   `get_top_referrers(period=7d)` before calling it growth: a single referrer
+   at 90%+ bounce and almost no conversions is not demand — name it and what
+   it did. No bot data: never call `get_bot_stats` and never say bots (see
+   "No bot data" in `methodology.md`).
 5. Optional drill-down (1–2 calls max) only to explain the single biggest
    mover: `get_landing_pages`, `get_terms`, or `get_devices` as relevant.
 
@@ -56,12 +71,11 @@ delta vs comparable and a one-word direction.
 **Then one line for anything the procedure could not do**, whenever a step's
 call was refused, returned an error as text, or was skipped. The first real
 run had a +35% traffic spike at 84% bounce and said nothing about the fact
-that channel and bot data were refused for the site — a reader cannot tell a
-validated spike from an unvalidated one unless you say so. Format:
+that the channel split was refused for the site — a reader cannot tell a
+complete report from a partial one unless you say so. Format:
 
-> Not checked: channel split and bot validation — the API refused
-> `get_channels` and `get_bot_stats` for this site ("Access denied"). Movers
-> above are unvalidated for bots.
+> Not checked: channel split — the API refused the channel breakdown for this
+> site ("Access denied"), so movers above are not broken down by channel.
 
 Omit the line only when every step ran.
 
@@ -73,8 +87,8 @@ If nothing fires, say so in one line — do not pad.
 me to diagnose the Paid Search drop?").
 
 Before the final message: if no `profile.json` existed, write one with what
-discovery established (site, timezone, vertical, event names,
-`agent_analytics_enabled` as `true`/`false`/`"unknown"`) **and
+discovery established (site, timezone, currency, connector, vertical, event
+names) **and
 `discovery_cached_at` as today's date** — the 7-day refresh rule reads that
 field, and a profile without it can never be judged fresh or stale. Append every
 finding you issued to `recommendations.jsonl` with its metric, baseline,

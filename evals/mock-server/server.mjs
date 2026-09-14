@@ -2,7 +2,7 @@
 // Minimal MCP stdio server that serves canned Sealmetrics responses from a
 // fixture module, so skills can be exercised deterministically with no account.
 //
-//   SEAL_FIXTURE=ecommerce-bot-spike node evals/mock-server/server.mjs
+//   SEAL_FIXTURE=ecommerce-referrer-spike node evals/mock-server/server.mjs
 //
 // Tool definitions come from the real schema dump, so the model sees exactly
 // the tools (and parameters) the production server exposes.
@@ -15,10 +15,21 @@ const schema = JSON.parse(readFileSync(join(here, '..', 'mcp-schema.json'), 'utf
 const fixtureName = process.env.SEAL_FIXTURE || 'ecommerce-healthy';
 const callLog = process.env.SEAL_CALL_LOG || '';
 
+// Which connector to imitate. `remote` is the OAuth server in the plugin's
+// .mcp.json — what nearly every user installs — and it does not announce the
+// twenty tools whose backend routes need the generic `read` or `write` scope.
+// `local` is `npx @sealmetrics/mcp`, which announces all sixty-two.
+//
+// A skill that plans a step around a tool the connector withheld is a defect
+// the single-transport mock could never see, because it served everything.
+const transport = process.env.SEAL_TRANSPORT || 'local';
+const availability = JSON.parse(readFileSync(join(here, '..', 'tool-availability.json'), 'utf8'));
+const withheld = transport === 'remote' ? new Set(availability.gated.tools) : new Set();
+
 const fixture = await import(pathToFileURL(join(here, '..', 'fixtures', `${fixtureName}.mjs`)).href);
 const tools = fixture.tools || {};
 
-const toolDefs = Object.entries(schema).map(([name, d]) => ({
+const toolDefs = Object.entries(schema).filter(([name]) => !withheld.has(name)).map(([name, d]) => ({
   name,
   description: `[mock] ${name}`,
   inputSchema: {
@@ -48,7 +59,7 @@ function handle(msg) {
     return respond(id, {
       protocolVersion: '2024-11-05',
       capabilities: { tools: {} },
-      serverInfo: { name: 'sealmetrics-mock', version: `fixture:${fixtureName}` },
+      serverInfo: { name: 'sealmetrics-mock', version: `fixture:${fixtureName}/${transport}` },
     });
   }
   if (method === 'tools/list') return respond(id, { tools: toolDefs });
@@ -56,7 +67,11 @@ function handle(msg) {
     const name = params?.name;
     const args = params?.arguments || {};
     if (callLog) appendFileSync(callLog, JSON.stringify({ tool: name, args }) + '\n');
-    if (!schema[name]) return fail(id, `Unknown tool: ${name}`);
+    if (!schema[name] || withheld.has(name)) {
+      const m = `Unknown tool: ${name}`;
+      if (callLog) appendFileSync(callLog, JSON.stringify({ tool: name, args, rejected: m }) + '\n');
+      return fail(id, m);
+    }
 
     // Reject parameters the real server does not accept — this is what turns a
     // wrong call into a visible failure instead of silently wrong data.

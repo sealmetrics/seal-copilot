@@ -1,5 +1,173 @@
 # Changelog
 
+## 1.12.0 — 2026-09-14
+
+Alerts a customer writes in their own words, and the end of a class of defect
+the linter could not see: a call that is perfectly valid and still fails in
+production.
+
+### Added — `create-alert` and `check-alerts`
+"Avísame si paso 4 horas seguidas sin ventas" becomes a rule, a schedule, and a
+check that answers in one line while the site is healthy. Four families —
+silence, drop, spike, threshold — with the window, the active hours and the
+cadence derived from the rule rather than guessed.
+
+Two decisions carry the design. **The evaluation is state-free:** the rule
+travels inside the prompt the scheduler fires, and a `drop` rule carries its own
+expectation, because a scheduled run may have no filesystem at all. And
+**`create-alert` refuses rules that would be noise**: it measures the event's own
+volume first, and an event that happens twice a day does not get a four-hour
+silence rule — it gets the arithmetic, and a window that would mean something.
+
+`alerts.json` joins the state contract. `monday-briefing` reports what is
+watching the site; `setup-audit` counts a site with no rule as a gap, which is
+what it now checks instead of `list_alerts`.
+
+### Changed — every skill knows which connector it is on
+Since 1.11.0 the plugin declares the remote OAuth server, which withholds twenty
+tools. The skills did not know that: they still planned steps around traffic
+quality, alerts, segments, channel rules and event verification, and a user on
+the default connector met "Access denied" or an unknown tool in the middle of a
+report.
+
+Steps that need those tools are now marked **(local only)**, skipped, and named
+once under "Not checked" — never reported as clean. `profile.json` gains
+`connector`, settled by reading the tool list, which costs no call.
+`cost-reduction` says five of eight patterns ran. `setup-audit` finds misrouted
+paid traffic by crossing two tools that are announced, and proposes the channel
+rule in words instead of describing a dry run it could not perform.
+
+### Changed — installing tracking is its own plugin, `seal-install`
+`install-sealmetrics` needed `provision_site`, `verify_setup` and
+`verify_event_instrumented`, none of which the analyst's connector announces. It
+fired on "install Sealmetrics" and then could not finish. It now ships as a
+sibling plugin with the local stdio server and an API key, and Seal Copilot
+answers that request with one line naming it. The person installing tracking has
+a terminal; the person reading a weekly report should never meet an API key.
+
+### Fixed — `get_channels` was forbidden in one file and used in four
+The methodology has said "Never call `get_channels`" since 1.6.0. It was still
+in the cause hierarchy, in opportunity pattern 8, in the hotels playbook and in
+the channel-mix scorecard — the last two of which would have put "Access denied"
+in a real report. All four now use `get_top_channels`.
+
+The linter could not see it, because the call was valid against the schema.
+`evals/tool-availability.json` now names the two tools no skill may ever call
+and the twenty the default connector withholds, and the linter fails the build
+on a mention that is not a refusal or a step marked `(local only)`. Verified by
+reintroducing all three defects: three failures, including the subtle one —
+"`get_channels` does not accept `compare`" reads like a warning and is an
+instruction to call it.
+
+`assess.mjs` enforces the same two bans on every case, so no future case can
+pass having called them.
+
+### Changed — the eval suite runs on both connectors
+`SEAL_TRANSPORT=remote` makes the mock announce forty-two tools instead of
+sixty-two and answer the rest exactly as it answers an unknown tool. A single
+transport could never catch a skill reaching for something the user's connector
+withheld. New case `remote-never-attempts-hidden-tools` requires zero such
+attempts; seven cases cover the alerts.
+
+### Fixed — an eval that certified advice nobody should follow
+`no-api-key-gives-instructions` required the answer to mention
+`SEALMETRICS_API_KEY` and the token settings page. Since 1.11.0 there is no
+variable to set: the remedy is a browser login from `/mcp`. The case is now
+`unauthorised-sends-user-to-mcp` and **forbids** the stale advice. The same
+text was still in the core skill, the failure-modes table and the README.
+
+Two smaller things the fix exposed: `maxCalls: 0` was never enforced, because
+zero is falsy — the auth case had been asserting nothing for two releases. And
+a healthy scheduled check now has a length cap, since silence is the product and
+no phrase assertion can catch a paragraph.
+
+### Added — currency and per-site thresholds
+Six skills wrote "€" regardless of what the site reports in. `profile.currency`
+is now read by all of them, `profile.thresholds` persists a threshold the user
+states so the next session does not make them repeat it, and `profile.targets`
+holds a monthly goal when there is one.
+
+### Removed — bot data, everywhere
+Sealmetrics does not give bot data, and the plugin no longer pretends to. Product
+decision, 2026-09-13.
+
+`get_bot_stats` and `get_suspicious_sessions` are never called, on either
+connector, and join `get_channels` and `get_marketing_playbook` in
+`evals/tool-availability.json` as forbidden: the linter fails a skill that
+mentions them outside a refusal, and every eval case fails a run that calls
+them. No report estimates a bot share or says traffic comes from bots, and a
+second global assertion fails any answer containing a bot figure — tested
+against "bot share is 7%" and a Bots column, and against "Sealmetrics does not
+give bot data", which passes.
+
+The "unvalidated for bots" disclaimer is gone from every report and the "Not
+checked" line, because a product decision is not a gap. `agent_analytics_enabled`
+is gone from the profile.
+
+What replaces it uses standard data and keeps the one thing the bot check was
+for: **a spike is not growth until it converts.** Before calling a rise demand,
+the analyst reads `get_top_referrers`; a referrer carrying it at very high bounce
+and almost no conversions is named and described by what it did —
+"cheap-traffic.example sent 21,900 entrances at 95% bounce and 5 conversions" —
+never by who might have sent it. Opportunity pattern 9 is now "non-converting
+referrer", cost-reduction's first pattern is "non-engaging referrer", and
+cart-watchdog loses its bot step (steps renumbered). On the remote connector
+cost-reduction now runs six patterns of eight.
+
+Evals: `empty-bot-stats-is-not-zero-percent` is deleted with its fixture;
+`spike-is-bots-not-growth` becomes `spike-is-not-growth` and
+`cost-reduction-names-the-bot-referrer` becomes
+`cost-reduction-names-the-junk-referrer`, both requiring the referrer named and
+`get_top_referrers` called; the spike fixture is `ecommerce-referrer-spike`. 31
+cases. This also retires the only two cases that were still flaky in the sixth
+certification — both were the model skipping a bot call it is now forbidden to
+make.
+
+### Fixed — found by nine certification runs
+The first full run of this release scored 28/32 and it took nine to reach
+30/31. Every gate offline was green throughout; each of these needed a model in
+the loop to show.
+
+- **Scheduled alert checks could not load their own skill.** `check-alerts`
+  carried `disable-model-invocation`, so a scheduled "run the check-alerts
+  skill" was refused and the model searched the disk with `find /` until the
+  six-minute timeout. The gate is gone, and `create-alert` now schedules the
+  command `/seal-copilot:check-alerts` rather than a sentence. `monday-briefing`
+  and `cart-watchdog` keep their gate, and every place that tells a user or a
+  scheduler how to run them now names the command. Checks went from five or six
+  minutes to twenty or thirty seconds.
+- **Alerts refused to work on the remote connector.** Fixed in
+  `create-alert` and verified on both connectors.
+- **A watchdog that guesses the hour guesses the verdict.** `check-alerts` takes
+  its clock from a `Fired at:` line the scheduler stamps; `cart-watchdog` must
+  state the hour it compared against and may not answer 🟢 when it cannot
+  establish it. A run had called a cart dead since noon healthy by assuming it
+  was 09:00.
+- **`create-alert` called an event untracked after looking in one place.**
+  `demo_request` was a conversion; it looked only at microconversions.
+- **The traffic-quality step read as optional**, the narration ban sat inside a
+  rule about call budgets, and state writes after the report produced a second
+  message ("Report delivered above", or a recap of the diagnosis). Each rule now
+  leads with the instruction and sits where the model reads it: state first,
+  report last, nothing after.
+- **`get_channels` was still named without a refusal** in the core skill's
+  drill-down rule. It now names `get_top_channels`.
+- **A golden output in Spanish** made the model answer English requests in
+  Spanish. It matches structure now, never language.
+- **Harness:** one clock per case shared by prompt and mock; a 500 from the API
+  is transient; an empty answer is transient; a filter that selects no case is
+  an error rather than "0/0 passed"; and eighteen assertions that failed correct
+  answers over a word were rewritten to assert behaviour.
+
+### Not verified
+No run against a real Sealmetrics account, and no alert registered with a real
+scheduler. Whether `/schedule` can substitute the firing time into the prompt is
+still open; `create-alert` tells the check to treat the hour as unknown when it
+cannot.
+
+### Not changed
+Nothing in the Sealmetrics API or MCP server.
+
 ## 1.11.0 — 2026-09-10
 
 The person who reads these reports is a marketer. Until now the only way to

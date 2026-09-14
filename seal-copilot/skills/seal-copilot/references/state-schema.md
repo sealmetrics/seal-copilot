@@ -58,6 +58,7 @@ file is the one thing the first real run got wrong here.
   "site_id": "example-com",
   "account_id": "refused",
   "site_name": "example.com",
+  "connector": "remote",
   "timezone": "Europe/Madrid",
   "currency": "EUR",
   "vertical": "ecommerce",
@@ -68,12 +69,43 @@ file is the one thing the first real run got wrong here.
     "purchase": "purchase"
   },
   "product_identifier": { "key": "sku", "table": "conversion_items" },
-  "agent_analytics_enabled": false,
+  "thresholds": {},
+  "targets": {},
   "first_data_date": "2025-11-02",
   "discovery_cached_at": "2026-09-07",
   "scheduling_offered": { "monday_briefing": true, "cart_watchdog": false }
 }
 ```
+
+**These field names are the contract.** A real run wrote `name`, `domain`,
+`event_names` and `product_identifier_table` instead, and every skill that
+later looked for `site_name`, `events` and `product_identifier.key` found
+nothing and re-ran discovery — which is the one thing the profile exists to
+prevent. Write these names, not synonyms of them. The eval suite asserts on
+them.
+
+`connector` is `"remote"` or `"local"`, and it is free to determine: `remote`
+is the one where `list_alerts` and `list_segments` are not announced in the
+tool list you were given.
+It decides which steps of every skill can run, so write it on the first run and
+read it before planning an analysis. See "The connector decides which tools
+exist" in `methodology.md`.
+
+`currency` is the ISO code the site reports in, from `get_site`. **Every money
+figure in every report uses it.** The default is not euros; the default is
+whatever this site says. A store reporting in USD that is handed a report in €
+cannot use any number in it.
+
+`thresholds` overrides the defaults in `methodology.md`, per site, for the
+values that table lists — `anomaly_pct`, `min_conversions`, `min_entrances`,
+`leaky_campaign_ratio`, and so on. Empty means use the defaults. When the user
+states a threshold of their own ("under 500 entrances I do not care"), write it
+here; without that, the next session forgets and the correction has to be
+repeated.
+
+`targets` holds monthly goals when the user states them — `revenue`,
+`conversions` or `leads`, plus the month they apply to. Absent means the user
+has not set one; never invent a target.
 
 `account_id` is **not a second identifier**: the configuration tools send the
 same site id under that wire name. Keep the field as a record of whether that
@@ -86,7 +118,7 @@ what the analysis already fetched and leave the rest absent; a field you did
 not need is not worth a call. A diagnosis once spent three of its six calls on
 `get_site`, `list_microconversion_types` and `list_property_keys` to populate
 the profile, and ran out of budget before naming the referrer carrying the
-bots — the one thing that made the finding actionable. The analysis owns the
+spike — the one thing that made the finding actionable. The analysis owns the
 budget; the profile gets the leftovers.
 
 **`discovery_cached_at` is mandatory** — write it whenever you write the
@@ -95,13 +127,6 @@ to read. **TTL: 7 days** on `discovery_cached_at`. Past that, re-run `list_sites
 `list_microconversion_types` and `list_property_keys` and refresh the file.
 Refresh immediately, regardless of TTL, if any skill finds an event name or
 property key that contradicts the profile — that means tracking changed.
-
-`agent_analytics_enabled` has **three** values: `true`, `false`, or
-`"unknown"` when `get_bot_stats` could not be called at all (the account-id
-family refused the site, or it was never tried). Never write `false` for a
-call that was refused — `false` means measured and off. This field is what
-stops every later skill from reporting "0% bots" (see the three-outcome rule
-in `methodology.md`).
 
 `scheduling_offered` exists so the plugin offers a schedule **once** and then
 stops asking.
@@ -161,6 +186,48 @@ Do not re-report a pattern that already has an `open` entry for the same
 that case report it as an escalation and say it was already flagged on
 `date`. Patterns with a `discarded` entry stay suppressed for 90 days.
 
+## `alerts.json`
+
+Written and maintained by `create-alert`, read by `check-alerts`,
+`monday-briefing` and `setup-audit`. One object per rule, in a list:
+
+```json
+{
+  "site_id": "example-com",
+  "rules": [
+    {
+      "id": "no-conversions-4h",
+      "family": "silence",
+      "metric": { "kind": "conversion", "type": "purchase" },
+      "filter": {},
+      "condition": { "hours": 4 },
+      "active_hours": { "from": 8, "to": 24, "days": ["mon","tue","wed","thu","fri","sat","sun"] },
+      "cadence_minutes": 60,
+      "timezone": "Europe/Madrid",
+      "expected": null,
+      "deliver": ["app"],
+      "created_at": "2026-09-12",
+      "expires_at": "2027-03-12",
+      "status": "active",
+      "last_fired": null
+    }
+  ]
+}
+```
+
+The full grammar, the four families and what each field means live in the
+`create-alert` skill. Three rules matter here:
+
+- **The file is a convenience, never a dependency.** `check-alerts` receives
+  its rule inside the prompt the scheduler fires, because a scheduled run may
+  have no filesystem at all. This file exists so that "what am I watching?" and
+  "stop watching X" can be answered without the user remembering.
+- `status` is `active` | `paused` | `deleted`. Deleted rules stay in the file
+  with the date, so a later "did I have an alert on that?" has an answer.
+- `last_fired` is an ISO timestamp or `null`, used for the cooldown. A rule
+  that fired an hour ago and is still failing does not fire again until it has
+  recovered and broken a second time.
+
 ## `runs.jsonl`
 
 One line per skill execution. Cheap, and it is what makes the call budget
@@ -170,7 +237,7 @@ wrote `run_at`, `reason` and `findings_issued` and omitted `calls` and
 blank. Use these names and no others; add nothing, rename nothing.
 
 ```json
-{"ts":"2026-09-07T08:00:12Z","skill":"monday-briefing","calls":13,"budget":15,"verdict":"watch","scheduled":true,"notes":"bot stats empty"}
+{"ts":"2026-09-07T08:00:12Z","skill":"monday-briefing","calls":13,"budget":15,"verdict":"watch","scheduled":true,"notes":"channel split refused"}
 ```
 
 - `ts` — ISO timestamp, UTC.

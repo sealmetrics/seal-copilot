@@ -16,12 +16,15 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const skillsDir = join(here, '..', 'seal-copilot', 'skills');
+// Installing lives in its own plugin now, and its golden output is still
+// something a phrase ban could contradict. Scan every plugin, not one.
+const skillRoots = ['seal-copilot', 'seal-install'].map((p) => join(here, '..', p, 'skills')).filter(existsSync);
 const cases = (await import(join(here, 'cases.mjs'))).default;
 
-const outputs = readdirSync(skillsDir)
-  .map((s) => ({ skill: s, file: join(skillsDir, s, 'examples', 'output.md') }))
+const outputs = skillRoots.flatMap((dir) => readdirSync(dir)
+  .map((s) => ({ skill: s, file: join(dir, s, 'examples', 'output.md') }))
   .filter((o) => existsSync(o.file))
-  .map((o) => ({ ...o, text: readFileSync(o.file, 'utf8') }));
+  .map((o) => ({ ...o, text: readFileSync(o.file, 'utf8') })));
 
 let bad = 0, checked = 0;
 for (const c of cases) {

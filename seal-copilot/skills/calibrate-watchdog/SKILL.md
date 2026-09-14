@@ -136,7 +136,8 @@ Output, in under 15 lines:
    5, which the watchdog will treat as too quiet to judge.
 4. **Expiry:** the baseline goes stale in 30 days or after any tracking change.
 5. **Next step:** offer to schedule `cart-watchdog` hourly during business
-   hours, and give the exact command.
+   hours, and give the exact command to schedule: `/seal-copilot:cart-watchdog`.
+   A sentence will not reach it; the skill is not invocable by the model.
 
 ## What you do NOT do
 
@@ -151,7 +152,7 @@ Output, in under 15 lines:
 
 ---
 
-Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
+**Before the report, not after it:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
 ceiling, a number — `40` here), `verdict` (one of `on_track`, `watch`, `act`,

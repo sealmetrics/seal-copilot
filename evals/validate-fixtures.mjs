@@ -116,8 +116,6 @@ const probes = [
   ['get_property_breakdown', { period: '90d', property_key: '$PROP' }],
   ['get_property_values', { period: '90d', property_key: '$PROP', group_by: 'utm_source', limit: 5 }],
   ['get_funnel', { period: '30d' }],
-  ['get_bot_stats', { days: 30 }],
-  ['get_suspicious_sessions', { limit: 3, min_score: 70 }],
   ['list_channel_rules', {}],
   ['list_segments', {}],
   ['list_alerts', {}],

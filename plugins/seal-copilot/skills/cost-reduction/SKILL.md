@@ -2,14 +2,14 @@
 name: cost-reduction
 description: >
   Find operational waste — money bleeding through the site itself, not
-  through media spend. Scans for bot traffic tax, zombie pages, broken
+  through media spend. Scans for non-engaging referrer traffic, zombie pages, broken
   tracking, dead UTMs, country flood without ROI, stale alerts/webhooks,
   and unused segments. Trigger on: "reduce expenses", "reducir gastos",
   "where am I wasting money", "operational waste", "fix the bleeding",
   "audit costs", "limpiar mi cuenta", "dónde estoy gastando de más",
   "operational audit", "tracking waste". NOT for media-spend optimization
   (use channel-mix-optimizer for that).
-short-description: 'Find operational waste: bots, zombie pages, dead campaigns, broken tracking. Use for "reduce costs", "what is wasting money", "reducir costes", "operational audit".'
+short-description: 'Find operational waste: junk referrers, zombie pages, dead campaigns, broken tracking. Use for "reduce costs", "what is wasting money", "reducir costes", "operational audit".'
 ---
 
 # Cost Reduction (Operational Waste)
@@ -17,6 +17,19 @@ short-description: 'Find operational waste: bots, zombie pages, dead campaigns, 
 Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
+
+**Before anything else: emit no text until the report.** **Your first action
+is a tool call, not a sentence** — not "State directory is empty, running
+discovery", not "Let me start with the overview". And nothing between calls
+either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
+no "Checking seasonality". The user reads every one of those before your answer,
+and a run that narrates its way to a conclusion reads as one that has not
+reached it. Make the calls in silence; your first and only message is the
+finished report. **And nothing after it:** write the profile, the ledger and the
+run log *before* the report, never once it is written. A tool call after the
+report forces a second message, and a run that logged its diagnosis first and
+then added "Diagnosis complete: the drop traces to /collections/sale" made the
+user read the same finding twice.
 
 Find waste Sealmetrics can see **without** ad-spend data: traffic that
 costs money on the infrastructure side but produces nothing, instrumentation
@@ -28,17 +41,29 @@ that's broken, and unused features. Budget: ≤12 calls.
 
 ## Patterns scanned (report only those that fire)
 
-### 1. Bot tax
-- Detect: `get_bot_stats(days=30)` and
-  `get_suspicious_sessions(min_score=70, limit=50)` — neither takes a
-  `period`. An empty `get_bot_stats` means agent analytics is off, not 0%
-  bots: say so and skip this pattern. If bot share ≥ 15% of total sessions,
-  or one source has bot share ≥ 40%, the cost is real (CDN egress, log
-  storage, polluted analytics).
-- Recommend: enable Cloudflare / WAF blocking on top bot sources;
-  exclude them from Sealmetrics if they ride a UTM the user controls.
-- Impact: bot sessions × site's per-session infra cost (user must supply
-  €/1k sessions; if not, state hours saved in analyst time instead).
+Two of the eight need tools the `remote` connector does not announce, and
+they are marked **(local only)** below. On `remote`, six patterns run. Say so
+once in the scorecard line — "2 patterns need the local connector" — and list
+them as unchecked in the closing block, never as clean. A pattern that could
+not be screened is not a pattern that came back empty.
+
+### 1. Non-engaging referrer
+- Detect: `get_top_referrers(period=30d)`. Flag a referrer carrying ≥20% of
+  entrances at bounce ≥90% and a conversion rate ≤10% of the site average.
+  Standard data only: no bot data here — never call `get_bot_stats` or
+  `get_suspicious_sessions`, and never say the traffic comes from bots (see
+  "No bot data" in `methodology.md`). Describe what it did, not who sent it.
+- **Name the referrer, or the pattern is not reported.** "Low-quality
+  traffic" is an observation; "cheap-traffic.example sent 21,900 entrances at
+  95% bounce and 5 conversions" is the finding. This call outranks patterns 6,
+  7 and 8, which are hygiene: a run that lists unused segments and cannot name
+  the referrer inflating every rate on the site spent its budget on the wrong
+  thing.
+- Recommend: block that domain at the CDN or WAF if the user controls it, and
+  exclude it from every growth and channel decision; if it arrives on a
+  campaign, pull that campaign's spend.
+- Impact: those sessions × the site's per-session infra cost (user supplies
+  €/1k sessions; if not, say which rates it inflates instead).
 
 ### 2. Zombie pages
 - Detect: `get_pages(period=90d, sort_by=entrances, limit=50)`. Flag pages
@@ -66,20 +91,20 @@ that's broken, and unused features. Budget: ≤12 calls.
   full 90d — likely paused upstream but still receiving stale clicks
   (cached creatives, app-store redirects, scrapers).
 - Recommend: confirm with the ads platform that the campaign is paused;
-  if yes, add the source/term to bot exclusion to stop polluting analytics.
+  if yes, exclude the source/term from reporting to stop polluting analytics.
 - Impact: ad budget still being charged for those clicks (user pulls
   spend) + cleaner reports.
 
 ### 5. Country flood without ROI
 - Detect: `get_countries(period=90d, sort_by=entrances)`. Flag countries
-  with ≥5% of total entrances, 0 conversions in 90d, and bot share <30%
-  (so it is not just bots from that geo).
+  with ≥5% of total entrances and 0 conversions in 90d, whose traffic is not
+  already explained by pattern 1's referrer.
 - Recommend: geo-block in the ads platform; add to Sealmetrics country
   exclusion if available; investigate whether shipping/legal even allows
   selling there.
 - Impact: entrances × per-session infra cost + ads budget.
 
-### 6. Stale alerts and webhooks
+### 6. Stale alerts and webhooks (local only)
 - Detect: `list_alerts` + `get_alert_history(limit=100)` + `get_alert_stats`
   — `get_alert_history` has no `period`; it is paged with `limit` and
   `offset` and filtered with `status`. Alerts firing ≥10 times with no
@@ -90,7 +115,7 @@ that's broken, and unused features. Budget: ≤12 calls.
   delete failing webhooks. Each one is dev time saved.
 - Impact: dev hours/month + reduced alert fatigue.
 
-### 7. Unused segments
+### 7. Unused segments (local only)
 - Detect: `list_segments` — segments not referenced in any saved report
   or alert. Many accounts accumulate dozens of test segments.
 - Recommend: delete or rename. Pure hygiene.
@@ -108,8 +133,11 @@ that's broken, and unused features. Budget: ≤12 calls.
    saving: €X (variable cost) + Y dev hours/month."
 2. **Top 3 wastes, each:** name · evidence (numbers + period) · action ·
    estimated saving (with assumption stated) · how to verify in 30d.
-3. **Remaining patterns** (one line each): "Bot tax: clean. Zombie pages:
-   2 minor flags." — so the user sees the full scan happened.
+3. **Remaining patterns** (one line each): "Zombie pages: 2 minor flags.
+   Dead UTM tax: clean." — so the user sees the full scan happened. Patterns
+   that could not be screened on this connector get their own line: "Stale
+   alerts, unused segments: need the local connector, not checked."
+
 4. **Single follow-up question:** name the next operational audit (e.g.
    "Want me to re-run after you ship the fixes?").
 
@@ -124,7 +152,7 @@ that's broken, and unused features. Budget: ≤12 calls.
 
 ---
 
-Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
+**Before the report, not after it:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
 ceiling, a number — `12` here), `verdict` (one of `on_track`, `watch`, `act`,

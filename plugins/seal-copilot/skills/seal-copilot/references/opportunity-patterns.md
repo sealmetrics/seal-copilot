@@ -66,20 +66,23 @@ silently.
   revenue × share gap.
 
 ## 8. Channel drift
-- Detect: `get_channels` on consecutive calendar pairs — `this_week` vs
+- Detect: `get_top_channels` on consecutive calendar pairs — `this_week` vs
   `last_week`, then the same for the two weeks before via `start_date` /
-  `end_date` — showing 3+ consecutive declines. `get_channels` does not accept
-  `compare`; diff the results yourself.
+  `end_date` — showing 3+ consecutive declines. It does not accept `compare`;
+  diff the results yourself.
 - Recommend: run the diagnose-drop cause hierarchy on that channel before
   it compounds. Impact = cumulative weekly loss × 4.
 
-## 9. Bot inflation
-- Detect: `get_bot_stats(days=30)` → one source's traffic with high suspicion
-  share; confirm with `get_suspicious_sessions(min_score=70, limit=50)`.
-  An empty result means agent analytics is off, not 0% bots — see the
-  three-outcome rule in `methodology.md`.
-- Recommend: exclude that source from decisions; if paid, add IP/placement
-  exclusions. Impact = the budget being spent on non-human clicks.
+## 9. Non-converting referrer
+- Detect: `get_top_referrers(period=30d)` → one referrer carrying ≥20% of
+  entrances at bounce ≥90% and a conversion rate ≤10% of the site average.
+  Standard data only — see "No bot data" in `methodology.md`: describe what
+  the traffic did, never who sent it.
+- Recommend: exclude that referrer from every decision about growth and
+  channel performance, and block it if the user controls the source. If it
+  arrives on a paid campaign, pull that campaign's spend: it is buying visits
+  that neither stay nor buy. Impact = its entrances inflating every rate
+  computed on the site, plus any spend behind it.
 
 ## 10. Micro→macro break
 - Detect: `get_microconversions(period=30d, compare=previous)` up ≥20% while
@@ -121,8 +124,7 @@ silently.
   the baseline's expectation for the elapsed hours; when the day total is
   short, locate the silent hours with
   `get_microconversions_raw(conversion_type=[<atc>], period=today, limit=100)`.
-  Fires when a cell is below 20% of its median for two consecutive hours with
-  no matching bot anomaly.
+  Fires when a cell is below 20% of its median for two consecutive hours.
 - Recommend: test add-to-cart manually now; check for an outage in
   payment / cart / pixel since the drop window started. Hand off to
   `cart-watchdog` for full procedure and scheduling guidance.

@@ -18,6 +18,19 @@ Before writing your answer, read `examples/output.md` in this skill directory
 and match its density, structure and tone. It is the reference for what a good
 run of this skill looks like.
 
+**Before anything else: emit no text until the report.** **Your first action
+is a tool call, not a sentence** — not "State directory is empty, running
+discovery", not "Let me start with the overview". And nothing between calls
+either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
+no "Checking seasonality". The user reads every one of those before your answer,
+and a run that narrates its way to a conclusion reads as one that has not
+reached it. Make the calls in silence; your first and only message is the
+finished report. **And nothing after it:** write the profile, the ledger and the
+run log *before* the report, never once it is written. A tool call after the
+report forces a second message, and a run that logged its diagnosis first and
+then added "Diagnosis complete: the drop traces to /collections/sale" made the
+user read the same finding twice.
+
 Recommend budget shifts across paid channels using **Revenue Per Entrance
 (RPE)** as the proxy for ROAS. Budget: ≤10 tool calls.
 
@@ -32,12 +45,14 @@ real CPC/CPM from the ad platform to confirm.** Never present RPE as ROAS.
 ## Step 1 — Map the paid channels
 
 1. `get_top_channels(period=90d)` — full channel list.
-2. `list_channel_rules` — confirm which channels the user classifies as
-   paid (Paid Search, Paid Social, Display, Affiliates, Paid Email…).
-
-If the user has not configured paid vs organic split well, run
-`get_traffic_mediums(period=30d)` and treat `cpc`, `paid`, `display`,
-`paidsocial`, `cpm`, `ppc` as paid by default; say so.
+2. `get_traffic_mediums(period=30d)` — this is where paid and organic actually
+   split, and it is the main route: treat `cpc`, `paid`, `display`,
+   `paidsocial`, `cpm`, `ppc` as paid, and say that is the classification you
+   used.
+3. **(local only)** `list_channel_rules` — the user's own classification, which
+   beats the default above when it exists. Not announced on `remote`, so on
+   that connector step 2 is the whole answer and there is nothing to report as
+   missing.
 
 ## Step 2 — Channel-level scorecard
 
@@ -55,7 +70,7 @@ Compute per channel:
 
 | Metric | Formula | Use |
 |---|---|---|
-| Entrances | from get_channels | volume |
+| Entrances | from get_top_channels | volume |
 | CR | conversions / entrances | quality |
 | AOV | revenue / conversions | ticket |
 | **RPE** | revenue / entrances | the ranking metric |
@@ -116,7 +131,7 @@ budget decisions need their cost reality. Provide the **ratio** and the
 
 ---
 
-Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
+**Before the report, not after it:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
 ceiling, a number — `10` here), `verdict` (one of `on_track`, `watch`, `act`,

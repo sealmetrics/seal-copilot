@@ -3,7 +3,7 @@ name: cart-watchdog
 description: >
   Intraday watchdog for add-to-cart activity. Detects unusual silence or
   spikes vs the site's own learned hour-of-week baseline (not a fixed
-  threshold) and rules out bots before alerting. Requires a baseline from the
+  threshold) and needs two bad readings in a row before alerting. Requires a baseline from the
   `calibrate-watchdog` skill. Trigger on: "is my cart alive", "check add to
   cart", "carrito parado", "cart watchdog", "no estamos vendiendo", "intraday
   alert", "checkout watchdog", or when run from a scheduled task. For hotels,
@@ -45,6 +45,15 @@ This returns the day total, not an hourly series. Compare it against the
 baseline's `cumulative[day_of_week][current_hour]` — the expected count for
 the hours elapsed so far today, in the site's timezone.
 
+**Establish the current local hour before you compare, and say it in the
+answer.** The whole verdict hangs on it: guess an hour too early and the
+expectation shrinks to almost nothing, so a cart that has been dead since noon
+reads as healthy. A run did exactly that — "2 add-to-carts by ~09:00 matches the
+baseline" — hours after 09:00 had passed. **If you cannot establish the current
+hour with confidence, do not answer 🟢.** Say which figure you are missing. A
+watchdog that cannot tell the time and reports all-clear is worse than one that
+admits it, because the user stops checking.
+
 **Status from the ratio** `actual / expected_to_date`:
 
 - 🟢 **Healthy** — ratio ≥ 0.5
@@ -53,7 +62,8 @@ the hours elapsed so far today, in the site's timezone.
 
 A single low reading is never 🔴 on its own. Two consecutive are.
 
-For spikes, mirror it: ratio ≥ 3 is 🔴 (likely bots), ≥ 2 is ⚠️.
+For spikes, mirror it: ratio ≥ 3 is 🔴, ≥ 2 is ⚠️ — and name the source
+carrying it from step 3's `by_source` split. No bot data: never say bots.
 
 **Quiet cells are not incidents.** If the sum of medians for the elapsed
 hours is below 5 events, there is not enough signal — report 🟢 and say the
@@ -75,17 +85,7 @@ Two extra signals from this:
   incident start time. Name it; it is what the user needs to match against
   their deploy log.
 
-## Step 3 — Rule out bots (1 call, mandatory before any 🔴)
-
-`get_bot_stats(days=1)`
-
-- Drop coinciding with a bot spike → the drop is real but the metric was
-  previously inflated. Say so and recommend recalibrating.
-- Spike that is bots → demote 🔴 to ⚠️ "bot inflation" and explain.
-- **Empty result** → agent analytics is off, not 0% bots. Keep the status but
-  mark it "unvalidated for bots" (see `methodology.md`).
-
-## Step 4 — Isolate the cause (≤2 calls, only if 🔴)
+## Step 3 — Isolate the cause (≤2 calls, only if 🔴)
 
 One call is enough — `get_microconversion_details(conversion_type=<event>,
 period=today)` returns `by_device`, `by_source`, `by_country` and
@@ -97,7 +97,7 @@ build. One-source drop with no other anomalies → that source paused or
 blocked. Uniform drop → payment or cart outage; tell the user to test
 manually now.
 
-## Step 5 — Persist the status
+## Step 4 — Persist the status
 
 Write `last_status` and the check timestamp back into the baseline file so the
 next run can apply the two-consecutive-checks rule. If the file is not
@@ -112,15 +112,18 @@ If 🟢 and the run is scheduled: that single line is the entire response.
 Do not pad. Silence on a healthy run is correct.
 
 If ⚠️ or 🔴: add the evidence (today's count vs expected-to-date, time since
-last event), the incident start time, the suspected cause from Step 4, and
+last event), the incident start time, the suspected cause from Step 3, and
 one concrete action — e.g. "open a product page on mobile and try to add to
 cart now".
 
 ## Scheduling guidance
 
-Recommend hourly during business hours: *"Run cart-watchdog every hour from
-8 am to midnight in [site timezone]."* The skill is silent when healthy, so
-it will not become noise. Offer the schedule once, after a successful run.
+Recommend hourly during business hours, and schedule **the command
+`/seal-copilot:cart-watchdog`** — every hour from 8 am to midnight in the site
+timezone. Not a sentence asking to check the cart: this skill is not invocable
+by the model, so a scheduled sentence never reaches it. The skill is silent when
+healthy, so it will not become noise. Offer the schedule once, after a
+successful run.
 
 ## What you do NOT do
 
@@ -132,7 +135,7 @@ it will not become noise. Offer the schedule once, after a successful run.
 
 ---
 
-Log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
+**Before the report, not after it:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
 and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
 Sealmetrics calls you made, counted), `budget` (this skill's documented
 ceiling, a number — `6` here), `verdict` (one of `on_track`, `watch`, `act`,

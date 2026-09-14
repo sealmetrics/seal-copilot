@@ -29,5 +29,4 @@ export const tools = {
       : [...mk('SKU-1001', 38, 'desktop'), ...mk('SKU-1002', 24, 'desktop'), ...mk('SKU-1003', 19, 'desktop'), ...mk('SKU-8841', 16, 'desktop')]);
   },
   get_conversions: f.conversions([['purchase', 968, 74800]]),
-  get_bot_stats: f.botStats({ total: 41200, botShare: 0.05 }),
 };

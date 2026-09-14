@@ -26,7 +26,8 @@
 - **Verify:** the term disappears from `get_terms` next month.
 
 Checked and did not fire: hidden star, device gap, untapped country, winning
-property, channel drift, bot inflation, micro→macro break, catalog friction,
-RPE gap. Bot share is 7% and normal, so finding 1 is not inflated traffic.
+property, channel drift, non-converting referrer, micro→macro break, catalog
+friction, RPE gap. No referrer is carrying unusual traffic, so finding 1 is real
+demand that stopped converting, not a flood of visits that never could.
 
 Suppressed: none — no open recommendations covered these subjects.
