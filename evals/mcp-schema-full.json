@@ -2754,7 +2754,7 @@
     }
   },
   "simulate_install": {
-    "description": "After the user approved a plan_install plan and you wrote the code, run each call through the real Sealmetrics tracker in a local sandbox (no network) and check what pixel-service would store or reject. Pass the approved plan and plan_id, and one case per event with the call exactly as written (plain JS, types stripped) plus synthetic vars; events without a case are simulated from the plan's examples. Checks: exceptions (sealmetrics is not defined), one hit per action, name and kind, revenue sent as a number, planned properties, PII in the real payload, body size, invalid_json/invalid_account/invalid_domain, product identifier consistency, and the load / SPA navigation / queue-stub scenarios. A changed plan returns stale_plan. The result is SIMULATED, not verified: nothing reaches Sealmetrics, and only verify_event_instrumented after the user deploys confirms an event. Local only; reads only.",
+    "description": "After the user approved a plan_install plan and you wrote the code, run each call through the real Sealmetrics tracker in a local sandbox (no network) and check what pixel-service would store or reject. Pass the approved plan and plan_id, and one case per event with the call exactly as written (plain JS, types stripped) plus synthetic vars; events without a case are simulated from the plan's examples. Checks: exceptions (sealmetrics is not defined), one hit per action, name and kind, revenue sent as a number, planned properties, PII in the real payload, body size, invalid_json/invalid_account/invalid_domain, product identifier consistency, and the load / SPA navigation / queue-stub scenarios. With level 'page' and the user's dev server running, it instead drives a local browser through the site (base_url on localhost, flows of goto/click/fill/submit steps with expect_hit / expect_pageviews): the snippet as placed, load order, CSP, console errors, a duplicated tag, pageviews per navigation. Every hit is answered locally. If no browser is available it returns status unavailable with the install command: ask the user before installing anything. A changed plan returns stale_plan. The result is SIMULATED, not verified: nothing reaches Sealmetrics, and only verify_event_instrumented after the user deploys confirms an event. Local only; reads only.",
     "params": {
       "plan": {
         "type": "object",
@@ -2775,6 +2775,38 @@
       "repo_path": {
         "type": "string",
         "description": "Absolute path to the repo; enables the check that each simulated call exists in its source file."
+      },
+      "level": {
+        "type": "string",
+        "enum": [
+          "call",
+          "page"
+        ],
+        "description": "'call' (default): sandbox, no browser. 'page': a local browser against base_url."
+      },
+      "base_url": {
+        "type": "string",
+        "description": "level 'page': the dev server, e.g. http://localhost:3000. Loopback only unless allow_remote_url."
+      },
+      "allow_remote_url": {
+        "type": "boolean",
+        "description": "level 'page': drive a non-local URL. Only with the user's explicit confirmation."
+      },
+      "flows": {
+        "type": "array",
+        "description": "level 'page': [{ event: 'add_to_cart', steps: [{ goto: '/products/tee', expect_pageviews: 1 }, { click: 'button[data-testid=add-to-cart]', expect_hit: { e: 'add_to_cart', m: true } }] }]. Steps: goto, click, fill { selector, value }, submit (form selector), wait_ms, expect_hit { e?, m? } (no e = a pageview), expect_pageviews."
+      },
+      "tracker_source": {
+        "type": "string",
+        "enum": [
+          "vendored",
+          "cdn"
+        ],
+        "description": "level 'page': 'vendored' (default) serves the production tracker locally; 'cdn' loads the real one, which answers 403 to domains the site does not list."
+      },
+      "tracker_delay_ms": {
+        "type": "number",
+        "description": "level 'page': serve the tracker this late, to test load order."
       }
     }
   }

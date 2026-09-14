@@ -43,10 +43,19 @@ export function assess(c, answer, calls, textBlocks = 1) {
   // Arguments, not just names. "It called plan_install" says nothing about WHAT
   // it planned; an install that plans product_view or an order_id passes a
   // name check. `which`: 'last' (default) judges the final call of that tool,
-  // 'every' judges each call. `optional`: no call at all is not a failure.
+  // 'every' judges each call, 'any' passes when at least one call carries every
+  // mustMatch (mustNotMatch still applies to all of them). `optional`: no call at
+  // all is not a failure.
   for (const spec of c.callArgs || []) {
     const matching = calls.filter(x => x.tool === spec.tool && !x.rejected);
     if (!matching.length) { if (!spec.optional) failures.push(`never called ${spec.tool} (callArgs)`); continue; }
+    if (spec.which === 'any') {
+      const texts = matching.map(x => JSON.stringify(x.args ?? {}));
+      if (!texts.some(t => (spec.mustMatch || []).every(re => re.test(t))))
+        failures.push(`no ${spec.tool} call carries all of ${(spec.mustMatch || []).join(' ')}`);
+      for (const t of texts) for (const re of spec.mustNotMatch || []) if (re.test(t)) failures.push(`${spec.tool} args contain forbidden ${re}`);
+      continue;
+    }
     const judged = spec.which === 'every' ? matching : [matching[matching.length - 1]];
     for (const call of judged) {
       const text = JSON.stringify(call.args ?? {});

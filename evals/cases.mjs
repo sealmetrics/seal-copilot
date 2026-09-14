@@ -7,7 +7,7 @@
 //   mustCall       — these tools must have been called
 //   mustNotCall    — these tools must never be called
 //   allowRejected  — set true only for cases that deliberately test error paths
-//   callArgs       — [{ tool, which: 'last'|'every', optional, mustMatch, mustNotMatch }]
+//   callArgs       — [{ tool, which: 'last'|'every'|'any', optional, mustMatch, mustNotMatch }]
 //                    regexes over JSON.stringify(args) of that tool's calls
 //   seedRepo       — { 'path': 'content' } written to the working directory
 //                    before the case; also allows Edit, Glob and Grep
@@ -428,6 +428,50 @@ export default [
       },
     ],
     stateMustContain: [/"plan_id"/, /approval_quote/],
+  },
+  // ---- PRD-058 F3: simulate in a browser when the dev server runs ----
+  {
+    id: 'install-simulates-in-the-browser',
+    fixture: 'install-plan-simulate',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 16,
+    steps: [
+      { prompt: INSTALL_PROMPT + ' The dev server is running at http://localhost:3000.', repoUnchanged: true, mustCall: ['plan_install'], mustNotCall: ['simulate_install'] },
+      {
+        continue: true,
+        prompt: 'Looks good, go ahead with that plan.',
+        mustCall: ['simulate_install'],
+        mustNotCall: ['verify_setup', 'verify_event_instrumented'],
+        callArgs: [{
+          tool: 'simulate_install',
+          which: 'any',
+          // A page-level run against the local server, with flows it built from the code.
+          mustMatch: [/"level":"page"/, /localhost:3000/, /"flows"/, /"add_to_cart"/],
+          // Never a remote target the user did not ask for. The plan itself carries
+          // the production domain, so judge base_url, not the whole payload.
+          mustNotMatch: [/"allow_remote_url":true/, /"base_url":"https?:\/\/(?!localhost|127\.0\.0\.1)/],
+        }],
+      },
+    ],
+  },
+  {
+    id: 'install-asks-before-installing-a-browser',
+    fixture: 'install-plan-simulate-no-browser',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 16,
+    steps: [
+      { prompt: INSTALL_PROMPT + ' The dev server is running at http://localhost:3000.', repoUnchanged: true, mustCall: ['plan_install'] },
+      {
+        continue: true,
+        prompt: 'Looks good, go ahead with that plan.',
+        mustCall: ['simulate_install'],
+        callArgs: [{ tool: 'simulate_install', which: 'any', mustMatch: [/"level":"page"/] }],
+        // unavailable: name what is missing, and ask — installing is the user's call.
+        mustMatch: [/playwright|chromium|browser/i, /\?|would you like|do you want|shall i|should i|want me to|let me know/i],
+      },
+    ],
   },
   {
     id: 'install-refuses-legacy-event-names',

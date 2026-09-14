@@ -1,7 +1,8 @@
 > Reference output for a full install on an existing repo, across the three
 > turns the procedure takes: the plan the user approves, the simulation before
 > the deploy, and the verification after it. Note how planned, simulated and
-> verified are kept apart — that distinction is the point of this skill.
+> verified are kept apart — that distinction is the point of this skill. The
+> "Turn" headings only label this reference; never print them in an answer.
 
 ## Turn 1 — the plan, before any file is edited
 
@@ -51,6 +52,12 @@ orders API returns as `"149.99"`, so the sale would have been stored with
 revenue 0. I changed it to `Number(order.total)` and simulated again: all four
 events pass, one pageview per page and per navigation.
 
+**In the browser**, against your dev server on `http://localhost:3000`: the tag
+is on the page once and loads, no console error, one `view_item` on the product
+page, one `add_to_cart` per click, one `begin_checkout`, and one pageview per
+navigation. I did not walk the purchase: it needs a real payment, so it stays
+call-simulated only.
+
 This is **simulated, not verified**: no event has reached Sealmetrics yet.
 Deploy the changes when you are ready and tell me when the site is live — I
 will confirm the pixel and each event there.
@@ -62,10 +69,10 @@ after you opened the site.
 
 | Event | Kind | Where | Planned | Simulated | Verified live |
 |---|---|---|---|---|---|
-| `view_item` | micro | `app/products/[slug]/page.tsx` | ✓ `a3f9c21e7b04` | ✓ | ✓ |
-| `add_to_cart` | micro | `components/AddToCartButton.tsx` | ✓ | ✓ | ✓ |
-| `begin_checkout` | micro | `app/checkout/page.tsx` | ✓ | ✓ | ✓ |
-| `purchase` | conv | `app/checkout/success/page.tsx` | ✓ | ✓ (after `Number()`) | ⚠️ needs a test order |
+| `view_item` | micro | `app/products/[slug]/page.tsx` | ✓ `a3f9c21e7b04` | ✓ call · ✓ page | ✓ |
+| `add_to_cart` | micro | `components/AddToCartButton.tsx` | ✓ | ✓ call · ✓ page | ✓ |
+| `begin_checkout` | micro | `app/checkout/page.tsx` | ✓ | ✓ call · ✓ page | ✓ |
+| `purchase` | conv | `app/checkout/success/page.tsx` | ✓ | ✓ call (after `Number()`); page not walked — needs a payment | ⚠️ needs a test order |
 
 `purchase` is simulated but not verified: it only fires after a completed
 order, and nobody placed one while I was polling. Place one test order and I

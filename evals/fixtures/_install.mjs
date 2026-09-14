@@ -8,7 +8,8 @@
 // evals exercise — taxonomy (PL-01), identifiers (PL-02), revenue (PL-04), a
 // manual route pageview (PL-08), the site's domains (PL-11), the snippet
 // account (PL-16); stale plan, not_in_plan (SM-00) and revenue that is not a
-// number (SM-04). An eval here tests the SKILL's behaviour around those tools:
+// number (SM-04) — and, for level 'page' (F3), the unavailable / invalid_input /
+// passing-flow shapes of the browser simulation. An eval here tests the SKILL's behaviour around those tools:
 // that it plans before editing, waits for approval, fixes what fails and never
 // calls a simulation a verification. The rules themselves are tested in
 // setup-core, against the real tracker.
@@ -131,7 +132,46 @@ export function planInstall(args, { domains = ['demo-store.com'] } = {}) {
 
 const lookup = (vars, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), vars);
 
-export function simulateInstall(args, { domains = ['demo-store.com'] } = {}) {
+const LOOPBACK = /^(localhost|127\.0\.0\.1|\[::1\])$|\.localhost$/;
+
+// level 'page' (PRD-058 F3): the real tool drives a local Chromium. The double
+// answers with the same shape — unavailable when the fixture has no browser,
+// invalid_input for a non-local base_url without allow_remote_url, otherwise
+// one passing flow per event with its expectations counted as met.
+export function simulatePage(args, { browser = true } = {}) {
+  const WORDING = 'Simulated in a local browser, not verified: every Sealmetrics request was answered locally and nothing reached Sealmetrics. Only verify_event_instrumented, after the user deploys, confirms an event.';
+  const planArgs = args?.plan || {};
+  const current = planId(planArgs);
+  const base = { level: 'page', simulation_id: null, plan_id: current, verdict: 'fail', flows: [],
+    tracker: { source: args?.tracker_source || 'vendored', sha256: 'mock', delay_ms: args?.tracker_delay_ms || 0 },
+    not_simulated: ["invalid_domain (hits come from the dev server's host)", 'invalid_token', 'blocklist_ip', 'blocklist_ua', 'bot_detected', 'rate_limit', 'duplicate_entrance'], wording: WORDING };
+  if (!args?.base_url) return { __textError: "base_url is required for level 'page': the local dev server, e.g. http://localhost:3000." };
+  if (args.plan_id !== current) return { ...base, status: 'stale_plan', findings: [{ code: 'PL-00', severity: 'block', message: `This plan now hashes to ${current}, not the approved ${args.plan_id}.` }] };
+  let host = '';
+  try { host = new URL(args.base_url).hostname; } catch { return { ...base, status: 'invalid_input', message: `base_url '${args.base_url}' is not a URL.` }; }
+  if (!LOOPBACK.test(host) && args.allow_remote_url !== true) {
+    return { ...base, status: 'invalid_input', message: `base_url ${args.base_url} is not a local dev server. Driving a remote site needs allow_remote_url: true, which is the user's decision.` };
+  }
+  if (!Array.isArray(args.flows) || !args.flows.length) return { ...base, status: 'invalid_input', message: 'flows is empty: give one flow per planned event, with the steps that trigger it.' };
+  if (!browser) {
+    return { ...base, status: 'unavailable', message: 'No Chromium-based browser was found: no Chrome or Edge installed, and nothing in the Playwright cache.',
+      install: ['npm install playwright-core   # in the directory the MCP server runs from, if it is missing', 'npx playwright install chromium   # ~150 MB; only if no Chrome or Edge is installed'] };
+  }
+  const flows = args.flows.map((f) => {
+    const checks = [];
+    for (const [i, st] of (f.steps || []).entries()) {
+      if (st.expect_hit) checks.push({ code: 'SP-05', result: 'pass', message: `Step ${i + 1}: one '${st.expect_hit.e ?? 'pageview'}' hit.` });
+      if (st.expect_pageviews !== undefined) checks.push({ code: 'SP-06', result: 'pass', message: `Step ${i + 1}: ${st.expect_pageviews} pageviews so far, as expected.` });
+    }
+    if (!checks.length) checks.push({ code: 'SP-00', result: 'warn', message: `Flow '${f.event}' has no expect_hit or expect_pageviews step, so it only checks the tag, the load and the console.` });
+    return { event: f.event, verdict: 'pass', steps_run: (f.steps || []).length, hits: [], checks, console_errors: [] };
+  });
+  return { ...base, status: 'ok', verdict: 'pass', simulation_id: 'simp_' + createHash('sha256').update(current + canonical(args.flows)).digest('hex').slice(0, 12),
+    browser: { source: 'installed Chrome', version: '152.0.7977.83' }, flows };
+}
+
+export function simulateInstall(args, { domains = ['demo-store.com'], browser = true } = {}) {
+  if (args?.level === 'page') return simulatePage(args, { browser });
   const WORDING = 'Simulated, not verified: nothing has reached Sealmetrics. Only verify_event_instrumented, after the user deploys, confirms an event.';
   const base = { level: 'call', tracker: { sha256: 'mock', source: 'pixel-service tracker.go' }, not_simulated: ['invalid_token', 'blocklist_ip', 'blocklist_ua', 'bot_detected', 'rate_limit', 'duplicate_entrance'], wording: WORDING };
   const planArgs = args?.plan || {};
