@@ -498,6 +498,37 @@ export default [
     mustCall: ['get_overview'],
     allowRejected: true,
   },
+  // ---- state left by ANOTHER account. The cache is filed by site, not by who
+  // connected, so with OAuth two accounts on one machine collide. The real run
+  // of 2026-09-13: a fresh profile for sealmetricsv2, a connection re-authorised
+  // with a demo account, a refusal on every stats call, no report ----
+  {
+    id: 'stale-profile-from-another-account-rediscovers',
+    fixture: 'stale-profile-other-account',
+    prompt: 'Run my weekly health check.',
+    maxCalls: 12,
+    noSiteEnv: true,
+    seedState: {
+      // Two days old: inside the 7-day TTL, so freshness alone says "trust it".
+      'sealmetricsv2/profile.json': JSON.stringify({
+        site_id: 'sealmetricsv2', site_name: 'sealmetrics.com', connector: 'remote',
+        timezone: 'Europe/Madrid', currency: 'EUR', vertical: 'saas',
+        discovery_cached_at: new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10),
+      }, null, 2),
+    },
+    // Behaviour, not wording: it must ask the connection which sites it can
+    // reach, and the report must carry the demo site's own weekly figures.
+    // This case passed before the fix on Claude, which called list_sites
+    // despite the instruction to skip it; the model that failed did not. It
+    // guards the fixed behaviour; it cannot reproduce the original failure.
+    mustCall: ['list_sites', 'get_overview'],
+    mustMatch: [/9[,.\s\u202f]?850|\b231\b/],
+    stateMustContain: [
+      /"site_id"\s*:\s*"demo-site"/,                        // state for the account connected now
+      /sealmetricsv2[\\/]profile\.json/,                    // the other account's profile survived
+      /"verdict"\s*:\s*"(on_track|watch|act|kpis_only)"/,    // the real run logged "refused"
+    ],
+  },
   // ---- the second real audit: asked again in the same conversation, the
   // model declined to re-run and guessed nothing had changed ----
   {

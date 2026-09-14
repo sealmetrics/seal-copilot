@@ -22,6 +22,16 @@ Catch live problems — broken AtC button, payment outage, tracking gap —
 before the daily report does. Budget: ≤6 tool calls. Designed for
 **scheduled execution**, hourly during business hours.
 
+**Resolve the site before any call that takes a `site_id`, without announcing
+it.** If `list_sites` has not already run in this conversation, it is your first
+call: one call, counted in the budget. Use anything cached under
+`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
+`site_id` is in the list. If it is not, that state was written by another
+Sealmetrics account on this machine: ignore it for this run, resolve the site
+from the list, asking if there are several, and never delete the other
+account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
+cached site belongs to one connection".
+
 ## Step 0 — Load the baseline
 
 Read `<state-dir>/<site_id>/watchdog-baseline.json`.

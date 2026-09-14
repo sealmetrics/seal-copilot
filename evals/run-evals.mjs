@@ -138,7 +138,10 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
         const e = { ...process.env, SEAL_COPILOT_STATE_DIR: join(work, 'state'),
                     SEALMETRICS_API_KEY: 'sm_eval_mock', SEALMETRICS_SITE_ID: siteId };
         if (c.noApiKey) { delete e.SEALMETRICS_API_KEY; delete e.SEALMETRICS_SITE_ID; }
-        if (c.multiSite) delete e.SEALMETRICS_SITE_ID;
+        // noSiteEnv: production connects over OAuth and has no default site, so
+        // the site must come from state or from list_sites. With the variable
+        // set, a stale profile is never put to the test.
+        if (c.multiSite || c.noSiteEnv) delete e.SEALMETRICS_SITE_ID;
         return e;
       })(),
       stdio: ['ignore', 'pipe', 'pipe'],

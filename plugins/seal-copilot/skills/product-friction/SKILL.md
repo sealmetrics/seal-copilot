@@ -38,6 +38,16 @@ Budget: ≤12 tool calls. Read the MCP call rules in
 have no `limit` or `sort_by`, and the raw tools are capped at 31 days and
 100 rows per page.
 
+**Resolve the site before any call that takes a `site_id`, without announcing
+it.** If `list_sites` has not already run in this conversation, it is your first
+call: one call, counted in the budget. Use anything cached under
+`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
+`site_id` is in the list. If it is not, that state was written by another
+Sealmetrics account on this machine: ignore it for this run, resolve the site
+from the list, asking if there are several, and never delete the other
+account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
+cached site belongs to one connection".
+
 ## Step 1 — Discover the product property
 
 Check `<state-dir>/<site_id>/profile.json` first: if
