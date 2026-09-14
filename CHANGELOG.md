@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+The first alert created on a real account refused the right rules and wrote the
+right one, and still got six things wrong.
+
+### Fixed
+- **The noise check refused one noisy rule by recommending two.** "4 hours
+  without CTA clicks" at 2.4 a day was refused, and a 12-hour silence and a
+  daily threshold were offered instead — both a false alarm about 9% of days.
+  The check is now a false-alarm rate (Poisson, e^−λ, refused above one a
+  month), and every alternative has to pass it with its figure shown.
+- **`alerts.json` was written as a bare array.** The hook, `monday-briefing`
+  and `setup-audit` read `rules`, so the alert was invisible to them. The skill
+  now spells out the wrapper; the hook also tolerates the old shape.
+- **A refusal went unlogged.** Every decision — created, refused, untracked —
+  now writes its run-log line.
+- **Shell calls doing nothing** (`ls`, `echo` placeholders). create-alert uses
+  Sealmetrics, Read and Write, and the scheduler; nothing else. It also gets the
+  narration ban the report skills have.
+- **The scheduled routine could not have worked.** It was created without the
+  plugin enabled, with every account connector attached, and with a `Fired at:`
+  line the scheduler never fills. The skill now requires the plugin, only the
+  Sealmetrics connector, Read/Write/`Bash(date:*)`, a UTC cron padded an hour
+  each side for daylight saving, and a read-back before calling the alert live.
+  `check-alerts` reads the runner's clock once when the prompt carries no time.
+
+### Evals
+- `create-alert-writes-a-valid-rule` requires the `rules` wrapper, a run-log
+  line and a single text block; `create-alert-refuses-noisy-rule` requires a
+  false-alarm figure, a `refused` log line and a single text block.
+
 ## 1.12.1 — 2026-09-14
 
 The first 1.12.0 weekly report on a real account, over the remote connector,

@@ -35,11 +35,15 @@ this skill runs from a rule and point at `create-alert`. Do not invent a rule,
 and do not fall back to a general health check.
 
 **Take the current time from the `Fired at:` line in this prompt** and convert
-it to `rule.timezone`. That line is what the scheduler stamps when it runs you;
-it is the only clock you have and you should not try to obtain one any other
-way. If it is absent, derive what you can from the data — the latest `date` in
-a `period=today` response bounds the day — and treat the hour as unknown rather
-than assuming one.
+it to `rule.timezone`. When that line is present, it is the clock: do not look
+for another one.
+
+**When the line is absent** — Claude Code routines send their prompt verbatim
+and cannot stamp it — read the runner's clock once, with
+`date -u +%Y-%m-%dT%H:%M:%SZ`. That is the only shell command this skill ever
+runs. If it is not available either, derive what you can from the data — the
+latest `date` in a `period=today` response bounds the day — and treat the hour
+as unknown rather than assuming one.
 
 **If now is outside `active_hours`, stop.** Answer `⏸ <id>: outside watch hours` and make zero
 calls. **Not 🟢** — a green tick means you looked and the site is fine, and here

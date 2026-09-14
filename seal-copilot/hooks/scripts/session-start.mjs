@@ -53,7 +53,8 @@ const lines = [
           // site with no rule is a finding the weekly report should carry.
           try {
             const a = JSON.parse(readFileSync(join(stateRoot, s, 'alerts.json'), 'utf8'));
-            const active = (a.rules || []).filter(r => r.status === 'active');
+            // A bare array is what a run wrote before the schema was spelled out.
+            const active = (Array.isArray(a) ? a : (a.rules || [])).filter(r => r.status === 'active');
             lines.push(`  alerts for ${s}: ${active.length} active` +
               (active.length ? ` (${active.map(r => r.id).join(', ')})` : ' — nothing is watching this site'));
           } catch { /* no alerts file yet; create-alert writes it */ }
