@@ -214,7 +214,7 @@ Two checks, from the repository root:
 ```
 bash scripts/check.sh              # linter, fixture arithmetic, self-test, manifests
 bash scripts/check.sh --online     # the above plus MCP schema drift
-node evals/run-evals.mjs           # 31 cases against a mock Sealmetrics server
+node evals/run-evals.mjs           # 32 cases against a mock Sealmetrics server
 node evals/run-evals.mjs --runs 3  # each case three times; model wording varies
 node evals/preflight.mjs           # one cheap call: proves the whole chain works
 node scripts/usage-report.mjs      # local metrics from your own state directory

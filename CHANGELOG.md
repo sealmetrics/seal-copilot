@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.12.1 — 2026-09-14
+
+The first 1.12.0 weekly report on a real account, over the remote connector,
+was right about the site and wrong in three ways no eval could see, because
+every eval started from an empty state directory.
+
+### Fixed
+- **Old state brought bot talk back.** A run log from an earlier version said
+  "get_bot_stats access denied", and the report printed "Not checked: bot
+  validation". State from an earlier version is now history, not instructions:
+  never repeated, never a "Not checked" item, and a note describes only its own
+  run.
+- **State was written with a shell.** The run appended its log with `cat >>`,
+  which works only where a shell is allowed. The schema and all eleven run-log
+  footers now require Read and Write.
+- **The attribution caveat was missing** from a report that read campaigns. The
+  weekly format requires it, in the same language as the rest of the report.
+- **Writing state first became an announcement** — "Now writing state files,
+  then the report." It is now a named example in the narration ban.
+
+### Added
+- `seedState` in the eval runner, and `stale-state-does-not-resurrect-bots`,
+  which seeds a copy of that real account's old profile and run log. 32 cases.
+
+### Verified
+Re-run on the same real account: no mention of bots, the attribution line
+present, state written with Read and Write. The narration fix is verified in the
+eval suite only.
+
 ## 1.12.0 — 2026-09-14
 
 Alerts a customer writes in their own words, and the end of a class of defect
