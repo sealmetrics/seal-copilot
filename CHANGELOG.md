@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.15.0 — 2026-09-17
+## 1.15.1 — 2026-09-17
 
 Saved alert rules can now actually watch, and nothing in Sealmetrics had to
 change for it.
@@ -51,9 +51,36 @@ runs a rule on request, and Seal Watch watches it between checks. The skills are
 whether the watcher has that site. `create-alert` prints the rule as JSON for
 the handover.
 
-That handover is manual today, and it is the seam still open: a rule created in
-a conversation lands in `alerts.json` on that machine, while Seal Watch reads
-its own config.
+The handover is one command: `watcher/rules.mjs import <site>
+<state-dir>/<site>/alerts.json` takes the whole file the plugin wrote. It
+imports only active, valid rules and always says what it skipped, because a
+rule the operator believes is watched and is not is the failure this service
+exists to prevent.
+
+### Fixed — a drop rule that would have saved and never fired
+`create-alert` told the model to set `expected_basis` at rule level and
+described the expectation curve without naming its key. `check-alerts` and the
+watcher both read `expected.cumulative_by_hour[weekday][hour]` and
+`expected.basis`, and the schema accepted `expected` as any object at all. So
+the documented shape was refused by the hook, and the shape a model would write
+next — `expected.cumulative`, borrowing the baseline file's own key — validated
+cleanly and could never be read.
+
+The schema now fixes the shape: `cumulative_by_hour` required, each weekday
+exactly 24 non-negative numbers, `basis` one of two values, nothing else
+allowed. The skill names the fields. Six self-test checks cover it.
+
+### Also
+- The watcher's config reloads between passes, so a rule change needs no
+  redeploy, and a broken edit keeps the last good config running rather than
+  silencing every rule.
+- `watcher/preview.mjs` replays a rule over the site's real events and names
+  the days it would have fired. It reports rather than judges: a backtest
+  counts real incidents as well as false ones, so `create-alert`'s "one false
+  alarm a month" threshold does not apply to it.
+- The validator reports the union branch whose type matches what was written.
+  With `anyOf: [null, object]` it had been picking the shorter explanation, so
+  every malformed curve came back as "must be null, got object".
 
 ### Not included
 No email. Sealmetrics already owns alert email, and deliverability for a
