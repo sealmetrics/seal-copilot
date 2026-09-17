@@ -96,6 +96,34 @@ export function client({ token, siteId, baseUrl = BASE, fetchImpl = globalThis.f
       return Array.isArray(rows) ? rows : [];
     },
 
+    /**
+     * The most recent event of a type in an explicit date range.
+     *
+     * Needed when today holds no event and today's watched hours are fewer
+     * than the rule's window: the gap then began before today, and the only
+     * honest answers are "here is when the last one was" or "nothing in the
+     * range I looked at". Guessing a start time is what this replaces.
+     */
+    async lastEventInRange(kind, type, startDate, endDate) {
+      const path = kind === 'microconversion' ? '/stats/microconversions/raw' : '/stats/conversions/raw';
+      let latest = null;
+      // Page forward rather than jumping to the end: the total for a range is
+      // not known here, and 4 pages covers 400 events in a few days.
+      for (let page = 1; page <= 4; page++) {
+        const r = await get(path, { start_date: startDate, end_date: endDate, limit: 100, page, conversion_type: type });
+        const rows = r?.data ?? r ?? [];
+        if (!Array.isArray(rows) || !rows.length) break;
+        for (const row of rows) {
+          const ts = row.timestamp_utc || row.timestamp_local;
+          if (!ts) continue;
+          const d = new Date(/Z$|[+-]\d\d:?\d\d$/.test(ts) ? ts : ts + 'Z');
+          if (!latest || d > latest) latest = d;
+        }
+        if (rows.length < 100) break;
+      }
+      return latest ? latest.toISOString() : null;
+    },
+
     /** Entrances and revenue today. One call serves both, and every rule. */
     async overviewToday() {
       const r = await get('/stats/overview', { period: 'today' });

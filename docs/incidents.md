@@ -502,3 +502,57 @@ nobody runs. Refusals from the known scope-gated set are now reported as
 
 It now exits 0: **33 compared, 0 mismatches, 0 unexpected errors, 6 refused as
 designed.** A green eval suite finally means more than self-consistency.
+
+---
+
+## 2026-09-17 · A 24-hour rule that fired at nineteen hours, and a noise figure wrong by 25x
+
+**Found by** running the watcher against `sealmetricsv2` with a real key: 1,438
+entrances in thirty days, **one** macro conversion, 762 microconversions across
+thirteen types. The low-volume case the demo account could not provide.
+
+### The false positive
+
+Two silence rules were checked in one pass, one of four hours and one of
+twenty-four. Both fired, and the four-hour one reported a gap of **28 hours**.
+
+`gather()` computed one look-back window per site as the earliest any due rule
+needed, and handed it to every rule. So the four-hour rule inherited the
+twenty-four-hour rule's window and reported a gap it had never examined. Worse,
+the twenty-four-hour rule fired when the last `cta_click` was nineteen hours
+earlier — inside its own window. **A false positive in an alerting system is the
+worst defect it can have**, and only real data produced it: on the demo account
+nothing fired, so the path never ran.
+
+The look-back is per rule now, and bounded honestly. When today holds no event
+and today's watched hours already exceed the window, the gap is reported from
+today's open, which is what the data establishes. When they do not, one explicit
+range query looks back; if that finds an event the real gap is used, and if it
+finds nothing the headline says "none in the time searched" and claims **no**
+start time, because none was established. Three regression tests pin all three
+paths.
+
+### The noise figure measured the wrong thing
+
+`create-alert` refuses a rule above one false alarm a month, estimated as
+(windows) × P(window empty). On this site a four-hour rule on `lead` scored
+**104 a month**. The replay over real events found **2 incidents in a
+fortnight**.
+
+Both were right about different quantities. The Poisson figure counts empty
+windows, which is what a *stateless* check fires on. The watcher groups
+consecutive firings into one incident, so it notifies once per episode of
+silence — and the episodes are the inter-arrival gaps exceeding the window,
+whose rate is (events) × P(gap > window). Wrong by a factor of twenty-five.
+
+But the episode count alone hides the opposite failure: one lead a month against
+a four-hour rule opens about one incident a month, and that incident never
+closes. So `calc false-alarm` now reports three numbers — empty windows,
+incidents, and the **share of time firing**, which for exponential gaps is
+(λ+1)·e^−λ — and refuses on either "fires too often" or "would be open most of
+the time", naming which.
+
+The answer for this site is now stated rather than implied: `lead` cannot be
+watched by silence at any window, because even a week-long one would be open
+94% of the time. A day without a `cta_click` is the only sound rule of the
+candidates, at 5%.

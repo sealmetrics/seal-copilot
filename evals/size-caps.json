@@ -4,7 +4,7 @@
   "default": 1100,
   "files": {
     "seal-copilot/skills/seal-copilot/SKILL.md": 1500,
-    "seal-copilot/skills/create-alert/SKILL.md": 1200,
+    "seal-copilot/skills/create-alert/SKILL.md": 1225,
     "seal-copilot/skills/check-alerts/SKILL.md": 1350,
     "seal-copilot/skills/setup-audit/SKILL.md": 1400,
     "seal-copilot/skills/seal-copilot/references/methodology.md": 2000,
@@ -28,7 +28,7 @@
     "cap": 7000
   },
   "_capNotes": {
-    "seal-copilot/skills/create-alert/SKILL.md": "Set at 1200, not the 1100 default. It came from 2,393: the rule grammar and the four families moved to references/alert-grammar.md (shared with check-alerts), the false-alarm arithmetic became `calc false-alarm`, and the routines story went to docs/incidents.md. What is left is a natural-language parse, a statistical refusal and a rule lifecycle, each instruction distinct. The last 85 words would have to come out of something that matters.",
+    "seal-copilot/skills/create-alert/SKILL.md": "Raised from 1200 to 1225 on 2026-09-17, its second raise, which is worth noticing. It came from 2,393: the grammar moved to references/alert-grammar.md, the false-alarm arithmetic became `calc false-alarm`, and the routines story went to docs/incidents.md. The last 25 words are the two failure modes a noisy rule can have — fires too often, or never closes — because they need different advice and a real site showed the second one is the common case at low volume. Four rounds of shaving single words to protect the old number was theatre; if this file needs a third raise, something belongs in a reference instead.",
     "seal-copilot/skills/seal-copilot/SKILL.md": "Set at 1500. It is the methodology skill: 17 operating rules, vertical detection and the routing table every other skill depends on.",
     "seal-copilot/skills/seal-copilot/references/run-protocol.md": "Set at 1000. This file replaced 3,201 words of duplication across fifteen skills and also carries the calculator table and the seal-state fallback for surfaces with no filesystem. Because every skill reads it, the guard that matters is contextBudget below, which counts what a weekly actually loads; this per-file cap only stops it becoming a dumping ground.",
     "seal-copilot/skills/seal-copilot/references/mcp-calls.md": "Raised from 2050 to 2150 on 2026-09-17, for the table of the three shapes the same channel rows come back in. That is verified against the live API and it prevents a silent misread: assuming get_channels returns the paginated envelope means reading nothing. This file is loaded only when composing a call that has not been made in the session, not on every question, so the number that matters is contextBudget rather than this one."

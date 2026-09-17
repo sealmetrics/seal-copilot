@@ -72,6 +72,44 @@ console.log('\nsilence');
   ok('outside the window it does not evaluate', night.status === 'outside_hours', night);
 }
 
+console.log('\nsilence on a site that barely converts');
+{
+  // The real condition on sealmetricsv2 on 2026-09-17: one macro conversion in
+  // thirty days, and a 24h rule that fired at nineteen hours because the
+  // look-back window came from a neighbouring rule. A false positive in an
+  // alerting system is the worst defect it can have, so these pin both paths.
+  const tz = TZ;
+  const now = at('2026-09-17T13:53:00Z');                 // 15:53 local
+  const dayOpen = silenceRule({ active_hours: { from: 9, to: 23, days: ALL } });
+
+  // (a) Today alone settles it: 6h53m of watched time, none today, window 4h.
+  const settled = evaluate(dayOpen, { dayTotal: 0, lastEventAt: null,
+    searchedFrom: '2026-09-17T07:00:00Z', bounded: false, entrancesToday: 400 }, now);
+  ok('fires on today alone when today is long enough', settled.status === 'fires', settled);
+  ok('and names today\'s open, not an invented earlier time',
+     /none since 09:00/.test(settled.headline), settled.headline);
+  ok('and the elapsed figure is the watched time', /6h 53m/.test(settled.headline), settled.headline);
+
+  // (b) Today is shorter than the window, and the look-back found an event
+  // inside it. This must NOT fire — the bug was that it did.
+  const wide = silenceRule({ id: 'no-cta-24h', condition: { hours: 24 },
+    active_hours: { from: 0, to: 24, days: ALL },
+    metric: { kind: 'microconversion', type: 'cta_click' } });
+  const yesterday = evaluate(wide, { dayTotal: 0, lastEventAt: '2026-09-16T18:32:49Z',
+    bounded: false, entrancesToday: 400 }, now);
+  ok('a 24h rule does not fire at 19 hours', yesterday.status === 'ok', yesterday);
+  ok('and reports the real gap from the real last event', /19h/.test(yesterday.headline), yesterday.headline);
+
+  // (c) The look-back found nothing either: the gap is at LEAST that long and
+  // its start is unknown, so claiming one would be inventing it.
+  const unknown = evaluate(wide, { dayTotal: 0, lastEventAt: null,
+    searchedFrom: '2026-09-13T13:53:00Z', bounded: true, entrancesToday: 400 }, now);
+  ok('an unbounded gap fires', unknown.status === 'fires', unknown);
+  ok('and says "none in the time searched" rather than a start time',
+     /none in the .* searched/.test(unknown.headline), unknown.headline);
+  ok('and claims no start time it did not establish', unknown.startedAt === null, unknown.startedAt);
+}
+
 console.log('\ndrop and spike');
 {
   const curve = Object.fromEntries(ALL.map((d) => [d, Array.from({ length: 24 }, (_, h) => h * 10)]));

@@ -36,12 +36,18 @@ export function silence(rule, data, now) {
   const since = data.lastEventAt ? new Date(data.lastEventAt) : new Date(data.searchedFrom);
   const elapsed = activeMinutesBetween(since, now, rule.active_hours, tz);
   const fires = elapsed >= needMinutes;
+  // `bounded` means no event was found in the range that was actually searched,
+  // so the gap is at LEAST this long and its start is unknown. Saying "since
+  // 15:00" there would be asserting a time nothing established.
+  const atLeast = !data.lastEventAt && data.bounded;
   return {
     status: fires ? FIRES : OK,
     headline: data.lastEventAt
       ? `${data.dayTotal} today, last one ${minutesToText(elapsed)} ago`
-      : `none since ${localParts(since, tz).hour}:00, ${minutesToText(elapsed)} of watched time`,
-    startedAt: data.lastEventAt || data.searchedFrom,
+      : atLeast
+        ? `none in the ${minutesToText(elapsed)} of watched time searched, and none before it in range`
+        : `none since ${String(localParts(since, tz).hour).padStart(2, '0')}:00, ${minutesToText(elapsed)} of watched time`,
+    startedAt: data.lastEventAt || (atLeast ? null : data.searchedFrom),
     evidence: {
       elapsed_watched_minutes: elapsed,
       required_minutes: needMinutes,

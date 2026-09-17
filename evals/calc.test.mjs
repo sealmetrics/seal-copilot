@@ -109,17 +109,41 @@ console.log('\nfalse-alarm');
   const r = calc('false-alarm', { count_30d: 72, active_hours_per_day: 16, window_hours: 4 });
   ok('lambda from the rate', r.lambda === 0.6, r);
   ok('a quiet 4h window is likely', r.p_quiet_window > 0.5, r);
-  ok('and it is refused', r.verdict === 'too noisy' && r.false_alarms_per_month > 1, r);
+  ok('and it is refused', r.verdict === 'too noisy' && r.incidents_per_month > 1, r);
+  // Two numbers, not one. Windows and incidents differ by the number of
+  // events, because a watcher notifies once per episode of silence and not
+  // once per empty window. Conflating them overstated a real site by 25x.
+  ok('empty windows and incidents are reported separately',
+     r.empty_windows_per_month > r.incidents_per_month, r);
+  ok('incidents are events x the quiet probability',
+     Math.abs(r.incidents_per_month - 72 * r.p_quiet_window) < 0.05, r);
+  ok('and it says both are estimates', /preview/.test(r.note), r.note);
   // A busy store: purchases every few minutes, 4 quiet hours means something.
   const busy = calc('false-alarm', { count_30d: 3000, active_hours_per_day: 16, window_hours: 4 });
   ok('on a busy site the same rule is sound', busy.verdict === 'sound', busy);
+  // The case that exposed the mismatch: one lead a month, a four-hour rule.
+  const rare = calc('false-alarm', { count_30d: 1, active_hours_per_day: 14, window_hours: 4 });
+  ok('a rule on a monthly event names roughly one incident, not a hundred',
+     rare.incidents_per_month < 2 && rare.empty_windows_per_month > 50, rare);
+  // And the opposite failure, which an incident count alone hides: one
+  // incident a month that never closes.
+  ok('a permanently open rule is refused for being open, not for firing often',
+     rare.verdict === 'too noisy' && rare.share_of_time_firing > 0.9 && /open most of the time/.test(rare.reason), rare);
+  const sound = calc('false-alarm', { count_30d: 82, active_hours_per_day: 14, window_hours: 24 });
+  ok('a day without CTA clicks on that site is sound', sound.verdict === 'sound', sound);
+  ok('and is open only a small share of the time', sound.share_of_time_firing < 0.1, sound);
   ok('lambda scales with volume', busy.lambda === 25, busy.lambda);
   // A daily "fewer than 5" rule on 10 events a day. P(X<5 | λ=10) = 0.0293:
   // asserted against the arithmetic, not against a guess at the magnitude —
   // the first version of this test guessed <0.01 and the calculator was right.
   const thr = calc('false-alarm', { count_30d: 300, active_hours_per_day: 10, window_hours: 10, threshold: 5 });
   ok('a threshold rule uses the Poisson tail', thr.p_quiet_window === 0.0293, thr);
-  ok('and under one false alarm a month is sound', thr.false_alarms_per_month === 0.88 && thr.verdict === 'sound', thr);
+  // A threshold rule is evaluated once per period, so its incident rate is
+  // windows x p, not the gap model a silence rule uses. Applying the gap
+  // formula to it gave 8.78 incidents a month for a sound rule.
+  ok('a threshold rule uses the per-period model', thr.incidents_per_month === 0.88, thr);
+  ok('and is sound', thr.verdict === 'sound', thr);
+  ok('and reports no share of time, which does not apply', thr.share_of_time_firing === null, thr);
   ok('zero hours fails loudly', fails2('false-alarm', { count_30d: 10, active_hours_per_day: 0, window_hours: 4 }));
 }
 

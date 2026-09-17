@@ -26,7 +26,7 @@ import { evaluate, STATUS } from './lib/families.mjs';
 import { store } from './lib/store.mjs';
 import { deliverer } from './lib/deliver.mjs';
 import { validate } from '../seal-copilot/hooks/scripts/lib/validate.mjs';
-import { isActive, localParts } from './lib/clock.mjs';
+import { isActive, localParts, localDay, activeWindowStart, activeMinutesBetween } from './lib/clock.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ONCE = process.argv.includes('--once');
@@ -160,10 +160,29 @@ async function gather(api, rule, shared) {
     : await api.conversionsToday(type);
 
   if (rule.family === 'silence') {
-    const lastEventAt = (kind === 'conversion' || kind === 'microconversion')
-      ? await api.lastEventAt(kind, type, dayTotal)
-      : null;
-    return { ...base, dayTotal, lastEventAt, searchedFrom: shared.windowStart.toISOString() };
+    const tz = rule.timezone;
+    const needMinutes = (rule.condition.hours ?? 0) * 60;
+    // Today's own watch window, per rule. Sharing one look-back across every
+    // rule on the site made a four-hour rule report a twenty-eight-hour gap,
+    // because the window came from a twenty-four-hour rule sitting beside it.
+    const windowStart = activeWindowStart(api.now(), rule.active_hours, tz);
+    const watchedToday = activeMinutesBetween(windowStart, api.now(), rule.active_hours, tz);
+    const raw = (kind === 'conversion' || kind === 'microconversion');
+
+    let lastEventAt = raw ? await api.lastEventAt(kind, type, dayTotal) : null;
+    let searchedFrom = windowStart.toISOString();
+    let bounded = false;
+
+    if (raw && !lastEventAt && watchedToday < needMinutes) {
+      // Today cannot settle it: the gap began earlier. Look back far enough to
+      // cover the window twice, and say so when even that found nothing.
+      const back = new Date(api.now().getTime() - Math.max(2, rule.condition.hours / 6) * 86400000);
+      const day = (d) => localDay(d, tz);
+      const found = await api.lastEventInRange(kind, type, day(back), day(api.now()));
+      if (found) lastEventAt = found;
+      else { searchedFrom = back.toISOString(); bounded = true; }
+    }
+    return { ...base, dayTotal, lastEventAt, searchedFrom, bounded };
   }
   return { ...base, dayToDate: dayTotal };
 }
@@ -244,7 +263,7 @@ export async function pass(cfg, incidents, now = new Date(), fetchImpl = globalT
     // Growth plan is never the constraint.
     let shared;
     try {
-      shared = { overview: await api.overviewToday(), windowStart: startOfWatch(due, now) };
+      shared = { overview: await api.overviewToday() };
     } catch (e) {
       report.push({ site: site.site_id, status: 'error', error: e.message });
       continue;
@@ -258,17 +277,6 @@ export async function pass(cfg, incidents, now = new Date(), fetchImpl = globalT
     }
   }
   return report;
-}
-
-/** The earliest watched instant any due rule cares about, for silence lookback. */
-function startOfWatch(rules, now) {
-  let earliest = now;
-  for (const rule of rules) {
-    const hours = rule.family === 'silence' ? (rule.condition.hours ?? 4) : 24;
-    const back = new Date(now.getTime() - hours * 2 * 3600000);
-    if (back < earliest) earliest = back;
-  }
-  return earliest;
 }
 
 // ---------------------------------------------------------------- the loop

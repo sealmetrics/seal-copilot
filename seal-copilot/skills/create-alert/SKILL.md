@@ -69,10 +69,8 @@ Set `metric.kind` from where you actually found the event, never from the word
 the user used: a run that checked only the microconversion list told a SaaS
 account its macro conversion was untracked.
 
-**Noise check: how often would it fire on a normal site?** A four-hour
-`silence` rule on an event that happens three times a day fires most afternoons
-and teaches the user to ignore you. **Do not do this arithmetic yourself** —
-run the calculator:
+**Noise check: how often would it fire on a normal site?** **Do not do this
+arithmetic yourself** — run the calculator:
 
 ```
 echo '{"count_30d":72,"active_hours_per_day":16,"window_hours":4}' \
@@ -81,20 +79,23 @@ echo '{"count_30d":72,"active_hours_per_day":16,"window_hours":4}' \
 
 For a `threshold` rule pass `threshold` too, and it uses the Poisson tail.
 
-**When its verdict is `too noisy`, refuse the rule as written.** Say the figure
-in the user's terms — "it would fire about 8 times a month with nothing wrong",
-or "almost every day" past 30 — and give the λ behind it.
+**When its verdict is `too noisy`, refuse the rule as written**, and say which
+of the two failures it is, because they need different fixes. `reason` tells
+you: *fires too often* wants a longer window; *would be open most of the time*
+means the event is too rare for any silence window and a threshold rule is the
+shape that fits. Quote `incidents_per_month` in the user's terms, not
+`empty_windows_per_month` — the second is how often a window is empty, and a
+watcher notifies once per episode, not once per window.
 
-**Every alternative you propose goes through the calculator too, and you quote
-its figure.** Refusing one noisy rule and offering another with the same λ is
-the easiest mistake here: on a site doing 2.4 clicks a day, a 12-hour silence
-and a daily "fewer than 1" threshold both sit at λ = 2.4. If nothing short
-enough to be useful passes, say so: at that volume an alert can catch broken
-tracking, not a bad afternoon.
+**Every alternative goes through the calculator too.** Offering another rule
+with the same λ is the easiest mistake: a 12-hour silence and a daily "fewer
+than 1" threshold on 2.4 clicks a day both sit at λ = 2.4. If nothing useful
+passes, say so — at that volume an alert catches broken tracking, not a bad
+afternoon.
 
-λ is an estimate. `watcher/preview.mjs` replays the rule over the site's real
-history and names the days it would have fired; mention it when the user wants
-more than an estimate.
+These are Poisson estimates and real traffic clusters. `watcher/preview.mjs`
+replays the rule over the site's own history and names the days it would have
+fired; offer it when the user wants more than an estimate.
 
 Without a shell, do the arithmetic and say in the answer that it was done
 without the calculator.
