@@ -122,14 +122,28 @@ than by hand — it refuses to write anything the watcher could not load:
 ```
 node watcher/rules.mjs list
 node watcher/rules.mjs add acct_example < rule.json
+node watcher/rules.mjs import acct_example ~/.seal-copilot/acct_example/alerts.json
 node watcher/rules.mjs pause acct_example no-purchases-4h
 node watcher/rules.mjs remove acct_example no-purchases-4h
 node watcher/rules.mjs check
 ```
 
-`create-alert` prints the rule as JSON; that is what goes on stdin. A removed
-rule is kept in the file marked `deleted` with the date, so "did I have an
-alert on that?" has an answer.
+`add` takes the rule JSON that `create-alert` prints. `import` takes the whole
+file it writes — `<state-dir>/<site_id>/alerts.json` — which is the realistic
+handover: someone had the conversation, the rules are on that machine, and this
+brings them across in one command.
+
+Import is deliberately narrow about what it will take:
+
+- **Only `active` rules.** A paused or deleted rule stays where it is;
+  importing it would quietly re-arm something that was switched off.
+- **Only valid rules**, checked one at a time so the error names the rule.
+- **It says what it skipped**, every time. A rule the operator believes is
+  watched and is not is the failure this service exists to prevent, so a silent
+  skip is worse than a refusal.
+
+A removed rule is kept in the file marked `deleted` with the date, so "did I
+have an alert on that?" has an answer.
 
 `node watcher/watch.mjs --check` validates the config and exits without
 watching, which is what to run after an edit.
@@ -176,6 +190,6 @@ silently is not watching.
 node watcher/test.mjs
 ```
 
-Fifty checks against a fake API and a fake clock, including the two that matter
+89 checks against a fake API and a fake clock, including the two that matter
 most: overnight hours do not count toward a silence window, and a refused read
 is never reported as silence. `scripts/check.sh` runs them.

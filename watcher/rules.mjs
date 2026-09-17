@@ -12,6 +12,7 @@
  *   node watcher/rules.mjs pause <site_id> <rule_id>
  *   node watcher/rules.mjs resume <site_id> <rule_id>
  *   node watcher/rules.mjs remove <site_id> <rule_id>
+ *   node watcher/rules.mjs import <site_id> <alerts.json>
  *   node watcher/rules.mjs check
  *
  * It refuses to write a config the watcher could not load, which is the point:
@@ -144,6 +145,48 @@ switch (cmd) {
     break;
   }
 
+  case 'import': {
+    // The realistic path: someone ran the plugin, `create-alert` wrote
+    // `<state-dir>/<site>/alerts.json`, and that whole file comes across in one
+    // command rather than a rule at a time.
+    const from = process.argv[4];
+    if (!siteId || !from) die('node watcher/rules.mjs import <site_id> <path-to-alerts.json>');
+    if (!existsSync(from)) die(`No file at ${from}.`);
+    let doc;
+    try { doc = JSON.parse(readFileSync(from, 'utf8')); }
+    catch (e) { die(`${from} is not valid JSON: ${e.message}`); }
+    const incoming = Array.isArray(doc) ? doc : doc.rules;
+    if (!Array.isArray(incoming)) {
+      die(`${from} has no \`rules\` array. A file written by create-alert is ` +
+          '{ "site_id": …, "rules": [ … ] }.');
+    }
+    const s = site(cfg, siteId);
+    s.rules ||= [];
+    const schema = ruleSchema();
+    const added = [], replaced = [], skipped = [];
+    for (const rule of incoming) {
+      // Only what is meant to be watched. A paused or deleted rule stays where
+      // it is: importing it would quietly re-arm something switched off.
+      if (rule.status !== 'active') { skipped.push(`${rule.id} (${rule.status})`); continue; }
+      const errs = validate(rule, schema, rule.id || 'rule');
+      if (errs.length) { skipped.push(`${rule.id} — ${errs[0]}`); continue; }
+      const i = s.rules.findIndex((r) => r.id === rule.id);
+      if (i >= 0) { s.rules[i] = rule; replaced.push(rule.id); }
+      else { s.rules.push(rule); added.push(rule.id); }
+    }
+    if (!added.length && !replaced.length) {
+      die('Nothing imported.' + (skipped.length ? '\n  skipped: ' + skipped.join('\n  skipped: ') : ''));
+    }
+    write(cfg);
+    if (added.length) console.log(`Added: ${added.join(', ')}`);
+    if (replaced.length) console.log(`Replaced: ${replaced.join(', ')}`);
+    // Never silent about what did not come across: a rule the operator thinks
+    // is watched and is not is the failure this whole service exists to avoid.
+    if (skipped.length) console.log(`Skipped:\n  ${skipped.join('\n  ')}`);
+    console.log('The watcher picks these up on its next pass.');
+    break;
+  }
+
   case 'check': {
     const problems = configProblems(cfg);
     if (problems.length) die('Not usable:\n' + problems.map((p) => '  · ' + p).join('\n'));
@@ -153,5 +196,6 @@ switch (cmd) {
   }
 
   default:
-    die('Commands: list, add <site>, pause <site> <rule>, resume <site> <rule>, remove <site> <rule>, check');
+    die('Commands: list, add <site>, import <site> <file>, pause <site> <rule>, ' +
+        'resume <site> <rule>, remove <site> <rule>, check');
 }

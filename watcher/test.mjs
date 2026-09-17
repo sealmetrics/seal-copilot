@@ -12,7 +12,9 @@ import { client } from './lib/api.mjs';
 import { activeMinutesBetween, isActive, localParts } from './lib/clock.mjs';
 import { pass, reloader, configProblems, ruleSchema } from './watch.mjs';
 import { backtest } from './lib/backtest.mjs';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -315,6 +317,57 @@ console.log('\nreloading the config');
   rmSync(dir, { recursive: true, force: true });
   delete process.env.SEAL_CONFIG_PATH;
   if (prevInline !== undefined) process.env.SEAL_CONFIG = prevInline;
+}
+
+console.log('\nthe rules CLI');
+{
+  const dir = mkdtempSync(join(tmpdir(), 'seal-cli-'));
+  const cfgPath = join(dir, 'config.json');
+  const here = fileURLToPath(new URL('.', import.meta.url));
+  const run = (args, input) => {
+    try {
+      return { out: execFileSync(process.execPath, [join(here, 'rules.mjs'), ...args],
+        { env: { ...process.env, SEAL_CONFIG_PATH: cfgPath }, input: input ?? '', encoding: 'utf8',
+          stdio: ['pipe', 'pipe', 'pipe'] }), code: 0 };
+    } catch (e) { return { out: (e.stdout || '') + (e.stderr || ''), code: e.status ?? 1 }; }
+  };
+  const cfg = () => JSON.parse(readFileSync(cfgPath, 'utf8'));
+  writeFileSync(cfgPath, JSON.stringify({ sites: [{ site_id: 'demo', token_env: 'T', rules: [] }] }));
+
+  const good = silenceRule();
+  ok('add puts a rule in', run(['add', 'demo'], JSON.stringify(good)).code === 0 && cfg().sites[0].rules.length === 1);
+  ok('add is idempotent on the same id',
+     run(['add', 'demo'], JSON.stringify(good)).code === 0 && cfg().sites[0].rules.length === 1);
+  ok('a malformed rule is refused', run(['add', 'demo'], '{"id":"x","family":"nope"}').code === 1);
+  ok('and the config is untouched', cfg().sites[0].rules.length === 1);
+  ok('an unknown site is refused with the known ones', /Known: demo/.test(run(['add', 'nope'], JSON.stringify(good)).out));
+  ok('pause flips the status', run(['pause', 'demo', good.id]).code === 0 && cfg().sites[0].rules[0].status === 'paused');
+  ok('resume flips it back', run(['resume', 'demo', good.id]).code === 0 && cfg().sites[0].rules[0].status === 'active');
+  ok('remove keeps the entry with a date',
+     run(['remove', 'demo', good.id]).code === 0 && cfg().sites[0].rules[0].status === 'deleted' && !!cfg().sites[0].rules[0].deleted_at);
+  ok('list works on an empty file', run(['list']).code === 0);
+
+  // import: the realistic handover from a plugin-written alerts.json.
+  writeFileSync(cfgPath, JSON.stringify({ sites: [{ site_id: 'demo', token_env: 'T', rules: [] }] }));
+  const from = join(dir, 'alerts.json');
+  writeFileSync(from, JSON.stringify({ site_id: 'demo', rules: [
+    good,
+    { ...silenceRule({ id: 'switched-off' }), status: 'paused' },
+    // The exact bug the schema now catches: a curve under the wrong key.
+    { id: 'atc-half', family: 'drop', metric: { kind: 'microconversion', type: 'add_to_cart' },
+      condition: { ratio: 0.5 }, active_hours: { from: 9, to: 23, days: ALL }, timezone: TZ,
+      created_at: '2026-09-17', status: 'active', expected: { cumulative: { mon: Array(24).fill(10) } } },
+  ] }));
+  const imported = run(['import', 'demo', from]);
+  ok('import takes the active valid rule', imported.code === 0 && cfg().sites[0].rules.length === 1);
+  ok('and leaves a paused rule switched off', /switched-off \(paused\)/.test(imported.out), imported.out);
+  ok('and refuses a bad expectation curve, naming it',
+     /atc-half — atc-half\.expected\.cumulative_by_hour is required/.test(imported.out), imported.out);
+  ok('and is never silent about what it skipped', /Skipped:/.test(imported.out));
+  ok('importing nothing usable fails rather than reporting success',
+     run(['import', 'demo', join(dir, 'missing.json')]).code === 1);
+
+  rmSync(dir, { recursive: true, force: true });
 }
 
 console.log(`\n${fails === 0 ? 'watcher tests passed' : fails + ' watcher test(s) FAILED'}`);
