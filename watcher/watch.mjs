@@ -15,6 +15,8 @@
  *
  *   node watcher/watch.mjs            # loop forever (Railway)
  *   node watcher/watch.mjs --once     # one pass, then exit (cron, or a check)
+ *   node watcher/watch.mjs --check    # validate the config and say where alerts go
+ *   node watcher/watch.mjs --test-delivery [site_id]   # send one test notification
  *
  * Configuration is in the environment. See watcher/README.md.
  */
@@ -327,6 +329,45 @@ async function main() {
     log(`configuration is usable: ${cfg.sites.length} site(s), ${rules} rule(s)`);
     for (const line of deliveryReport(cfg)) log(line);
     return process.exit(0);
+  }
+
+  // Proving a channel works must not require waiting for an incident. That is
+  // how a broken webhook stays broken until the day it matters. This sends one
+  // synthetic notification through whatever the site actually has configured.
+  if (process.argv.includes('--test-delivery')) {
+    const next = process.argv[process.argv.indexOf('--test-delivery') + 1];
+    const wanted = next && !next.startsWith('--') ? next : null;
+    const known = (cfg.sites || []).map((x) => x.site_id);
+    const sites = (cfg.sites || []).filter((x) => !wanted || x.site_id === wanted);
+    if (!sites.length) {
+      log(`no site ${wanted ? `called ${wanted}` : 'in the config'}. Known: ${known.join(', ') || 'none'}`);
+      return process.exit(1);
+    }
+    let bad = 0;
+    for (const site of sites) {
+      const deliver = siteDeliverer(site);
+      // A rule id and family that no real rule uses, so nothing downstream can
+      // mistake this for a rule it knows.
+      const { delivered, errors } = await deliver.send({
+        kind: 'test',
+        siteId: site.site_id,
+        rule: { id: 'delivery-test', family: 'silence' },
+        verdict: null,
+      });
+      const real = delivered.filter((t) => t !== 'stdout');
+      if (errors.length) {
+        bad++;
+        log(`${site.site_id}: delivery FAILED to ${delivered.join(' + ')}: ${errors.join('; ')}`);
+      } else if (!real.length) {
+        bad++;
+        log(`${site.site_id}: nothing to test. The only destination is this log, `
+          + 'so a real alert would reach nobody. Set slack_webhook_env or webhook_url.');
+      } else {
+        log(`${site.site_id}: test notification sent to ${real.join(' + ')}. `
+          + 'Go and look: if it did not arrive, the channel is wrong even though the POST succeeded.');
+      }
+    }
+    return process.exit(bad ? 1 : 0);
   }
   const reload = reloader(cfg);
   const incidents = store(process.env.SEAL_STATE_PATH);
