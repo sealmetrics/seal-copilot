@@ -246,13 +246,53 @@ OPS['false-alarm'] = (input) => {
     term = term * lambda / (k + 1);
   }
   const windowsPerMonth = 30 * Math.max(1, ah / w);
-  const perMonth = windowsPerMonth * p;
+  const emptyWindows = windowsPerMonth * p;
+
+  /*
+   * Three numbers, because one of them is always the misleading one.
+   *
+   * `empty_windows_per_month` is how often a window holds no event, which is
+   * what a STATELESS check fires on. A watcher that groups consecutive firings
+   * into one incident notifies once per EPISODE instead, and conflating the two
+   * was wrong by a factor of twenty-five on a real site: the naive figure said
+   * 104 a month where the replay over real events found 2 in a fortnight.
+   *
+   * For a silence rule the episodes are inter-arrival gaps exceeding the
+   * window, so their rate is (events per month) x P(gap > window). A threshold
+   * rule is different in kind: it is evaluated once per period, so its rate is
+   * windows x P.
+   *
+   * And an episode count alone hides the opposite failure. One lead a month
+   * against a four-hour rule opens about one incident a month — and that
+   * incident stays open almost permanently. The share of time firing is what
+   * catches it: for exponential gaps that is (lambda + 1) x e^-lambda, the
+   * fraction of time spent inside a gap longer than the window.
+   *
+   * Real traffic is not Poisson, it clusters by hour and weekday, so all three
+   * are estimates and `watcher/preview.mjs` is the answer that counts.
+   */
+  const isThreshold = input.threshold !== undefined && input.threshold !== 1;
+  const episodes = isThreshold ? emptyWindows : n * p;
+  const shareFiring = isThreshold ? null : Math.min(1, (lambda + 1) * Math.exp(-lambda));
+
+  const tooOften = episodes > 1;
+  const tooLong = shareFiring !== null && shareFiring > 0.2;
   return {
     rate_per_active_hour: r4(rate), lambda: r2(lambda), threshold,
     p_quiet_window: r4(p),
-    false_alarms_per_month: r2(perMonth),
+    empty_windows_per_month: r2(emptyWindows),
+    incidents_per_month: r2(episodes),
+    share_of_time_firing: shareFiring === null ? null : r4(shareFiring),
     windows_per_month: r2(windowsPerMonth),
-    verdict: perMonth > 1 ? 'too noisy' : 'sound',
+    verdict: tooOften || tooLong ? 'too noisy' : 'sound',
+    // Which of the two failures it is, because they need different fixes: too
+    // many incidents wants a longer window, permanently open wants a different
+    // event or a threshold rule instead.
+    reason: tooOften && tooLong ? 'fires often and stays open'
+      : tooOften ? 'fires too often'
+      : tooLong ? 'would be open most of the time: the event is too rare for this window'
+      : 'about one incident a month at most, and open a small share of the time',
+    note: 'estimates on a Poisson assumption; replay the rule with watcher/preview.mjs for the real count',
     inputs: { count_30d: n, active_hours_per_day: ah, window_hours: w, threshold },
   };
 };
