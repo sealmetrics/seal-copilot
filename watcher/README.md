@@ -53,6 +53,7 @@ Two variables and one per client:
 | `SEAL_CONFIG_PATH` | | A path to that JSON instead, for a Railway volume |
 | `SEAL_TOKEN_<SITE>` | yes, per site | **The client's own Sealmetrics API token.** Named by `token_env` in the config |
 | `SEAL_SLACK_<SITE>` | | A Slack incoming webhook. Without one, and without `webhook_url`, notifications go to the log |
+| `SEAL_HOOK_SECRET_<SITE>` | | The HMAC secret for a signed webhook. Named by `webhook_secret_env`. Without it the POST is unsigned |
 | `SEAL_STATE_PATH` | strongly advised | Where incidents persist. Without it they live in memory and a restart re-notifies an open one |
 | `SEAL_HEARTBEAT_URL` | strongly advised | Pinged every cycle. See *If it dies* |
 | `SEALMETRICS_BASE_URL` | | Defaults to `https://my.sealmetrics.com/api/v1` |
@@ -64,6 +65,94 @@ token without anyone editing anything, and it keeps the config committable.
 A client creates their token at **my.sealmetrics.com → Settings → API Tokens**.
 It needs nothing beyond the default read scopes. If they revoke it, their rules
 report an error and stop; nobody else's are affected.
+
+## Where a notification goes
+
+Three destinations, and the site's config decides which: a Slack incoming
+webhook, a generic signed webhook, and stdout. **Stdout is not a fallback for a
+failed delivery.** It is the destination you have while setting things up, and
+on Railway it lands in the logs, where nobody is looking.
+
+Set one up without editing JSON:
+
+```bash
+node watcher/rules.mjs site <site_id> <TOKEN_ENV> SEAL_SLACK_<SITE>
+node watcher/rules.mjs site <site_id> <TOKEN_ENV> \
+  --webhook-url https://n8n.example.com/webhook/seal-alerts \
+  --webhook-secret-env SEAL_HOOK_SECRET_<SITE>
+```
+
+Both the startup line and `--check` name the targets a firing rule will use, and
+say so when a site has no channel at all. They also catch the case that looks
+configured and is not: a site naming an environment variable nobody set.
+
+### Prove the channel before you need it
+
+```bash
+node watcher/watch.mjs --test-delivery <site_id>
+```
+
+This sends one synthetic notification through whatever the site has configured.
+It carries the event `alert.test` and a rule id of `delivery-test`, so nothing
+downstream should treat it as an incident, and its first line says it is a test.
+It exits non-zero when delivery fails **and** when the only destination is the
+log, because both answers to "would an alert reach a human?" are no.
+
+Run it after wiring a channel and after changing one. A webhook that was never
+tested is a webhook that gets discovered at the worst moment. Note that a
+successful POST only proves the endpoint accepted the call: if nothing arrives
+in the channel, the endpoint is wrong even though the delivery "worked".
+
+### The webhook payload
+
+A contract with somebody else's automation, so it is written down in
+[`schemas/webhook-payload.json`](schemas/webhook-payload.json) and a test holds
+the code to it. Fields get added, never repurposed or renamed; a breaking change
+raises `version`; ignore anything you do not recognise.
+
+```json
+{
+  "version": 1,
+  "event": "alert.triggered",
+  "site_id": "acme",
+  "rule_id": "no-purchase-4h",
+  "family": "silence",
+  "status": "fires",
+  "headline": "No purchase for at least 4 watched hours.",
+  "started_at": "2026-09-17T08:00:00.000Z",
+  "evidence": { "reading": "0 today" },
+  "sent_at": "2026-09-17T12:00:00.000Z"
+}
+```
+
+`event` is one of `alert.triggered`, `alert.resolved` and `alert.test`. Only
+`status`, `headline`, `started_at` and `evidence` may be null, and `evidence` is
+rule-dependent, so read it defensively: no key inside it is promised.
+
+**Verify the signature** when `webhook_secret_env` is set. The header is
+`x-seal-signature: sha256=<hex>`, an HMAC-SHA256 over the exact request body
+with that secret. An unsigned webhook is one anybody can forge a call into, so
+`rules.mjs` prints `UNSIGNED` when you configure one without a secret.
+
+```js
+import { createHmac, timingSafeEqual } from 'node:crypto';
+const expected = 'sha256=' + createHmac('sha256', SECRET).update(rawBody).digest('hex');
+const given = req.headers['x-seal-signature'] || '';
+const okSig = expected.length === given.length &&
+  timingSafeEqual(Buffer.from(expected), Buffer.from(given));
+```
+
+Compare the raw body, before any JSON parse and re-stringify, or the bytes will
+differ and every signature will fail.
+
+### One webhook, every other channel
+
+A webhook into n8n, Make or Zapier is the cheapest way to reach anything else,
+and it keeps the channel list out of this repository. Filter on `event`, drop
+`alert.test`, then fan out: email from the client's own sending domain, a
+WhatsApp message, a CRM task, a ticket. That is also the honest answer to email
+here, because the sending domain, the templates and the unsubscribe path stay
+with whoever owns them.
 
 ## Deploying on Railway
 
@@ -147,7 +236,8 @@ defences, and neither is optional in production.
 - **No email.** Sealmetrics already has alert email with templates and an
   unsubscribe path. Reimplementing that here would mean owning deliverability
   for someone else's domain. Slack and webhooks cover the same need until the
-  native engine ships.
+  native engine ships, and a webhook into n8n sends email from the client's own
+  domain in one node. See *One webhook, every other channel*.
 - **No rules in the dashboard.** These rules live here, not in the product, so
   they do not appear in the Sealmetrics UI.
 - **Not the destination.** When Sealmetrics' own evaluator ships, rules migrate:

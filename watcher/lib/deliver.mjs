@@ -12,12 +12,20 @@
 
 import { createHmac } from 'node:crypto';
 
-const ICON = { fires: '🔴', watch: '⚠️', resolved: '🟢' };
+const ICON = { fires: '🔴', watch: '⚠️', resolved: '🟢', test: '🧪' };
 
 /** The message a human reads, in the shape check-alerts uses. */
 export function render({ rule, siteId, verdict, kind, incident }) {
   const icon = ICON[kind] || '•';
   const lines = [];
+  if (kind === 'test') {
+    // Wording first, because this is the one message whose whole job is to be
+    // recognised as not an incident by whoever it wakes up.
+    lines.push(`${icon} DELIVERY TEST, not an alert · ${siteId}`);
+    lines.push('Seal Watch sent this on request to prove this channel works.');
+    lines.push('Nothing is wrong. No rule fired. Nothing needs doing.');
+    return lines.join('\n');
+  }
   if (kind === 'resolved') {
     // How long it was OBSERVED broken: from the first firing to the last
     // evaluation that still found it broken. Not to now — the recovery
@@ -40,6 +48,28 @@ export function render({ rule, siteId, verdict, kind, incident }) {
   }
   lines.push('Ask Seal Copilot to diagnose it: "why did conversions drop today?"');
   return lines.join('\n');
+}
+
+const EVENT = { resolved: 'alert.resolved', test: 'alert.test' };
+
+/**
+ * The body a webhook receives. Its shape is a contract with somebody else's
+ * automation, written down in `watcher/schemas/webhook-payload.json` and held
+ * to it by a test, so this is the only place allowed to decide it.
+ */
+export function webhookBody(payload) {
+  return {
+    version: 1,
+    event: EVENT[payload.kind] || 'alert.triggered',
+    site_id: payload.siteId,
+    rule_id: payload.rule.id,
+    family: payload.rule.family,
+    status: payload.verdict?.status ?? null,
+    headline: payload.verdict?.headline ?? null,
+    started_at: payload.verdict?.startedAt ?? payload.incident?.started_at ?? null,
+    evidence: payload.verdict?.evidence ?? null,
+    sent_at: new Date().toISOString(),
+  };
 }
 
 async function post(url, body, headers, fetchImpl) {
@@ -67,17 +97,7 @@ export function deliverer({ slackWebhook, webhookUrl, webhookSecret, fetchImpl =
         catch (e) { errors.push(e.message); }
       }
       if (webhookUrl) {
-        const body = {
-          event: payload.kind === 'resolved' ? 'alert.resolved' : 'alert.triggered',
-          site_id: payload.siteId,
-          rule_id: payload.rule.id,
-          family: payload.rule.family,
-          status: payload.verdict?.status ?? null,
-          headline: payload.verdict?.headline ?? null,
-          started_at: payload.verdict?.startedAt ?? payload.incident?.started_at ?? null,
-          evidence: payload.verdict?.evidence ?? null,
-          sent_at: new Date().toISOString(),
-        };
+        const body = webhookBody(payload);
         const headers = {};
         if (webhookSecret) {
           headers['x-seal-signature'] = 'sha256=' +

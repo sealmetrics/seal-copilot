@@ -1,0 +1,41 @@
+{
+  "title": "webhook-payload.json",
+  "description": "The body seal-watch POSTs to a site's webhook_url, version 1. This is a contract with somebody else's n8n flow, so the promise is narrow and explicit: fields get added, never repurposed or renamed, the meaning of a value never changes under a consumer, and anything unknown may be ignored. A breaking change raises `version`. The test event exists so that wiring can be proved before an incident, and a consumer that pages a human must ignore it.",
+  "type": "object",
+  "required": ["version", "event", "site_id", "rule_id", "family", "sent_at"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "enum": [1],
+      "description": "Raised only when a consumer would break. Branch on it."
+    },
+    "event": {
+      "enum": ["alert.triggered", "alert.resolved", "alert.test"],
+      "description": "alert.test is a delivery check sent on demand and never by a rule. Never treat it as an incident."
+    },
+    "site_id": { "type": "string", "minLength": 1 },
+    "rule_id": { "type": "string", "minLength": 1 },
+    "family": { "enum": ["silence", "drop", "spike", "threshold"] },
+    "status": {
+      "type": ["string", "null"],
+      "description": "The verdict: fires, watch or ok. Null when the sender had no verdict to report."
+    },
+    "headline": {
+      "type": ["string", "null"],
+      "description": "One line a human can read without opening anything."
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "description": "When the condition began, not when this was sent. Null when unknown."
+    },
+    "evidence": {
+      "type": ["object", "null"],
+      "description": "Free-form and rule-dependent. Read defensively: no key here is promised."
+    },
+    "sent_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ISO 8601, set at delivery. Use it to spot a replay or a stalled queue."
+    }
+  }
+}

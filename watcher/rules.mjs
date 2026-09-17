@@ -8,6 +8,7 @@
  * redeploy.
  *
  *   node watcher/rules.mjs site <site_id> <token_env> [slack_env]
+ *        [--webhook-url <url>] [--webhook-secret-env <NAME>]
  *   node watcher/rules.mjs list
  *   node watcher/rules.mjs add <site_id> < rule.json     # or paste on stdin
  *   node watcher/rules.mjs pause <site_id> <rule_id>
@@ -85,9 +86,17 @@ switch (cmd) {
     // Bootstrap. Without this the first step of a deploy is editing JSON by
     // hand, which is exactly where a token ends up in a file by accident.
     const tokenEnv = process.argv[4];
-    const slackEnv = process.argv[5];
+    const flag = (name) => {
+      const i = process.argv.indexOf(name);
+      return i === -1 ? undefined : process.argv[i + 1];
+    };
+    const positionalSlack = process.argv[5] && !process.argv[5].startsWith('--') ? process.argv[5] : undefined;
+    const slackEnv = positionalSlack || flag('--slack-env');
+    const webhookUrl = flag('--webhook-url');
+    const secretEnv = flag('--webhook-secret-env');
     if (!siteId || !tokenEnv) {
       die('node watcher/rules.mjs site <site_id> <TOKEN_ENV_NAME> [SLACK_ENV_NAME]\n' +
+          '       [--webhook-url <url>] [--webhook-secret-env <NAME>]\n' +
           'The token ENV NAME, not the token: the config is committable and the\n' +
           "variable holds the client's own credential.");
     }
@@ -95,17 +104,40 @@ switch (cmd) {
       die('That looks like a token, not a variable name. Pass the NAME of the\n' +
           'environment variable that holds it, for example SEAL_TOKEN_ACCT_DEMO.');
     }
+    // A URL where a URL belongs and a NAME where a name belongs. Mixing them is
+    // exactly how a secret ends up inside a committable config file.
+    if (webhookUrl !== undefined && !/^https?:\/\//.test(webhookUrl || '')) {
+      die('--webhook-url needs a full http or https URL, for example\n' +
+          'https://n8n.example.com/webhook/seal-alerts');
+    }
+    for (const [what, value] of [['--webhook-secret-env', secretEnv], ['the Slack argument', slackEnv]]) {
+      if (value && /^(https?:\/\/|sm_|xox)/.test(value)) {
+        die(`${what} needs the NAME of an environment variable, not the value.\n` +
+            'The config is committable; only the variable holds the secret.');
+      }
+    }
     cfg.sites ||= [];
     const existing = cfg.sites.find((x) => x.site_id === siteId);
     const entry = existing || { site_id: siteId, rules: [] };
     entry.token_env = tokenEnv;
     if (slackEnv) entry.slack_webhook_env = slackEnv;
+    if (webhookUrl) entry.webhook_url = webhookUrl;
+    if (secretEnv) entry.webhook_secret_env = secretEnv;
     if (!existing) cfg.sites.push(entry);
     cfg.interval_seconds ??= 300;
     write(cfg);
+    // Say what the channels are, and say when one is unsigned. A webhook nobody
+    // can verify is a webhook anybody can forge a call into.
+    const channels = [];
+    if (entry.slack_webhook_env) channels.push(`Slack from ${entry.slack_webhook_env}`);
+    if (entry.webhook_url) {
+      channels.push(`webhook to ${new URL(entry.webhook_url).host}` +
+        (entry.webhook_secret_env ? `, signed with ${entry.webhook_secret_env}` : ', UNSIGNED'));
+    }
     console.log(`${existing ? 'Updated' : 'Added'} site ${siteId}, token from ${tokenEnv}` +
-      (slackEnv ? `, Slack from ${slackEnv}` : ', notifications to the log until a Slack webhook is set') +
-      `.\nNow add rules: node watcher/rules.mjs import ${siteId} <alerts.json>`);
+      (channels.length ? `, ${channels.join(', ')}` : ', notifications to the log until a channel is set') +
+      `.\nProve the channel before trusting it: node watcher/watch.mjs --test-delivery ${siteId}` +
+      `\nNow add rules: node watcher/rules.mjs import ${siteId} <alerts.json>`);
     break;
   }
 

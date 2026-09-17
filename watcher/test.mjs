@@ -7,11 +7,12 @@
 // nobody checks.
 import { evaluate } from './lib/families.mjs';
 import { store } from './lib/store.mjs';
-import { render, deliverer } from './lib/deliver.mjs';
+import { render, deliverer, webhookBody } from './lib/deliver.mjs';
 import { client } from './lib/api.mjs';
 import { activeMinutesBetween, isActive, localParts } from './lib/clock.mjs';
-import { pass, reloader, configProblems, ruleSchema } from './watch.mjs';
+import { pass, reloader, configProblems, ruleSchema, deliveryReport } from './watch.mjs';
 import { backtest } from './lib/backtest.mjs';
+import { validate } from '../seal-copilot/hooks/scripts/lib/validate.mjs';
 import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +35,79 @@ const silenceRule = (over = {}) => ({
   active_hours: { from: 8, to: 24, days: ALL },
   timezone: TZ, created_at: '2026-09-17', status: 'active', ...over,
 });
+
+console.log('the webhook contract');
+{
+  const SCHEMA = JSON.parse(readFileSync(new URL('./schemas/webhook-payload.json', import.meta.url), 'utf8'));
+  const rule = { id: 'no-purchase-4h', family: 'silence' };
+  const verdict = {
+    status: 'fires', headline: 'No purchase for at least 4 watched hours.',
+    startedAt: '2026-09-17T08:00:00.000Z', evidence: { reading: '0 today' },
+  };
+
+  // The body the code actually builds, against the contract as written down.
+  // This is the gate: add a field to webhookBody and forget the schema, and
+  // additionalProperties catches it here rather than in somebody's n8n.
+  for (const [name, payload] of [
+    ['a firing rule', { kind: 'fires', siteId: 'acct', rule, verdict }],
+    ['a recovery', { kind: 'resolved', siteId: 'acct', rule, verdict, incident: { started_at: '2026-09-17T08:00:00.000Z' } }],
+    ['a delivery test', { kind: 'test', siteId: 'acct', rule: { id: 'delivery-test', family: 'silence' }, verdict: null }],
+    ['a rule with no evidence', { kind: 'fires', siteId: 'acct', rule, verdict: { status: 'watch', headline: 'h' } }],
+  ]) {
+    const errs = validate(webhookBody(payload), SCHEMA);
+    ok(`${name} matches the published contract`, errs.length === 0, errs);
+  }
+
+  ok('the version is stated, so a consumer can branch on it',
+    webhookBody({ kind: 'fires', siteId: 'a', rule, verdict }).version === 1);
+  ok('a test carries its own event name and never looks like an incident',
+    webhookBody({ kind: 'test', siteId: 'a', rule, verdict: null }).event === 'alert.test');
+  ok('a recovery is distinguishable from a trigger',
+    webhookBody({ kind: 'resolved', siteId: 'a', rule, verdict }).event === 'alert.resolved');
+  ok('an unknown kind degrades to a trigger rather than to nothing',
+    webhookBody({ kind: 'weird', siteId: 'a', rule, verdict }).event === 'alert.triggered');
+
+  // A field the schema does not know must fail, or the gate proves nothing.
+  const drifted = { ...webhookBody({ kind: 'fires', siteId: 'a', rule, verdict }), surprise: 1 };
+  ok('an undeclared field is rejected, so the gate has teeth',
+    validate(drifted, SCHEMA).length > 0);
+
+  const text = render({ kind: 'test', siteId: 'acct', rule: { id: 'delivery-test' }, verdict: null });
+  ok('the human text says it is a test in its first line',
+    /DELIVERY TEST, not an alert/.test(text.split('\n')[0]), text);
+  ok('and says plainly that nothing is wrong',
+    /Nothing is wrong/.test(text), text);
+}
+
+console.log('where alerts go');
+{
+  const site = (over = {}) => ({ site_id: 'acct', token_env: 'SEAL_TOKEN_ACCT', rules: [], ...over });
+
+  const bare = deliveryReport({ sites: [site()] });
+  ok('a site with no channel says stdout',
+    bare.some((l) => l === 'acct: alerts go to stdout'), bare);
+  ok('and warns that nothing will be received',
+    bare.some((l) => l.startsWith('WARNING: 1 site(s) have no delivery channel')), bare);
+
+  process.env.SEAL_TEST_SLACK = 'https://hooks.slack.com/services/T/B/x';
+  const slack = deliveryReport({ sites: [site({ slack_webhook_env: 'SEAL_TEST_SLACK' })] });
+  ok('a configured Slack webhook is named',
+    slack.some((l) => l === 'acct: alerts go to slack'), slack);
+  ok('and no warning is raised',
+    !slack.some((l) => l.startsWith('WARNING')), slack);
+  delete process.env.SEAL_TEST_SLACK;
+
+  // The nasty one: it looks configured and delivers to stdout.
+  const missing = deliveryReport({ sites: [site({ slack_webhook_env: 'SEAL_TEST_ABSENT' })] });
+  ok('naming an unset variable is reported, not silently ignored',
+    missing.some((l) => l.includes('names slack_webhook_env SEAL_TEST_ABSENT')), missing);
+  ok('and it still admits the alert goes to stdout',
+    missing.some((l) => l === 'acct: alerts go to stdout'), missing);
+
+  const both = deliveryReport({ sites: [site({ webhook_url: 'https://example.com/hook' })] });
+  ok('an inline webhook url counts as a channel',
+    both.some((l) => l === 'acct: alerts go to webhook'), both);
+}
 
 console.log('the clock');
 {
