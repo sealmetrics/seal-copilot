@@ -1,8 +1,21 @@
 # PRD — De prosa a mecanismo: estado validado, skills ligeros, aritmética determinista, validación real
 
-**Versión:** 1.0 · **Fecha:** 17 septiembre 2026 · **Autor:** Rafa (Sealmetrics) con Claude
-**Estado:** Borrador para revisión · **Base:** revisión del plugin 1.13.2 (worktree `seal-copilot-skill-audit-d272b8`), certificación 9, estado real en `~/.seal-copilot`, [auditoría 1.11.0](auditoria-seal-copilot-2026-09-12.md).
+**Versión:** 1.1 · **Fecha:** 17 septiembre 2026 · **Autor:** Rafa (Sealmetrics) con Claude
+**Estado:** **Implementado el 17/09**, salvo lo que se indica en §11. · **Base:** revisión del plugin 1.13.2 (worktree `seal-copilot-skill-audit-d272b8`), certificación 9, estado real en `~/.seal-copilot`, [auditoría 1.11.0](auditoria-seal-copilot-2026-09-12.md).
 **Alcance:** los cinco puntos acordados el 17/09. Queda fuera todo lo que toca el MCP o el backend (motor de alertas nativo, gate del transporte local, calidad de tráfico bajo `stats:read`).
+
+> **Addendum 1.1 — lo que la comprobación previa cambió.** Antes de escribir
+> código se respondió la pregunta abierta nº1 y la respuesta invalidó una
+> premisa del PRD. El transporte de la máquina de desarrollo es el **local**
+> (probado: `detect_framework` leyó el disco y detectó `next-app`), sin
+> credencial válida. Y el gate remoto, leído en `sealmetrics2/mcp-server`
+> (`src/remote/gate.ts`) y en el paquete publicado 1.9.1, excluye **diez**
+> herramientas, no veinte: el router de `channel-groups` acepta `sites:read`
+> desde PRD-055, así que **`get_channels`, `list_channel_rules` y
+> `test_channel_rules` funcionan en los dos conectores**. El plugin prohibía
+> `get_channels` con un linter que hacía cumplir un hecho falso, y decía a los
+> usuarios que `setup-audit` no podía probar una regla de canal cuando sí
+> podía. Eso añadió un epic previo, **E0**, y cambió el punto 1 de E4.
 
 ---
 
@@ -127,7 +140,30 @@ flowchart LR
 
 ## 5. Requisitos por epic
 
-### E1 · Validador de estado — P0
+### E0 · Los hechos sobre el conector, generados y no recordados — P0 · **hecho**
+
+**Problema.** `evals/tool-availability.json` mantenía a mano una lista de veinte
+herramientas ocultas, y `get_channels` estaba en `forbidden` con el motivo
+"403s for every modern key". Ambas cosas eran falsas y el linter las imponía.
+
+**Cambio, implementado.**
+- `evals/dump-transport-tools.mjs` lee el **paquete publicado** de
+  `@sealmetrics/mcp` (el checkout local iba por 1.8.2 y npm servía 1.9.1) y
+  escribe `evals/remote-tools.json`: 64 herramientas en local, 42 en remoto, 22
+  ocultas por dos razones distintas (diez por ámbito, doce por `omitSetupTools`).
+  El linter y el mock leen ese archivo; `check.sh` falla si está obsoleto.
+- `get_channels` pasa de `forbidden` a `preferAlternative`: una mención debe
+  nombrar `get_top_channels` en el mismo bloque, así que no puede leerse como
+  recomendación sin que el plugin afirme algo falso.
+- `setup-audit` vuelve a poder probar una regla en remoto; `channel-mix-optimizer`
+  vuelve a leer las reglas del usuario. Los dos decían que no.
+- El transporte por defecto del mock pasa a `remote`.
+- `docs/incidents.md` registra el hallazgo.
+
+**Criterio cumplido.** `node evals/dump-transport-tools.mjs` se comprueba contra
+sí mismo y el self-test afirma el hecho corregido en lugar del falso.
+
+### E1 · Validador de estado — P0 · **hecho**
 
 **Problema.** P1. El contrato es prosa.
 
@@ -168,7 +204,7 @@ flowchart LR
 
 **Riesgos.** El modelo, al recibir un deny, puede intentar escribir el mismo contenido con `Bash`. `state-schema.md` ya prohíbe el shell para estado; E2 mantiene esa línea, y `evals/assess.mjs` añade un fallo global si el stream contiene un `Bash` cuyo comando toca `<state-dir>`.
 
-### E2 · Adelgazar los skills — P0
+### E2 · Adelgazar los skills — P0 · **hecho**
 
 **Problema.** P2.
 
@@ -220,7 +256,7 @@ flowchart LR
 
 **Riesgos.** Es el epic con más probabilidad de regresión en evals, porque cambia lo que el modelo lee. Mitigación: hacerlo skill a skill, con `node evals/run-evals.mjs <id> --runs 3` por skill antes de pasar al siguiente, y con E1 ya en marcha para que las regresiones de estado sean visibles.
 
-### E3 · Aritmética determinista y fidelidad numérica — P0
+### E3 · Aritmética determinista y fidelidad numérica — P0 · **hecho**
 
 **Problema.** P3.
 
@@ -267,7 +303,7 @@ flowchart LR
 
 **Riesgos.** Falsos positivos de la aserción sobre respuestas correctas, el problema que este repo ya vivió doce veces con los bans de frases. Mitigación: la aserción entra caso a caso, cada falso positivo se documenta en `cases.mjs` con la razón y amplía `allowed` de forma general (nunca con una excepción por caso), y hasta que sea global se reporta como `warn`, no como `fail`.
 
-### E4 · Validación contra la API real y el conector real — P0
+### E4 · Validación contra la API real y el conector real — P0 · **parcial**
 
 **Problema.** P4.
 
@@ -299,7 +335,7 @@ flowchart LR
 
 **Riesgos.** El punto 1 puede obligar a cambiar la detección de conector en todos los skills. Es la razón de que E4 vaya después de E2: con el protocolo en un archivo, es una edición; antes, eran catorce.
 
-### E5 · Piezas muertas o prometidas — P1
+### E5 · Piezas muertas o prometidas — P1 · **hecho**
 
 **Problema.** P5.
 
@@ -346,18 +382,20 @@ flowchart LR
 
 ## 7. Métricas de éxito
 
-| Métrica | Hoy | Objetivo |
-|---|---|---|
-| Archivos de estado inválidos por certificación | 12 de 12 perfiles | 0, comprobado por el runner |
-| Palabras cargadas por un weekly antes de la primera herramienta | 10.018 | ≤ 5.000 |
-| Párrafos de más de 40 palabras repetidos en dos o más archivos | 4 bloques × 9–15 copias | 0 |
-| Casos con aserción de fidelidad numérica | 0 de 35 | 35 de 35 |
-| Números inventados detectados por certificación | no medible | 0 |
-| Fixtures con `MISMATCH` frente a la API real | desconocido | 0 |
-| Casos en transporte `remote` | 3 de 35 | todos salvo los que declaran `local` |
-| Certificación `--runs 3` | 30/31, 1 inestable | ≥ 34/35, 0 inestables |
-| Runs reales que terminan en informe | 2 de 3 | 3 de 3 |
-| Referencias a archivos inexistentes | 2 (agente, `SEAL-STATE`) | 0, con gate |
+| Métrica | Antes | Objetivo | **Medido el 17/09** |
+|---|---|---|---|
+| Archivos de estado inválidos por certificación | 12 de 12 perfiles | 0 | el runner los valida todos; el hook deniega la escritura |
+| Palabras cargadas por un weekly antes de la primera herramienta | 10.018 | ≤ 5.000 | **6.557** (tope del gate: 7.000) |
+| Markdown total del plugin | 36.043 | — | **30.382**, con cuatro referencias nuevas dentro |
+| Párrafos de más de 40 palabras repetidos en dos o más archivos | 4 bloques × 9–15 copias | 0 | **0**, con gate |
+| Skill más grande | 2.451 (core), 2.393 (create-alert) | — | **1.455** y **1.185** |
+| Aritmética determinista | ninguna | `calc.mjs` | **8 operaciones, 42 tests** |
+| Fidelidad numérica | sin test | todos los casos | **gate sobre 8 golden outputs**; en la suite como aviso |
+| Herramientas en el snapshot del esquema | 62 | las reales | **64** (1.9.1) |
+| Casos en transporte `remote` | 3 de 35 | todos salvo los que declaran `local` | **35 de 36** |
+| Referencias a archivos inexistentes | 2 (agente, `SEAL-STATE`) | 0 | **0**, con gate en ambos sentidos |
+| Fixtures con `MISMATCH` frente a la API real | desconocido | 0 | **sin medir — falta la clave** |
+| Certificación `--runs 3` | 30/31, 1 inestable | ≥ 34/35 | **sin medir** |
 
 ---
 
@@ -392,12 +430,39 @@ Dependencias externas: ninguna que bloquee. E4 necesita una clave real y una ses
 
 ## 10. Preguntas abiertas
 
-1. **¿Qué transporte usa el plugin instalado en la máquina de desarrollo?** Esta sesión anuncia 64 herramientas bajo `plugin:seal-copilot:sealmetrics`, y la caché de plugins no lo resuelve. Si es el local, el dogfooding nunca pasa por el conector de los usuarios; si es el remoto, el remoto ya no oculta nada. E4 punto 1 lo responde; conviene responderlo antes de F0.
-2. **¿`SEAL-STATE` en Codex?** Codex tiene filesystem y el hook de sesión no corre ahí. Propuesta: el skill detecta `<state-dir>` por la variable de entorno o por `~/.seal-copilot`, y solo emite el bloque cuando no puede escribir. Confirmar con una prueba en Codex cuando esté instalado.
-3. **¿Los caps de tamaño de E2 son alcanzables en `create-alert`?** La gramática y las cuatro familias pesan. Si no baja de 1.100, la gramática pasa a `references/alert-grammar.md` y el cap se mantiene.
-4. **¿Fidelidad numérica sobre los informes reales?** El runner solo la aplica con el mock, porque necesita las respuestas. Para runs reales, `usage-report.mjs` podría guardar las respuestas (sin valores personales, no los hay) y aplicar la misma aserción a posteriori. Fuera de este PRD salvo que E4 lo pida.
+1. **¿Se implementa el gate del transporte local?** `src/index.ts` no pasa
+   ningún filtro, así que `npx @sealmetrics/mcp` anuncia diez herramientas que
+   siempre devuelven 403. El encargo está en `docs/mcp-server-local-gate.md` y
+   **su tabla hay que corregirla antes de tocar nada**: hablaba de veinte
+   herramientas e incluía `get_channels`, `list_channel_rules` y
+   `test_channel_rules`, que funcionan.
+2. **¿La clave de API de pruebas?** `validate-fixtures.mjs` no se ha podido
+   ejecutar (§11). Es lo único que separa "la suite es coherente consigo misma"
+   de "la suite coincide con la API".
+3. **¿`seal-state` en Codex?** Codex tiene filesystem pero no ejecuta el hook de
+   sesión. Hoy el bloque se emite cuando no se anunció directorio; confirmarlo
+   con una prueba en Codex cuando esté instalado.
+4. **¿Fidelidad numérica sobre informes reales?** El gate necesita las
+   respuestas servidas, que solo existen con el mock. Para runs reales habría
+   que guardarlas en `runs.jsonl`; fuera de alcance salvo que se pida.
 
 ---
+
+## 11. Lo que queda sin hacer, y por qué
+
+Del plan de cinco puntos, todo está implementado salvo dos piezas de E4, las
+dos bloqueadas por algo que no está en este repositorio:
+
+| Pendiente | Bloqueo |
+|---|---|
+| `validate-fixtures.mjs` contra la cuenta real | No hay `SEALMETRICS_API_KEY` en el entorno, y el conector de esta sesión no tiene credencial válida: `list_alerts` responde "Invalid API key". Es un comando de una línea en cuanto haya clave: `SEALMETRICS_API_KEY=sm_… node evals/validate-fixtures.mjs` |
+| Los tres runs reales (`weekly-health-check`, `create-alert`, `check-alerts`) | El mismo bloqueo, más las reglas de prueba con cuenta real: copia del estado y scheduler deshabilitado |
+| Certificación completa `--runs 3` | Son 36 casos × 3, cada uno una sesión `claude -p` de ~60 s: en torno a dos horas de reloj y un coste de tokens que conviene decidir, no asumir |
+
+Lo que sí se ejecutó: `scripts/check.sh` completo en verde (trece puertas,
+cuatro de ellas nuevas), los 42 tests de `calc.mjs`, el self-test ampliado a 22
+comprobaciones de estado y 16 de fidelidad y shell, y el gate de fidelidad sobre
+los ocho golden outputs.
 
 ## Anexo A · Correspondencia con la revisión del 17/09
 
