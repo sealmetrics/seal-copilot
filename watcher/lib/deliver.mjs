@@ -19,10 +19,14 @@ export function render({ rule, siteId, verdict, kind, incident }) {
   const icon = ICON[kind] || '•';
   const lines = [];
   if (kind === 'resolved') {
+    // How long it was OBSERVED broken: from the first firing to the last
+    // evaluation that still found it broken. Not to now — the recovery
+    // happened somewhere in between and claiming otherwise overstates it.
     const mins = incident?.started_at
-      ? Math.round((new Date(incident.last_seen_at || Date.now()) - new Date(incident.started_at)) / 60000)
+      ? Math.round((new Date(incident.last_seen_at || incident.started_at) - new Date(incident.started_at)) / 60000)
       : null;
-    lines.push(`${icon} ${rule.id} recovered${mins !== null ? ` after ${mins}m` : ''} · ${siteId}`);
+    const h = mins === null ? '' : mins >= 60 ? ` after ${Math.floor(mins / 60)}h ${mins % 60}m` : mins >= 1 ? ` after ${mins}m` : '';
+    lines.push(`${icon} ${rule.id} recovered${h} · ${siteId}`);
     return lines.join('\n');
   }
   lines.push(`${icon} ${rule.id} · ${siteId}`);

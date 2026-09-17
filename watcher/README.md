@@ -83,6 +83,52 @@ at build time, so a broken watcher fails the deploy instead of the first alert.
 site errored. That is what to use from a cron, or to check a new rule by hand
 before trusting it.
 
+## Deploying without a service: GitHub Actions
+
+When there is no host to hand, `.github/workflows/watch.yml` runs the same
+`--once` pass on a schedule with no infrastructure. It needs four repository
+secrets and nothing else:
+
+| Secret | What |
+|---|---|
+| `SEAL_CONFIG` | The config JSON, inline. There is no volume here, so no config file |
+| `SEAL_TOKEN_<SITE>` | One per client, named by `token_env` in the config |
+| `SEAL_SLACK_<SITE>` | Where the notification goes |
+| `SEAL_HEARTBEAT_URL` | Pinged each run |
+
+Incidents persist through the Actions cache, which is the only store a
+scheduled workflow has. It works, and it is the part to understand: if a cache
+entry is evicted, the next pass treats an open incident as new and notifies
+again. A duplicate notification, not a missed one.
+
+**Be honest about what this is.** Scheduled runs on GitHub are best-effort and
+get delayed under load, and a repository with no pushes for 60 days has its
+schedules disabled silently. The workflow runs every 15 minutes rather than
+every 5 because the finer cadence is skipped often enough to buy nothing. For a
+rule measured in hours — four hours without a sale — a ten-minute delay changes
+nothing. For a rule measured in minutes, this is the wrong home and an always-on
+container is the right one.
+
+One governance point: the token in a repository secret is readable by anyone who
+can administer the repository. That is a different trust boundary from a
+client's token in a deployment platform, and worth a decision rather than a
+default.
+
+## Running it locally
+
+A single pass from a `cron` or a `launchd` timer works the same way:
+
+```
+SEAL_CONFIG_PATH=~/seal-watch/config.json \
+SEAL_STATE_PATH=~/seal-watch/incidents.json \
+SEAL_TOKEN_MYSITE=sm_… \
+node watcher/watch.mjs --once
+```
+
+It exits non-zero if any site errored, which is what a timer should alert on.
+The obvious limit is that it only watches while that machine is awake, so it is
+a way to start rather than a way to run.
+
 ## If it dies
 
 This is the failure that matters: if the service stops, nothing fires and
@@ -195,6 +241,6 @@ silently is not watching.
 node watcher/test.mjs
 ```
 
-94 checks against a fake API and a fake clock, including the two that matter
+96 checks against a fake API and a fake clock, including the two that matter
 most: overnight hours do not count toward a silence window, and a refused read
 is never reported as silence. `scripts/check.sh` runs them.

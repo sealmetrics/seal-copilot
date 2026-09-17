@@ -133,6 +133,11 @@ console.log('\nthe message');
   const done = render({ rule: silenceRule(), siteId: 'demo', kind: 'resolved',
     incident: { started_at: '2026-09-17T09:20:00Z', last_seen_at: '2026-09-17T10:20:00Z' } });
   ok('a recovery is one line', done.split('\n').length === 1 && done.startsWith('🟢'), done);
+  ok('and states how long it was observed broken', /after 1h 0m/.test(done), done);
+  // Under a minute reads as noise, not as information.
+  const quick = render({ rule: silenceRule(), siteId: 'demo', kind: 'resolved',
+    incident: { started_at: '2026-09-17T09:20:00Z', last_seen_at: '2026-09-17T09:20:20Z' } });
+  ok('a sub-minute incident states no duration', !/after/.test(quick), quick);
 }
 
 console.log('\nthe api client');

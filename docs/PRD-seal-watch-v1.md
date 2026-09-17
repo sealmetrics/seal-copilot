@@ -127,6 +127,19 @@ es la densidad: una regla que salta un tercio de los días describe el site.
 
 ## 7. Despliegue
 
+Tres sitios donde puede vivir, en orden de calidad:
+
+| Dónde | Cadencia real | Estado | Cuándo elegirlo |
+|---|---|---|---|
+| Un contenedor siempre encendido (Railway, Fly, un VPS) | 5 min, fiable | Volumen | Lo correcto en cuanto haya un cliente de verdad |
+| GitHub Actions programado | 15 min, con retrasos | Caché de Actions | Cuando no hay host a mano. Verificado de punta a punta |
+| `--once` desde un cron local | La que pongas | Archivo local | Para empezar, o como segunda comprobación |
+
+El vigilante es el mismo en los tres; lo que cambia es de dónde salen la
+configuración y el estado.
+
+### Railway
+
 Railway, servicio desde este repositorio con **raíz `/`** y Dockerfile
 `watcher/Dockerfile`. No raíz `watcher`: el validador de reglas es el del
 plugin y vive fuera de ese directorio, así que el contexto de build tiene que

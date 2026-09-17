@@ -1,0 +1,70 @@
+name: seal watch
+
+# Run the alert watcher on a schedule with no infrastructure at all.
+#
+# This is the fallback for "we cannot deploy a service right now". It is not as
+# good as an always-on container and the README says exactly how: GitHub's
+# scheduled runs are best-effort and get delayed under load, and a repository
+# with no pushes for 60 days has its schedules disabled. For a rule measured in
+# hours a ten-minute delay is irrelevant; for one measured in minutes this is
+# the wrong home.
+#
+# Every 15 minutes rather than every 5: the documented minimum is 5 and in
+# practice those runs are skipped often enough that the finer cadence buys
+# nothing but noise in the run history.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      once:
+        description: 'Run a single pass and print the report'
+        type: boolean
+        default: true
+
+concurrency:
+  # Never two passes at once: they would both open the same incident.
+  group: seal-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Incidents have to survive between runs, or every pass re-notifies an
+      # open one. The cache is the only persistent store a scheduled workflow
+      # has; a restore-key makes it pick up the most recent save.
+      - name: Restore incident state
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: seal-watch-state-${{ github.run_id }}
+          restore-keys: seal-watch-state-
+
+      - name: Watch
+        env:
+          SEAL_CONFIG: ${{ secrets.SEAL_CONFIG }}
+          SEAL_STATE_PATH: state/incidents.json
+          SEAL_HEARTBEAT_URL: ${{ secrets.SEAL_HEARTBEAT_URL }}
+          # One line per client. Add a variable here for each SEAL_TOKEN_* the
+          # config names; an unset one fails the config check at startup rather
+          # than reporting a quiet site.
+          SEAL_TOKEN_SEALMETRICSV2: ${{ secrets.SEAL_TOKEN_SEALMETRICSV2 }}
+          SEAL_SLACK_SEALMETRICSV2: ${{ secrets.SEAL_SLACK_SEALMETRICSV2 }}
+        run: |
+          mkdir -p state
+          node watcher/watch.mjs --once
+
+      - name: Save incident state
+        # Always: a pass that errored still learned which incidents are open,
+        # and discarding that would re-notify on the next run.
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: seal-watch-state-${{ github.run_id }}
