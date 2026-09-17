@@ -556,3 +556,32 @@ The answer for this site is now stated rather than implied: `lead` cannot be
 watched by silence at any window, because even a week-long one would be open
 94% of the time. A day without a `cta_click` is the only sound rule of the
 candidates, at 5%.
+
+## 2026-09-17 · Auto deploy was off, and a successful deployment was read as proof it was on
+
+The watcher was moved off its feature branch onto `main` so that deleting the
+branch could not kill it. The branch change was applied, a deployment ran, it
+reached ACTIVE, and its log showed the service watching. That was reported as
+"Railway points at `main` with auto deploy on".
+
+Half of it was true. **Auto deploy was disabled.** When the next pull request
+merged, nothing happened: no build, no deployment, the old image still running.
+Settings → Source said `Auto deploy is disabled` in plain text the whole time.
+
+The error was not a missed click, it was accepting the wrong evidence. Changing
+the source branch triggers one deployment by itself. That deployment proves the
+branch is right and proves nothing at all about what a future push will do. Two
+different claims, one of which was never tested, and the untested one was the
+one that mattered, because the whole point of the change was to survive without
+anybody watching.
+
+Enabling it afterwards does not deploy the commit already at the branch head
+either, so the merged code still had to be deployed once by hand from the
+command palette. A setting that only affects future events leaves the present
+untouched, which is obvious in hindsight and was not obvious while waiting for a
+deployment that was never going to start.
+
+Two rules from it. The Railway steps in `watcher/README.md` now name the branch
+and auto deploy as one step and say the toggle is not retroactive. And a claim
+about automation is only verified by the automation firing on an event nobody
+arranged: here, a later merge producing a build on its own.

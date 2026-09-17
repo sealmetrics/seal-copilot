@@ -164,6 +164,17 @@ with whoever owns them.
 3. Add a volume and point `SEAL_STATE_PATH` at a file on it, for example
    `/data/incidents.json`, so a redeploy does not re-notify an open incident.
 4. Point `SEAL_HEARTBEAT_URL` at a dead-man's-switch.
+5. **Settings → Source: set the branch to `main` and enable auto deploy.** Both,
+   and check them afterwards. A service left on a feature branch dies when that
+   branch is deleted, and auto deploy is off by default, so a merge changes
+   nothing and the service quietly keeps running the old image.
+
+Enabling auto deploy is **not retroactive**: it does not deploy the commit
+already at the head of the branch. Deploy that one once from the command
+palette, `Deploy latest commit`, or the next merge is the first thing it picks
+up. A deployment that succeeded right after you changed a setting is no evidence
+that the setting will act on a future push, which is a mistake already made here
+once.
 
 There is nothing to install: no dependencies, and the image runs the test suite
 at build time, so a broken watcher fails the deploy instead of the first alert.
