@@ -8,7 +8,7 @@ export const tools = {
   // Weekly numbers shaped like the real ones: low volume, zero conversions, big spike.
   get_overview: (a) => f.overview({ entrances: 338, conversions: 0, revenue: 0, bounce: 0.84, micro: 233, days: 7,
     prev: { entrances: 250, conversions: 0, revenue: 0, bounce: 0.856 } }),
-  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
+  get_channels: f.channels('channel', [['Organic Search', 180, 0, 0, 0.8], ['Paid Search', 90, 0, 0, 0.9], ['Referral', 68, 0, 0, 0.95]]),   // works with an api_key: the channel-groups router takes sites:read
   get_top_channels: f.top('channel', [['Organic Search', 180, 0, 0, 0.8], ['Paid Search', 90, 0, 0, 0.9], ['Referral', 68, 0, 0, 0.95]]),
   get_campaigns: (a) => f.rows('utm_campaign', [['571503900', 46, 0, 0, 0.91], ['brand', 44, 0, 0, 0.7]],
     { prev: a.compare ? [['571503900', 2, 0, 0, 0.5], ['brand', 40, 0, 0, 0.7]] : null }),

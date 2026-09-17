@@ -418,6 +418,8 @@ Que un cliente escriba *"avísame si durante 4 horas seguidas no tengo conversio
 `create-alert` se diseña para la vía A y usa la vía B cuando el MCP anuncie `create_alert`: misma gramática de reglas, distinto destino. El cliente no nota el cambio.
 
 > **Actualizado el 14/09 ([Addendum 1.2](#addendum-12--14-septiembre-2026), E15):** la vía B pasa a ser la principal. El email y los webhooks "ya existentes" existen como API, pero ninguna regla se evalúa hoy, y la vía A choca con los límites de las rutinas.
+>
+> **Actualizado el 17/09 ([PRD Seal Watch](PRD-seal-watch-v1.md)):** la vía A está hecha, pero no con una tarea del host. Un servicio propio evalúa la misma gramática cada cinco minutos leyendo `/stats/`, que `stats:read` cubre, así que no necesitó ningún cambio en `sealmetrics2`. La vía B sigue siendo el destino: cuando llegue, las reglas se traducen porque la gramática es la de su diseño. Antes de implementar E15, leer ese PRD y el §11 de incidencias: el motor nativo hereda tres huecos que el vigilante ya resolvió (el veredicto ante una lectura fallida, las horas vigiladas, y los incidentes frente a las evaluaciones).
 
 ### Gramática de reglas
 

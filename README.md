@@ -65,8 +65,9 @@ ChatGPT and Codex share. Chat and Work both read it.
 | `seal-install/` | The installer: one skill, the local connector, its own key. |
 | `.agents/`, `plugins/` | The Codex marketplace. **Generated and committed.** |
 | `scripts/export-surfaces.mjs` | Renders every other surface from the plugin. |
-| `evals/` | 32 cases against a mock Sealmetrics API, on both connectors. |
-| `docs/` | The PRD and the specification. |
+| `watcher/` | **Seal Watch**: the loop that makes a saved alert rule watch. Runs on Railway, no dependencies, no model. |
+| `evals/` | <!-- gen:cases -->36 cases<!-- /gen:cases --> against a mock Sealmetrics API, on both connectors, with the fixtures' shapes verified against the real one. |
+| `docs/` | The PRDs, the specification, and `incidents.md`. |
 
 The Codex tree is the one generated thing that lives in git, because a remote
 marketplace *is* a git repository: what is not committed does not install. Edit
@@ -85,10 +86,12 @@ Add `--online` to also diff the MCP schema against the live server. The eval
 suite itself is `node evals/run-evals.mjs`.
 
 The linter does more than check that a tool exists. `evals/tool-availability.json`
-names two tools no skill may ever call, and the twenty the default connector
-does not announce; a reference to either fails the build unless the sentence
-says it is unavailable, or the step is marked `(local only)`. That is the check
-that would have caught `get_channels` sitting in four procedures while the
-methodology said never to call it.
+names three tools no skill may ever call and one that works but is not the
+default; `evals/remote-tools.json`, generated from the MCP server's own source,
+names the twenty-two the default connector does not announce. A reference to any
+of them fails the build unless the sentence says it is unavailable, or the step
+is marked `(local only)`. Generating that list rather than keeping it by hand is
+what caught a two-month-old error: three tools were documented as unreachable
+while the remote connector serves all three.
 
 MIT licensed. Issues and pull requests welcome.

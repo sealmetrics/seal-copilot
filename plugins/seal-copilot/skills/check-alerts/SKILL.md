@@ -11,12 +11,12 @@ short-description: 'Evaluate one saved alert rule now: one line while healthy, e
 
 # Check Alerts
 
-Before writing your answer, read `examples/output.md` in this skill directory
-and match its density. A healthy run is one line; nothing about this skill is
-allowed to be chatty.
+**Follow `skills/seal-copilot/references/run-protocol.md`:** no text until the answer, resolve the site with `list_sites` first, write state to the schema before answering, log the run. Match `examples/output.md`.
 
-Budget: ≤3 tool calls per rule. Silence when healthy is the product — an alert
-that talks every hour is one the user mutes.
+Budget: **≤3 Sealmetrics calls.**
+
+A healthy run is one line. Silence when healthy is the product: an alert that
+talks every hour is one the user mutes.
 
 **This skill runs on every connector, the remote OAuth one included.** It uses
 only `get_conversions`, `get_microconversions`, `get_conversions_raw`,
@@ -28,15 +28,8 @@ skill never touches. **Never refuse a check because of the connector.** A run
 that answered "check-alerts is local-only" left a site unwatched on exactly the
 connector nearly every user has.
 
-**Resolve the site before any call that takes a `site_id`, without announcing
-it.** If `list_sites` has not already run in this conversation, it is your first
-call: one call, counted in the budget. Use anything cached under
-`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
-`site_id` is in the list. If it is not, that state was written by another
-Sealmetrics account on this machine: ignore it for this run, resolve the site
-from the list, asking if there are several, and never delete the other
-account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
-cached site belongs to one connection".
+**The rule grammar and the four families are in
+`skills/seal-copilot/references/alert-grammar.md`.**
 
 ## Step 0 — Read the rule and the clock
 
@@ -86,9 +79,7 @@ other stored state.
    condition.hours`, counting only active hours. Establish the current local
    time in `rule.timezone` first, then state the gap as elapsed time — "last
    one 18 minutes ago", "no purchase for 5h 20m" — never as a bare clock time.
-   A run that printed "last one at 13:56 local" and called it healthy had the
-   right rows in front of it and never subtracted; the elapsed form is what
-   makes that impossible to skip.
+   The elapsed form is what makes skipping the subtraction impossible.
    **If you cannot establish the current time with confidence, do not answer
    🟢.** Say which figure you are missing. A watchdog that cannot tell the time
    reporting all-clear is worse than one that admits it, because the user stops
@@ -177,13 +168,3 @@ remembered previous run, because there is none.
 - Do not report a figure you did not fetch in this run.
 - No bot data: never call `get_bot_stats`, never say traffic comes from bots.
   Describe a spike by the referrer carrying it and what that traffic did.
-
----
-
-**Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
-and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
-Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `3` here), `verdict` (one of `on_track`, `watch`, `act`,
-`kpis_only`, `refused`, `error`), `scheduled` (boolean), `notes` (one line).
-Skip silently if the path is not writable — which, on a scheduled run, is the
-normal case.

@@ -13,24 +13,14 @@ short-description: 'Map which custom properties a Sealmetrics account has and wh
 
 # Property Explorer
 
-Before writing your answer, read `examples/output.md` in this skill directory
-and match its density, structure and tone. It is the reference for what a good
-run of this skill looks like.
+**Follow `skills/seal-copilot/references/run-protocol.md`:** no text until the answer, resolve the site with `list_sites` first, write state to the schema before answering, log the run. Match `examples/output.md`.
+
+Budget: **≤15 Sealmetrics calls.**
 
 Discover the analytical surface area of a specific Sealmetrics account so
 every later skill knows what to use. Run **once per site** at engagement
-start, then again after major tracking changes. Budget: ≤15 calls — higher
+start, then again after major tracking changes. — higher
 than other skills because the value compounds across every future run.
-
-**Resolve the site before any call that takes a `site_id`, without announcing
-it.** If `list_sites` has not already run in this conversation, it is your first
-call: one call, counted in the budget. Use anything cached under
-`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
-`site_id` is in the list. If it is not, that state was written by another
-Sealmetrics account on this machine: ignore it for this run, resolve the site
-from the list, asking if there are several, and never delete the other
-account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
-cached site belongs to one connection".
 
 ## Step 1 — List all property keys across all tables
 
@@ -127,14 +117,3 @@ language:
   first and note "identifier-like, 100+ values" instead.
 - Do not score properties with <50 events total — say "insufficient
   coverage, revisit when more data arrives".
-
----
-
-**Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
-and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
-Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `15` here), `verdict` (one of `on_track`, `watch`, `act`,
-`kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
-(boolean), `notes` (one line). The first real audit wrote `calls_used` and a
-free-text verdict because this footer said "calls used" in prose; the field
-names are the contract. Skip silently if the path is not writable.

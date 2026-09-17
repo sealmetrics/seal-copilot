@@ -18,8 +18,10 @@ import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, exist
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { assess } from './assess.mjs';
+import { assess, assessShell } from './assess.mjs';
 import { parseStream } from './stream.mjs';
+import { validateFile } from '../seal-copilot/hooks/scripts/lib/validate.mjs';
+import { fidelity } from './fidelity.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -44,9 +46,12 @@ if (filters.length && !selected.length) {
 }
 
 // Every mock tool is pre-allowed so the run never blocks on a permission prompt.
+// Bash is allowed only for the calculator and for reading the clock: those are
+// the two shell commands the plugin sanctions, and assess.mjs fails any other.
 const allowedTools = [
   ...Object.keys(schema).map(t => `mcp__sealmetrics__${t}`),
   'Read', 'Write',
+  'Bash(node *calc.mjs*)', 'Bash(date *)',
 ].join(' ');
 
 // Anything that can create, change or fire a scheduled task outside this run.
@@ -61,6 +66,42 @@ async function siteIdFor(fixture) {
     if (typeof ls === 'function') ls = ls({});
     return ls?.sites?.[0]?.site_id || '';
   } catch { return ''; }
+}
+
+// The state schemas, so every case is judged against the contract and not only
+// the eight that carry a stateMustContain. The PreToolUse hook enforces these
+// in Claude Code and Cowork; here they are enforced for every surface, because
+// the suite exercises the same skills. See seal-copilot/hooks/schemas.
+const stateSchemas = Object.fromEntries(
+  readdirSync(join(root, 'seal-copilot', 'hooks', 'schemas'))
+    .map((f) => [f, JSON.parse(readFileSync(join(root, 'seal-copilot', 'hooks', 'schemas', f), 'utf8'))]));
+
+/**
+ * Validate every state file the run WROTE, skipping any the case seeded and the
+ * skill left untouched.
+ *
+ * That exclusion is the same line the hook draws: old state is readable, new
+ * state must match the contract. One case seeds a deliberately legacy profile
+ * (`name`, `domain`, `event_names`) to prove a run does not repeat its stale
+ * notes; judging that seed would fail the case for reproducing the bug it
+ * exists to guard against.
+ */
+function checkState(dir, seeded) {
+  const problems = [];
+  const walk = (d) => {
+    let entries; try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!stateSchemas[e.name]) continue;
+      let text; try { text = readFileSync(p, 'utf8'); } catch { continue; }
+      if (seeded.get(p) === text) continue;            // untouched seed
+      const { errors } = validateFile(e.name, text, stateSchemas);
+      for (const err of errors.slice(0, 4)) problems.push(`${e.name}: ${err}`);
+    }
+  };
+  walk(dir);
+  return problems;
 }
 
 // Read every file under the state directory, so a case can assert on what a
@@ -94,11 +135,12 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
           args: [join(here, 'mock-server', 'server.mjs')],
           env: {
             SEAL_FIXTURE: c.fixture, SEAL_CALL_LOG: callLog,
-            // Which connector to imitate. Default `local` keeps every existing
-            // case serving all sixty-two tools; cases that set `transport:
-            // 'remote'` get the forty-two the OAuth connector announces, which
-            // is what nearly every user actually has.
-            SEAL_TRANSPORT: c.transport || 'local',
+            // Which connector to imitate. `remote` is the default because it is
+            // what .mcp.json gives every user: 42 of the 64 tools. A case that
+            // needs one of the 22 the remote withholds says `transport:
+            // 'local'`. The default was `local` until 2026-09-17, so 32 of 35
+            // cases exercised a connector almost nobody runs.
+            SEAL_TRANSPORT: c.transport || 'remote',
             SEAL_NOW: now.toISOString(),
             PATH: process.env.PATH || '',
           },
@@ -142,6 +184,10 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
         // the site must come from state or from list_sites. With the variable
         // set, a stale profile is never put to the test.
         if (c.multiSite || c.noSiteEnv) delete e.SEALMETRICS_SITE_ID;
+        // noStateDir: Claude on the web has no filesystem and the session hook
+        // announces no directory, so memory has to travel in the conversation
+        // as a seal-state block. Nothing else exercises that path.
+        if (c.noStateDir) { delete e.SEAL_COPILOT_STATE_DIR; e.SEAL_COPILOT_NO_STATE = '1'; }
         return e;
       })(),
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -176,6 +222,7 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
 
       resolve({ cliError, calls, rejected, ms, answer, sessionId, truncated,
                 textBlocks: parsed.textBlocks ?? 1,
+                shell: parsed.shell ?? [], calcOutputs: parsed.calcOutputs ?? [],
                 toolNames: [...new Set(calls.map(x => x.tool))] });
     });
   });
@@ -188,18 +235,23 @@ async function runCase(c, siteId) {
   // other case starts from an empty state dir, which is how a real run read
   // "get_bot_stats refuse with Access denied" from an old run log and printed
   // it while the whole suite stayed green.
+  const seeded = new Map();
   for (const [rel, content] of Object.entries(c.seedState || {})) {
     const p = join(work, 'state', rel);
     mkdirSync(dirname(p), { recursive: true });
     writeFileSync(p, content);
+    seeded.set(p, content);
   }
   const steps = c.steps || [c];
   const failures = [];
   let calls = 0, rejected = 0, ms = 0, answer = '', toolNames = [], cliError = null;
 
   let seen = 0, lastSession = null, truncatedStep = false;
+  let lastCalls = [], lastCalcOutputs = [], shellWarnings = [];
   for (const [i, step] of steps.entries()) {
     const r = await runStep(c, step, siteId, work, callLog, step.continue ? lastSession : null);
+    lastCalls = r.calls; lastCalcOutputs = r.calcOutputs || [];
+    shellWarnings = shellWarnings.concat(assessShell(r.shell || []).warnings);
     ms += r.ms;
     const stepCalls = r.calls.slice(seen);   // the log is cumulative; judge this step on its own calls
     seen = r.calls.length;
@@ -213,8 +265,34 @@ async function runCase(c, siteId) {
     if (step.continue && !lastSession) failures.push(`step ${i + 1}: could not resume — no session id from step ${i}`);
     const label = steps.length > 1 ? `step ${i + 1}: ` : '';
     for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected },
-                           r.answer, stepCalls, r.textBlocks))
+                           r.answer, stepCalls, r.textBlocks, r.shell))
       failures.push(label + f);
+  }
+
+  // Every number in the answer, traced to a tool result, the calculator, or one
+  // arithmetic step from either. `numericFidelity: true` makes it a failure; by
+  // default it is a warning, because twelve phrase bans in this repo have
+  // failed correct answers and this assertion gets the same probation. Turn it
+  // on globally once the suite has run clean with the warnings for three runs.
+  let fidelityNotes = [];
+  if (!cliError) {
+    const withResponses = (lastCalls || []).filter((x) => x.response !== undefined);
+    if (withResponses.length) {
+      const skillText = (() => {
+        try {
+          const dir = join(root, c.pluginDir || 'seal-copilot', 'skills');
+          return readdirSync(dir).map((sk) => {
+            try { return readFileSync(join(dir, sk, 'SKILL.md'), 'utf8'); } catch { return ''; }
+          }).join('\n') + readdirSync(join(dir, 'seal-copilot', 'references')).map((r) => {
+            try { return readFileSync(join(dir, 'seal-copilot', 'references', r), 'utf8'); } catch { return ''; }
+          }).join('\n');
+        } catch { return ''; }
+      })();
+      fidelityNotes = fidelity(answer, withResponses, lastCalcOutputs, skillText);
+      if (fidelityNotes.length && c.numericFidelity) {
+        failures.push(`number(s) in the answer that came from nowhere: ${fidelityNotes.join(', ')}`);
+      }
+    }
   }
 
   // Budget and rejections are judged once, across the whole case.
@@ -226,6 +304,9 @@ async function runCase(c, siteId) {
       for (const re of c.stateMustContain)
         if (!re.test(state)) failures.push(`nothing under the state dir matches ${re}`);
     }
+    // Every case, not just the ones with an assertion: state that does not
+    // match the contract is a failure even when the answer was right.
+    for (const p of checkState(join(work, 'state'), seeded)) failures.push(`invalid state — ${p}`);
   }
 
   const state = readState(join(work, 'state'));
@@ -233,7 +314,7 @@ async function runCase(c, siteId) {
   return { id: c.id, fixture: c.fixture, error: cliError, state, truncated: truncatedStep,
            pass: !cliError && failures.length === 0,
            failures: cliError ? [`the CLI never ran the case: ${cliError}`] : failures,
-           calls, rejected, ms, answer, toolNames };
+           fidelityNotes, shellWarnings, calls, rejected, ms, answer, toolNames };
 }
 
 // A session that never really ran: no answer, no tool call and no error — or
@@ -296,6 +377,10 @@ for (const c of selected) {
   const runLabel = RUNS > 1 ? ` ${r.passes}/${r.attempts}` : '';
   console.log(r.pass ? ` PASS${runLabel} (${r.calls} calls, ${(r.ms / 1000).toFixed(0)}s)`
                      : ` FAIL${runLabel} (${r.calls} calls) — ${r.failures.join('; ')}`);
+  for (const w of r.shellWarnings || []) console.log(`    shell warning — ${w}`);
+  if (r.fidelityNotes?.length && !selected.find(x => x.id === r.id)?.numericFidelity) {
+    console.log(`    fidelity warning — number(s) not traced to a tool result: ${r.fidelityNotes.slice(0, 6).join(', ')}`);
+  }
   if (!r.pass) {
     const called = r.toolNames?.length ? r.toolNames.join(', ') : '(none)';
     console.log(`    tools called: ${called}`);

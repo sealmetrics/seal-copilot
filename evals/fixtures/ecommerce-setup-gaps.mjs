@@ -9,9 +9,15 @@ export const tools = {
   list_property_keys: (a) => a.table === 'conversion_items' ? []                        // nothing on items
     : f.propertyKeys(['category'], { category: { conv: 968, micro: 9400 } }),          // and no sku anywhere
   get_conversions: f.conversions([['purchase', 968, 0]]),                              // revenue never passed
-  list_channel_rules: { rules: [{ id: 1, channel: 'Paid Search', match: 'utm_medium=cpc' }] },
+  // Captured 2026-09-17: rules carry the pattern fields and the draft flags
+  // PRD-055 added, and the envelope counts defaults separately from custom.
+  list_channel_rules: { rules: [{ id: 1, account_id: 'acct_demo', channel_name: 'Paid Search',
+    source_pattern: '*', medium_pattern: 'cpc', campaign_pattern: null, priority: 10,
+    is_default: false, is_active: true, created_at: '2026-09-01T00:00:00Z',
+    updated_at: '2026-09-01T00:00:00Z', draft_forced: false, draft_forced_reason: null }],
+    total: 1, default_count: 0, custom_count: 1 },
   get_traffic_sources: f.rows('utm_source', [['google', 9800, 236, 0, 0.51], ['meta-ads', 4100, 88, 0, 0.58]]),
-  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
+  get_channels: f.channels('channel', [['Organic Search', 17400, 430, 0, 0.44], ['Referral', 12500, 300, 0, 0.55], ['Direct', 7600, 168, 0, 0.46], ['Paid Search', 3700, 70, 0, 0.51]]),   // works with an api_key: the channel-groups router takes sites:read
   get_top_channels: f.top('channel', [['Organic Search', 17400, 430, 0, 0.44], ['Referral', 12500, 300, 0, 0.55], ['Direct', 7600, 168, 0, 0.46], ['Paid Search', 3700, 70, 0, 0.51]]),
   get_top_campaigns: f.top('utm_campaign', [['(not set)', 9200, 190, 0, 0.6], ['brand-es', 3900, 142, 0, 0.38]]),
   get_microconversions: f.micro({ product_view: 25600, add_to_cart: 3020 }),

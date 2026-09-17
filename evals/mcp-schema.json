@@ -1562,14 +1562,62 @@
   "verify_event_instrumented": {
     "params": [
       "account_id",
+      "expect",
       "kind",
+      "lookback_minutes",
       "name",
+      "simulation_id",
       "timeout_seconds"
     ],
     "enums": {
       "kind": [
         "conv",
         "micro"
+      ]
+    }
+  },
+  "plan_install": {
+    "params": [
+      "account_id",
+      "events",
+      "loader",
+      "product_identifier",
+      "repo_path",
+      "site",
+      "vertical"
+    ],
+    "enums": {
+      "vertical": [
+        "ecommerce",
+        "hotel",
+        "saas",
+        "leadgen",
+        "content"
+      ]
+    }
+  },
+  "simulate_install": {
+    "params": [
+      "allow_remote_url",
+      "base_url",
+      "cases",
+      "flows",
+      "level",
+      "plan",
+      "plan_id",
+      "repo_path",
+      "scenarios",
+      "tracker_delay_ms",
+      "tracker_source"
+    ],
+    "enums": {
+      "level": [
+        "call",
+        "page"
+      ],
+      "tracker_source": [
+        "vendored",
+        "cdn"
       ]
     }
   }

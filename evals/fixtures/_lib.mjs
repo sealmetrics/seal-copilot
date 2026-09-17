@@ -105,6 +105,19 @@ export const rows = (dim, list, { prev = null, stringRevenue = false } = {}) => 
   return out;
 };
 
+/**
+ * get_channels — `{ channels: [...], total }`.
+ *
+ * Captured from the live API on 2026-09-17. Three tools return the same channel
+ * rows in three different shapes, and this is the one nobody had modelled:
+ * `get_channels` wraps them under `channels` with a `total`, `get_top_channels`
+ * returns a bare array, and the paginated list tools use `{ data, has_next,
+ * page, page_size }`. Until today eight fixtures modelled this tool as
+ * returning "Access denied", which it does not for an API key.
+ */
+// Same signature as `top` so a fixture can mirror one from the other.
+export const channels = (dim, list) => ({ channels: list.map(spec => row(dim, spec)), total: list.length });
+
 // get_top_* — a bare array, no envelope, never a comparison.
 export const top = (dim, list) => list.map(spec => row(dim, spec));
 

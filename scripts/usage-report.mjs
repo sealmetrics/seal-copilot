@@ -65,8 +65,14 @@ if (allRecs.length) {
   if (closed) console.log(`  Verified share of closed: ${(100 * by('verified') / closed).toFixed(0)}% (PRD target ≥60%)`);
   const due = allRecs.filter(r => r.status === 'open' && r.verify_on && r.verify_on <= new Date().toISOString().slice(0, 10));
   if (due.length) console.log(`  ${due.length} due for verification now: ${due.slice(0, 5).map(r => r.subject).join(', ')}`);
-  const impact = allRecs.filter(r => r.status === 'verified').reduce((s, r) => s + (r.impact_eur_month || 0), 0);
-  if (impact) console.log(`  Estimated monthly impact of verified recommendations: €${impact.toLocaleString()}`);
+  // Per currency, never summed across them: a site reporting in USD and one in
+  // EUR do not add up, and the ledger carries the code for exactly that reason.
+  const byCurrency = {};
+  for (const r of allRecs.filter(r => r.status === 'verified'))
+    byCurrency[r.currency || '???'] = (byCurrency[r.currency || '???'] || 0) + (r.impact_month || 0);
+  const totals = Object.entries(byCurrency).filter(([, v]) => v);
+  if (totals.length) console.log('  Estimated monthly impact of verified recommendations: ' +
+    totals.map(([c, v]) => `${v.toLocaleString()} ${c}`).join(' · '));
 } else {
   console.log('\nNo recommendations logged yet. Run a health check or an opportunity scan.');
 }

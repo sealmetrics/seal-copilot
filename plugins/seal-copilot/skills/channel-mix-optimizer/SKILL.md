@@ -14,37 +14,12 @@ short-description: 'Reallocate paid budget across channels by revenue per entran
 
 # Channel Mix Optimizer
 
-Before writing your answer, read `examples/output.md` in this skill directory
-and match its density, structure and tone. It is the reference for what a good
-run of this skill looks like.
+**Follow `skills/seal-copilot/references/run-protocol.md`:** no text until the answer, resolve the site with `list_sites` first, write state to the schema before answering, log the run. Match `examples/output.md`.
 
-**Before anything else: emit no text until the report.** **Your first action
-is a tool call, not a sentence** — not "State directory is empty, running
-discovery", not "Let me start with the overview", not "Now writing state files,
-then the report". Writing state before the report is something you do, not
-something you announce. And nothing between calls
-either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
-no "Checking seasonality". The user reads every one of those before your answer,
-and a run that narrates its way to a conclusion reads as one that has not
-reached it. Make the calls in silence; your first and only message is the
-finished report. **And nothing after it:** write the profile, the ledger and the
-run log *before* the report, never once it is written. A tool call after the
-report forces a second message, and a run that logged its diagnosis first and
-then added "Diagnosis complete: the drop traces to /collections/sale" made the
-user read the same finding twice.
+Budget: **≤10 Sealmetrics calls.**
 
 Recommend budget shifts across paid channels using **Revenue Per Entrance
-(RPE)** as the proxy for ROAS. Budget: ≤10 tool calls.
-
-**Resolve the site before any call that takes a `site_id`, without announcing
-it.** If `list_sites` has not already run in this conversation, it is your first
-call: one call, counted in the budget. Use anything cached under
-`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
-`site_id` is in the list. If it is not, that state was written by another
-Sealmetrics account on this machine: ignore it for this run, resolve the site
-from the list, asking if there are several, and never delete the other
-account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
-cached site belongs to one connection".
+(RPE)** as the proxy for ROAS.
 
 ## Why RPE (and why state the caveat)
 
@@ -61,10 +36,8 @@ real CPC/CPM from the ad platform to confirm.** Never present RPE as ROAS.
    split, and it is the main route: treat `cpc`, `paid`, `display`,
    `paidsocial`, `cpm`, `ppc` as paid, and say that is the classification you
    used.
-3. **(local only)** `list_channel_rules` — the user's own classification, which
-   beats the default above when it exists. Not announced on `remote`, so on
-   that connector step 2 is the whole answer and there is nothing to report as
-   missing.
+3. `list_channel_rules` — the user's own classification, which beats the
+   default above when it exists. Announced on both connectors.
 
 ## Step 2 — Channel-level scorecard
 
@@ -140,14 +113,3 @@ budget decisions need their cost reality. Provide the **ratio** and the
 - Do not recommend scaling a campaign with <30 conversions; flag as
   "directional only".
 - Do not propose absolute budget numbers; propose ratios and tests.
-
----
-
-**Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
-and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
-Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `10` here), `verdict` (one of `on_track`, `watch`, `act`,
-`kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
-(boolean), `notes` (one line). The first real audit wrote `calls_used` and a
-free-text verdict because this footer said "calls used" in prose; the field
-names are the contract. Skip silently if the path is not writable.

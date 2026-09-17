@@ -7,7 +7,7 @@
 //
 // Only shapes are recorded — key names and value types, never the values.
 // --save writes them to evals/real-shapes/shapes.json (gitignored).
-import { readdirSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { connect, unwrap, redact } from './mcp-client.mjs';
@@ -26,6 +26,18 @@ if (!process.env.SEALMETRICS_API_KEY) {
 // parameter. The two families are not interchangeable: the wrong one returns
 // "Access denied" as ordinary text.
 const schema = JSON.parse(await import('node:fs').then(f => f.readFileSync(join(here, 'mcp-schema-full.json'), 'utf8')));
+
+/*
+ * Tools an API key can never read, by design.
+ *
+ * Probing them returns "Access denied", and counting that as an error meant
+ * this command could never exit zero — so the README's "until it has run
+ * clean" was a bar nothing could clear, and a check that cannot pass is a
+ * check nobody runs. A refusal from one of these is the expected result; a
+ * refusal from anything else is a finding.
+ */
+const SCOPE_GATED = new Set(JSON.parse(
+  readFileSync(join(here, 'remote-tools.json'), 'utf8')).scope_gated);
 const ACCOUNT_FAMILY = new Set(Object.entries(schema)
   .filter(([, t]) => /account_id/i.test(t.params.site_id?.description || '') || t.params.account_id)
   .map(([n]) => n));
@@ -148,7 +160,7 @@ const fixturesFor = (tool, args) => (handlers[tool] || []).map(({ file, probe })
 }).filter(Boolean);
 
 console.log('Probing the tools the skills depend on:\n');
-const formats = {}; let compared = 0, mismatches = 0, errors = 0, nonJson = 0;
+const formats = {}; let compared = 0, mismatches = 0, errors = 0, nonJson = 0, gated = 0;
 
 for (const [tool, rawArgs, label] of probes) {
   const name = label || tool;
@@ -164,7 +176,18 @@ for (const [tool, rawArgs, label] of probes) {
   try { out = await call(tool, args); } catch (e) { console.log(`  skip     ${name.padEnd(36)} ${e.message.slice(0, 60)}`); continue; }
   formats[out.format] = (formats[out.format] || 0) + 1;
 
-  if (out.format === 'error') { errors++; console.log(`  ERROR    ${name.padEnd(36)} ${String(out.value).replace(/\s+/g, ' ').slice(0, 90)}`); real[name] = { format: 'error', message: String(out.value).slice(0, 200) }; continue; }
+  if (out.format === 'error') {
+    const expected = SCOPE_GATED.has(tool);
+    if (expected) {
+      gated++;
+      console.log(`  gated    ${name.padEnd(36)} refused, as designed (no api_key carries the \`read\` scope)`);
+    } else {
+      errors++;
+      console.log(`  ERROR    ${name.padEnd(36)} ${String(out.value).replace(/\s+/g, ' ').slice(0, 90)}`);
+    }
+    real[name] = { format: 'error', expected, message: String(out.value).slice(0, 200) };
+    continue;
+  }
   if (out.format !== 'json' && out.format !== 'json-in-fence') {
     nonJson++; console.log(`  FORMAT   ${name.padEnd(36)} ${out.format}`);
     real[name] = { format: out.format, sketch: redact(out.raw ?? out.value, 400) }; continue;
@@ -220,5 +243,9 @@ if (save) {
 }
 
 console.log(`\nFormats: ${Object.entries(formats).map(([k, n]) => `${k} ${n}`).join(', ')}`);
-console.log(`${compared} compared, ${mismatches} mismatch(es), ${errors} error(s), ${nonJson} non-JSON.`);
+console.log(`${compared} compared, ${mismatches} mismatch(es), ${errors} unexpected error(s), ` +
+            `${gated} refused as designed, ${nonJson} non-JSON.`);
+if (!mismatches && !errors && !nonJson) {
+  console.log('\nThe fixtures match the real API. A green eval suite now means more than self-consistency.');
+}
 process.exit(mismatches || errors || nonJson ? 1 : 0);

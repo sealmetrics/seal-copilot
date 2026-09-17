@@ -1,5 +1,194 @@
 # Changelog
 
+## 1.15.1 — 2026-09-17
+
+Saved alert rules can now actually watch, and nothing in Sealmetrics had to
+change for it.
+
+### Added — Seal Watch
+Until now no customer could have an alert at all. Sealmetrics stores rules and
+can deliver notifications, but nothing evaluates one: `check_and_trigger` is
+called only from a test, creating a rule needs the `write` scope that only a
+dashboard session carries, and the dashboard has no alerts screen. The plugin
+could save a rule and check it on request, and that was the whole of it.
+
+`watcher/` closes that. It is possible outside the product for one reason:
+everything a rule needs in order to be judged sits under `/stats/`, which the
+API guards with `stats:read`, and every API key carries that scope. Only saving
+and evaluating rules are closed off, and both can live elsewhere.
+
+- The four families of the existing grammar, evaluated with arithmetic and no
+  model: cheap, deterministic, reproducible.
+- `silence` counts only **watched** hours, so a shop that closes at midnight is
+  not paged at 04:00. Verified across a daylight-saving change.
+- One `/stats/overview` per site per pass serves every rule on it, so the
+  service stays under a request a minute against a 240-per-minute limit.
+- Incidents rather than evaluations: one notification when a rule opens, "still
+  open" after that, a cooldown before it can reopen, and a line when it clears.
+- A failed read is never a verdict. Otherwise an outage of ours would fire every
+  silence rule at once.
+- A heartbeat every cycle, because the way a watchdog fails is silently.
+
+Rules are validated with the plugin's own schema and validator, so one contract
+serves the skill that writes a rule, the hook that checks the write, and the
+service that watches it. A malformed rule stops the service at startup naming
+the field: a watcher that skips what it cannot parse is a watcher that silently
+is not watching.
+
+Tokens are per client and never in the config. The config names the environment
+variable, the variable holds the token, so a client creates, rotates and revokes
+their own and nobody else's rules are affected.
+
+Deploys from `watcher/Dockerfile` with the repository as build context. The image
+runs its fifty tests at build time, so a broken watcher fails the deploy rather
+than the first alert.
+
+### Changed — what the skills may claim
+"Nothing watches these rules automatically" was true and is now conditional, so
+it is gone. In its place: this plugin watches nothing by itself, `check-alerts`
+runs a rule on request, and Seal Watch watches it between checks. The skills are
+**forbidden from claiming a rule is being watched**, because they cannot see
+whether the watcher has that site. `create-alert` prints the rule as JSON for
+the handover.
+
+The handover is one command: `watcher/rules.mjs import <site>
+<state-dir>/<site>/alerts.json` takes the whole file the plugin wrote. It
+imports only active, valid rules and always says what it skipped, because a
+rule the operator believes is watched and is not is the failure this service
+exists to prevent.
+
+### Fixed — a drop rule that would have saved and never fired
+`create-alert` told the model to set `expected_basis` at rule level and
+described the expectation curve without naming its key. `check-alerts` and the
+watcher both read `expected.cumulative_by_hour[weekday][hour]` and
+`expected.basis`, and the schema accepted `expected` as any object at all. So
+the documented shape was refused by the hook, and the shape a model would write
+next — `expected.cumulative`, borrowing the baseline file's own key — validated
+cleanly and could never be read.
+
+The schema now fixes the shape: `cumulative_by_hour` required, each weekday
+exactly 24 non-negative numbers, `basis` one of two values, nothing else
+allowed. The skill names the fields. Six self-test checks cover it.
+
+### Also
+- The watcher's config reloads between passes, so a rule change needs no
+  redeploy, and a broken edit keeps the last good config running rather than
+  silencing every rule.
+- `watcher/preview.mjs` replays a rule over the site's real events and names
+  the days it would have fired. It reports rather than judges: a backtest
+  counts real incidents as well as false ones, so `create-alert`'s "one false
+  alarm a month" threshold does not apply to it.
+- The validator reports the union branch whose type matches what was written.
+  With `anyOf: [null, object]` it had been picking the shorter explanation, so
+  every malformed curve came back as "must be null, got object".
+
+### Not included
+No email. Sealmetrics already owns alert email, and deliverability for a
+customer's domain is not something to reimplement. No rules in the Sealmetrics
+dashboard, because they live in the watcher's config. And this is not the
+destination: when the native engine ships, the grammar here is already the one
+that design is built around, so the rules translate rather than being rewritten.
+
+## 1.14.0 — 2026-09-17
+
+Five rules that were prose are now mechanisms, and three facts the plugin
+asserted about its own connector were wrong.
+
+### Fixed — `get_channels` works, and the plugin banned it
+`evals/tool-availability.json` kept a hand-written list of twenty tools the
+remote connector withholds, and `get_channels` sat in the `forbidden` list
+because it "403s for every modern key". Read from `sealmetrics2/mcp-server` and
+from the published package 1.9.1: the remote gate excludes **ten** tools (the
+alerts, segments, bot-stats and webhooks routers, which need the generic `read`
+scope), and `omitSetupTools` withholds twelve more (eight setup tools, four
+channel-rule writers). So the remote announces 42 of 64, for two different
+reasons that one list of twenty conflated.
+
+And the channel-groups router is guarded by
+`require_any_scope("read", "sites:read", "channel_rules:write")`, which a modern
+API key satisfies. **`get_channels`, `list_channel_rules` and
+`test_channel_rules` work on both connectors.** The cost of getting this wrong
+was not abstract: `setup-audit` told users on the remote connector it could not
+dry-run a channel rule, so it proposed rules without the evidence that would
+justify them, and `channel-mix-optimizer` skipped the account's own channel
+classification.
+
+`evals/dump-transport-tools.mjs` now generates `evals/remote-tools.json` from
+the published package; the linter and the mock read it, and `check.sh` fails when
+it is stale. `get_channels` is a preference, not a prohibition: a mention must
+name `get_top_channels` nearby, which keeps the guard without asserting
+something untrue.
+
+### Fixed — the state contract is a schema, not a paragraph
+`state-schema.md` said "these field names are the contract" and nothing checked
+it. In certification 9 — thirty of thirty-one cases green — twelve skills wrote
+twelve different profiles. None used `site_name` or `events`, the two fields the
+profile exists to provide; three wrote `connector: "remote-oauth"`; eighteen
+undefined field names appeared.
+
+`seal-copilot/hooks/schemas/` holds one schema per state file, and a
+`PreToolUse` hook validates every write, denying with the fields to fix and
+naming the field the writer probably meant. It also refuses an `Edit` on a state
+file and a shell redirect into the state directory. The eval runner applies the
+same schemas to whatever every case leaves behind, skipping a seeded file the run
+never touched.
+
+`impact_eur_month` becomes `impact_month` + `currency`, both required: a store
+reporting in dollars was being handed a ledger in euros.
+
+### Changed — four rules written fifteen times, now written once
+The silence rule was copied into nine skills, site resolution into fourteen, the
+run-log footer into twelve, the golden-output line into fifteen: 3,201 words of
+duplication. The one eval case that would not pass three runs of three failed on
+narration — the rule written nine times. Repetition is not enforcement.
+
+`references/run-protocol.md` holds them once. `references/mcp-calls.md` takes
+the call rules and response shapes out of `methodology.md`, because they are
+needed when composing a call and not throughout a run.
+`references/alert-grammar.md` is shared by the two alert skills. The runs that
+produced each rule move to `docs/incidents.md`.
+
+A weekly health check loads 6,557 words of instructions instead of 10,018. The
+core skill went 2,451 → 1,455, `create-alert` 2,393 → 1,185, `state-schema.md`
+2,600 → 1,146. `evals/check-skill-size.mjs` holds the line: a word cap per file,
+no 40-word paragraph in two files, and no date inside a `SKILL.md` — a date is
+an anecdote's signature.
+
+### Added — the arithmetic is done by a script
+`skills/seal-copilot/scripts/calc.mjs`, no dependencies: `delta`, `rates`,
+`pair-diff`, `impact`, `baseline-168`, `sku-join`, `false-alarm`, `pace`. The
+model interprets; the script calculates. Wired into the 168-cell watchdog
+baseline, the per-SKU pivot join and `create-alert`'s Poisson false-alarm rate.
+
+### Added — a test for the first principle
+"Every number is real" had nothing behind it. `evals/fidelity.mjs` traces every
+number in an answer to a tool result, a calculator output, a documented
+threshold, or one arithmetic step from two of those, and
+`check-fidelity-golden.mjs` runs it over all eight golden outputs. Seven are
+clean; the eighth quotes a three-operand impact estimate, documented as a known
+exception and exactly what `calc impact` now returns. In the suite it warns
+rather than fails, because twelve phrase bans in this repo have failed correct
+answers and this gets the same probation.
+
+### Removed — what was promised and absent
+The `sealmetrics-analyst` agent is deleted: no skill invoked it, and
+`state-schema.md` documented why none could. `seal-state` is implemented rather
+than advertised — on a surface with no state directory the answer closes with
+the profile and open ledger entries, and a pasted block is read back as starting
+state. `evals/check-dangling.mjs` fails on a named file that does not exist and
+on a bundled file nothing names, which is what would have caught the agent the
+day it died.
+
+### Checks
+Thirteen offline gates, four of them new, and CI runs them on every pull request
+for the first time. A second workflow checks weekly that the MCP has not moved
+under the plugin. The schema snapshot is re-taken against 1.9.1: 64 tools, up
+from 62, including `plan_install` and `simulate_install`.
+
+**Not verified.** `validate-fixtures.mjs` and the three real-account runs need a
+Sealmetrics API key, which was not available; the full `--runs 3` certification
+has not been run. See `docs/PRD-mecanismo-v1.md` §11.
+
 ## 1.13.2 — 2026-09-14 (seal-install 1.12.1)
 
 The installer no longer recommends event names that its own verifier rejects,

@@ -64,11 +64,18 @@ Four kinds of rule: **silence** (N hours with no event), **drop** and **spike**
 number for the day). Ask "my alerts" to list them, and "delete the alert" to
 remove one.
 
-**Rules are not watched automatically yet.** Scheduling them as Claude Code
-routines was tried and does not hold up: routines run at most hourly, count
-against a daily cap, and only load the plugin from a repository. Automatic
-alerts will come from Sealmetrics' own alert engine; the rules you save now use
-the same grammar.
+**What watches them is a separate service.** The plugin saves a rule and checks
+it on request; it schedules nothing. Continuous watching is
+[Seal Watch](../watcher/README.md): a dependency-free loop that reads the same
+rule grammar, evaluates it every five minutes with no model, and delivers to
+Slack or a webhook. It runs on your own infrastructure with your own Sealmetrics
+token and needs no change to Sealmetrics.
+
+Scheduling the check as a Claude Code routine was tried instead and does not
+hold up: routines run at most hourly, count against a daily cap, and only load
+the plugin from a repository. When Sealmetrics' own alert engine ships it
+becomes the destination, and the grammar is already the one it is designed
+around.
 
 ## Install
 
@@ -116,18 +123,27 @@ the plugin stores no credential. That is the right default for the person this
 is built for: a marketer, who should never meet an API key.
 
 It costs something, and the plugin says so rather than working around it in
-silence. Twenty tools reach backend routes that need a broader permission than
-any API key or OAuth grant can carry, so the connector does not offer them:
-alerts, webhooks, saved segments, channel rules and event verification. Every skill knows this. Steps that need them are marked
-*(local only)*, skipped, and named once at the end of a report under **Not
-checked** — never quietly reported as passing.
+silence. The connector announces 42 of the server's 64 tools, and the 22 it
+withholds are withheld for two different reasons:
+
+- **Ten are scope-gated.** The account's own dashboard alerts, webhooks and
+  saved segments, plus traffic-quality data, sit behind a permission no API key
+  or OAuth grant can carry. Nothing reaches them but a dashboard session.
+- **Twelve are the setup and channel-rule-write tools.** Provisioning a site,
+  verifying the pixel and writing a channel rule live in
+  [`seal-install`](../seal-install/README.md) and the local connector.
+
+Every skill knows this. Steps that need them are marked *(local only)*,
+skipped, and named once at the end of a report under **Not checked** — never
+quietly reported as passing. The list is generated from the server's own source
+(`evals/remote-tools.json`), because the hand-kept one was wrong for two months.
 
 What that means in practice:
 
 | You will see | Why |
 |---|---|
 | `cost-reduction` scanning six patterns instead of eight | Two of them need the account's alerts, webhooks and saved segments |
-| `setup-audit` proposing a channel rule in words instead of testing it | It can read that `cpc` traffic is misrouted, and cannot write the rule that fixes it. Create it in the dashboard |
+| `setup-audit` dry-running a channel rule but not applying it | Reading and testing rules works on this connector; only writing one needs the local server, so create it in the dashboard |
 
 Everything that matters for analysis — traffic, channels, campaigns, terms,
 landings, conversions, microconversions, properties, funnels, raw events — is
@@ -200,9 +216,10 @@ processed or sent to the model.
 - No ad-spend data: Sealmetrics does not ingest cost, so the analyst
   compares CR, AOV, and revenue — for ROAS, pull spend from your ads
   platform.
-- Alerts, segments and channel rules are not reachable over the default
-  connector. See "The connector, and what it can
-  reach"; the skills that touch them say so rather than reporting a zero.
+- The account's dashboard alerts, saved segments and webhooks are not reachable
+  over the default connector, and neither is writing a channel rule. See "The
+  connector, and what it can reach"; the skills that touch them say so rather
+  than reporting a zero. Reading and testing channel rules does work.
 - Attribution is last non-direct click, consentless, measured server-side.
   Numbers will not match GA4 or your ad platform dashboards, and upper-funnel
   channels are undervalued by definition — the analyst says so when it matters.
@@ -232,12 +249,16 @@ With a real API key, one more check matters more than all of these:
 SEALMETRICS_API_KEY=sm_... node evals/validate-fixtures.mjs
 ```
 
-The eval fixtures are reconstructions from documented field names. Until that
-command has run clean, a green suite proves the skills are self-consistent, not
-that they match the real API. It compares response **shapes** only — key names
-and types, never your figures — and writes nothing unless you pass `--save`.
+**It ran clean on 2026-09-17**, against a real account: 33 tools compared, no
+mismatches, and the six refusals were exactly the scope-gated ones. Before that
+the fixtures were reconstructions from documented field names, and a green suite
+only proved the skills were self-consistent. It compares response **shapes**
+only — key names and types, never your figures — and writes nothing unless you
+pass `--save`. Re-run it whenever the API changes.
 
-`check.sh` needs no model and no API key — it is what CI should run.
+`check.sh` needs no model and no API key, and CI runs it on every pull request.
+A second workflow checks weekly that the MCP has not moved under the plugin
+and opens an issue when it has.
 
 The eval suite spawns real `claude -p` sessions, so it costs tokens and needs
 the **CLI** to be authenticated. Being signed in to the Claude desktop app does

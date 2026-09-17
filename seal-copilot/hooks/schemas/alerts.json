@@ -1,0 +1,212 @@
+{
+  "title": "alerts.json",
+  "description": "Rules this plugin saved. Nothing watches them automatically; check-alerts runs one on request. An object with a rules array, never a bare list: a bare array written by a real run was invisible to the session hook, monday-briefing and setup-audit alike.",
+  "type": "object",
+  "required": [
+    "site_id",
+    "rules"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "site_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "family",
+          "metric",
+          "condition",
+          "timezone",
+          "created_at",
+          "status"
+        ],
+        "additionalProperties": false,
+        "x-requiredWhen": [
+          {
+            "when": {
+              "family": [
+                "silence",
+                "drop"
+              ]
+            },
+            "require": [
+              "active_hours"
+            ]
+          },
+          {
+            "when": {
+              "family": [
+                "drop",
+                "spike"
+              ]
+            },
+            "requireNonNull": [
+              "expected"
+            ]
+          }
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "site_id": {
+            "type": "string"
+          },
+          "family": {
+            "enum": [
+              "silence",
+              "drop",
+              "spike",
+              "threshold"
+            ]
+          },
+          "metric": {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "conversion",
+                  "microconversion",
+                  "revenue",
+                  "entrances"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "description": "The site's real event name, from list_microconversion_types or get_conversions. Never a canonical name, never a guess."
+              }
+            }
+          },
+          "filter": {
+            "type": "object"
+          },
+          "condition": {
+            "type": "object"
+          },
+          "active_hours": {
+            "type": "object",
+            "required": [
+              "from",
+              "to",
+              "days"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 24
+              },
+              "to": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 24
+              },
+              "days": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ]
+                }
+              }
+            }
+          },
+          "timezone": {
+            "type": "string",
+            "pattern": "^([A-Za-z_]+/[A-Za-z_+/-]+|UTC)$"
+          },
+          "expected": {
+            "description": "drop and spike only: the expectation embedded at creation time, so the check needs no stored state. The field names are read by the watcher and by check-alerts, so they are fixed here rather than described: a curve under any other key validates as an object and then never fires.",
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "cumulative_by_hour"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "cumulative_by_hour": {
+                    "type": "object",
+                    "description": "One entry per weekday present, keyed mon..sun, each 24 cumulative counts for hours 0-23 in the rule's timezone.",
+                    "additionalProperties": {
+                      "type": "array",
+                      "minItems": 24,
+                      "maxItems": 24,
+                      "items": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "basis": {
+                    "enum": [
+                      "watchdog-baseline",
+                      "last-week-flat"
+                    ],
+                    "description": "Where the curve came from, so a report can say the comparison is coarse. Not `expected_basis` at rule level: that is refused."
+                  }
+                }
+              }
+            ]
+          },
+          "deliver": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "app",
+                "slack",
+                "email"
+              ]
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "expires_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "paused",
+              "deleted"
+            ]
+          },
+          "deleted_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "last_fired": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

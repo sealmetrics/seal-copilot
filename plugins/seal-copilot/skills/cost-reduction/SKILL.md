@@ -14,42 +14,17 @@ short-description: 'Find operational waste: junk referrers, zombie pages, dead c
 
 # Cost Reduction (Operational Waste)
 
-Before writing your answer, read `examples/output.md` in this skill directory
-and match its density, structure and tone. It is the reference for what a good
-run of this skill looks like.
+**Follow `skills/seal-copilot/references/run-protocol.md`:** no text until the answer, resolve the site with `list_sites` first, write state to the schema before answering, log the run. Match `examples/output.md`.
 
-**Before anything else: emit no text until the report.** **Your first action
-is a tool call, not a sentence** — not "State directory is empty, running
-discovery", not "Let me start with the overview", not "Now writing state files,
-then the report". Writing state before the report is something you do, not
-something you announce. And nothing between calls
-either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
-no "Checking seasonality". The user reads every one of those before your answer,
-and a run that narrates its way to a conclusion reads as one that has not
-reached it. Make the calls in silence; your first and only message is the
-finished report. **And nothing after it:** write the profile, the ledger and the
-run log *before* the report, never once it is written. A tool call after the
-report forces a second message, and a run that logged its diagnosis first and
-then added "Diagnosis complete: the drop traces to /collections/sale" made the
-user read the same finding twice.
+Budget: **≤12 Sealmetrics calls.**
 
 Find waste Sealmetrics can see **without** ad-spend data: traffic that
 costs money on the infrastructure side but produces nothing, instrumentation
-that's broken, and unused features. Budget: ≤12 calls.
+that's broken, and unused features.
 
 > Scope note for the user: this skill targets **operational expenses**
 > (infra, dev time, fraud, tool license use), not **media costs**. For ad
 > spend efficiency, run `channel-mix-optimizer`.
-
-**Resolve the site before any call that takes a `site_id`, without announcing
-it.** If `list_sites` has not already run in this conversation, it is your first
-call: one call, counted in the budget. Use anything cached under
-`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
-`site_id` is in the list. If it is not, that state was written by another
-Sealmetrics account on this machine: ignore it for this run, resolve the site
-from the list, asking if there are several, and never delete the other
-account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
-cached site belongs to one connection".
 
 ## Patterns scanned (report only those that fire)
 
@@ -161,14 +136,3 @@ not be screened is not a pattern that came back empty.
   low — confirm with the user it is not a high-value rare event (e.g.
   "demo_request" is rare but valuable).
 - Do not delete alerts/webhooks for the user; recommend, do not act.
-
----
-
-**Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
-and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
-Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `12` here), `verdict` (one of `on_track`, `watch`, `act`,
-`kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
-(boolean), `notes` (one line). The first real audit wrote `calls_used` and a
-free-text verdict because this footer said "calls used" in prose; the field
-names are the contract. Skip silently if the path is not writable.

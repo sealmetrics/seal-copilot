@@ -1,0 +1,36 @@
+{
+  "_why": "Every word here is loaded before the model's first tool result, and it is loaded on every question. A weekly health check carried 10,018 words of instructions in 1.13.2; four rules were written nine to fifteen times over, and the one case that would not pass three runs of three failed on the rule written nine times. Repetition is not enforcement. See docs/incidents.md, 2026-09-17.",
+  "_howToRaise": "Do not. A skill that needs more room is a skill with a rule that belongs in references/run-protocol.md, a call detail that belongs in references/mcp-calls.md, or a story that belongs in docs/incidents.md. Raise a cap only when a genuinely new procedure arrives, and say so in the commit.",
+  "default": 1100,
+  "files": {
+    "seal-copilot/skills/seal-copilot/SKILL.md": 1500,
+    "seal-copilot/skills/create-alert/SKILL.md": 1225,
+    "seal-copilot/skills/check-alerts/SKILL.md": 1350,
+    "seal-copilot/skills/setup-audit/SKILL.md": 1400,
+    "seal-copilot/skills/seal-copilot/references/methodology.md": 2000,
+    "seal-copilot/skills/seal-copilot/references/mcp-calls.md": 2150,
+    "seal-copilot/skills/seal-copilot/references/state-schema.md": 1200,
+    "seal-copilot/skills/seal-copilot/references/run-protocol.md": 1000,
+    "seal-copilot/skills/seal-copilot/references/opportunity-patterns.md": 1200,
+    "seal-install/skills/install-sealmetrics/SKILL.md": 1750
+  },
+  "contextBudget": {
+    "_why": "What a scheduled weekly report loads before it can do anything. This is the number that matters to the model, and the one the caps above exist to hold.",
+    "files": [
+      "seal-copilot/skills/seal-copilot/SKILL.md",
+      "seal-copilot/skills/seal-copilot/references/methodology.md",
+      "seal-copilot/skills/seal-copilot/references/state-schema.md",
+      "seal-copilot/skills/seal-copilot/references/run-protocol.md",
+      "seal-copilot/skills/weekly-health-check/SKILL.md",
+      "seal-copilot/skills/weekly-health-check/examples/output.md",
+      "seal-copilot/skills/seal-copilot/examples/output.md"
+    ],
+    "cap": 7000
+  },
+  "_capNotes": {
+    "seal-copilot/skills/create-alert/SKILL.md": "Raised from 1200 to 1225 on 2026-09-17, its second raise, which is worth noticing. It came from 2,393: the grammar moved to references/alert-grammar.md, the false-alarm arithmetic became `calc false-alarm`, and the routines story went to docs/incidents.md. The last 25 words are the two failure modes a noisy rule can have — fires too often, or never closes — because they need different advice and a real site showed the second one is the common case at low volume. Four rounds of shaving single words to protect the old number was theatre; if this file needs a third raise, something belongs in a reference instead.",
+    "seal-copilot/skills/seal-copilot/SKILL.md": "Set at 1500. It is the methodology skill: 17 operating rules, vertical detection and the routing table every other skill depends on.",
+    "seal-copilot/skills/seal-copilot/references/run-protocol.md": "Set at 1000. This file replaced 3,201 words of duplication across fifteen skills and also carries the calculator table and the seal-state fallback for surfaces with no filesystem. Because every skill reads it, the guard that matters is contextBudget below, which counts what a weekly actually loads; this per-file cap only stops it becoming a dumping ground.",
+    "seal-copilot/skills/seal-copilot/references/mcp-calls.md": "Raised from 2050 to 2150 on 2026-09-17, for the table of the three shapes the same channel rows come back in. That is verified against the live API and it prevents a silent misread: assuming get_channels returns the paginated envelope means reading nothing. This file is loaded only when composing a call that has not been made in the session, not on every question, so the number that matters is contextBudget rather than this one."
+  }
+}

@@ -15,98 +15,30 @@ short-description: 'Turn a sentence into a sound alert rule and save it — "tel
 
 # Create Alert
 
-**Before anything else: emit no text until the answer.** **Your first action
-is a tool call, not a sentence** — not "Checking whether purchases are
-tracked", not "Now saving the rule, then confirming". Saving the rule and
-logging the run are things you do, not things you announce. Make the calls in
-silence; your first and only message is the answer, and nothing comes after it.
+**Follow `skills/seal-copilot/references/run-protocol.md`:** no text until the answer, resolve the site with `list_sites` first, write state to the schema before answering, log the run. Match `examples/output.md`.
 
-Before writing your answer, read `examples/output.md` in this skill directory
-and match its density and tone. It is the reference for what a good run of this
-skill looks like.
+Budget: **≤3 Sealmetrics calls.**
 
-Budget: ≤3 Sealmetrics calls — up to two to find the event and measure it, one
-for the expectation a `drop` rule needs. The output of a successful run is
-under 10 lines.
+Two calls to find the event and measure it, one for the expectation a `drop`
+rule needs. A successful run is under 10 lines.
 
-**The only other tools this skill uses are Read and Write** (for state). No shell: not `ls` to look for a state directory, not
-`echo` as a placeholder between calls. A real run spent two shell calls doing
-nothing; Read answers whether a file exists.
+**The only other tools are Read and Write**, for state. No shell — not `ls` to
+see whether a state file exists; Read answers that.
 
-**Works on every connector.** These rules are the plugin's own and need none
-of the tools the remote connector withholds; `list_alerts` and the other
-dashboard-alert tools are not available to it and are a different product. Do
-not tell a user on the remote connector that alerts need the local one.
+**Works on every connector**, and never refuse a rule because of one: these
+are the plugin's own and need none of the tools the remote connector withholds.
 
-**This skill schedules nothing.** Not `/schedule`, not a routine, not a cron,
-not a Cowork task — even when the user asks for one. Routines were tried: none
-ever ran an alert end to end, and they cannot. A routine only has the plugin if
-a repository declares it, runs at most hourly, counts against a daily cap of
-runs on the account, and was created with every connector the account has —
-mail and payments included — to read one counter. Alerts that watch on their
-own arrive with Sealmetrics' native alert engine. Until then, say so plainly:
-the rule is saved, and "run my alert X" checks it now through `check-alerts`.
-If the user asks you to schedule it, that one sentence is the answer; do not
-offer a workaround.
+**This skill schedules nothing** — not `/schedule`, not a routine, not a cron,
+not a Cowork task, even when asked. Continuous watching is Seal Watch's job, not
+a host task's. Say so plainly: the rule is saved, "run my alert X" checks it
+now, and Seal Watch is what watches it between checks.
 
-This skill writes the rule. `check-alerts` evaluates it when the user asks. The
-two share the grammar below and nothing else.
+**The rule grammar and the four families are in
+`skills/seal-copilot/references/alert-grammar.md`.** Read it before parsing the
+user's sentence.
 
-**Resolve the site before any call that takes a `site_id`, without announcing
-it.** If `list_sites` has not already run in this conversation, it is your first
-call: one call, counted in the budget. Use anything cached under
-`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
-`site_id` is in the list. If it is not, that state was written by another
-Sealmetrics account on this machine: ignore it for this run, resolve the site
-from the list, asking if there are several, and never delete the other
-account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
-cached site belongs to one connection".
-
-## The rule grammar
-
-```json
-{
-  "id": "no-conversions-4h",
-  "site_id": "demo-store",
-  "family": "silence",
-  "metric": { "kind": "conversion", "type": "purchase" },
-  "filter": {},
-  "condition": { "hours": 4 },
-  "active_hours": { "from": 8, "to": 24, "days": ["mon","tue","wed","thu","fri","sat","sun"] },
-  "timezone": "Europe/Madrid",
-  "expected": null,
-  "deliver": ["app"],
-  "created_at": "2026-09-12",
-  "expires_at": "2027-03-12",
-  "status": "active"
-}
-```
-
-| Field | Rule |
-|---|---|
-| `id` | Slug of what is watched plus the condition: `no-conversions-4h`, `atc-half-normal`, `revenue-under-2000`. It is how the user refers to the rule later |
-| `family` | One of `silence`, `drop`, `spike`, `threshold`. See the table below |
-| `metric.kind` | `conversion`, `microconversion`, `revenue` or `entrances` |
-| `metric.type` | The site's **real** event name, from `list_microconversion_types` or `get_conversions`. Never the canonical name, never a guess |
-| `filter` | Only filters the tool for that metric actually accepts. A filter the tool does not support is refused at creation, never passed and ignored |
-| `condition` | `{ "hours": N }` for `silence`; `{ "ratio": 0.5 }` for `drop` and `spike`; `{ "below": 2000 }` or `{ "above": N }` for `threshold` |
-| `active_hours` | **Mandatory for `silence` and `drop`.** Local hours `from`–`to` and the days it applies |
-| `expected` | `drop` and `spike` only. The expectation **embedded at creation time**, so the check needs no stored state |
-| `deliver` | `["app"]`, or add `"slack"` / `"email"` when the user has that connector and asks for it |
-| `expires_at` | Six months out. An alert nobody revisits becomes noise |
-
-## The four families
-
-| Family | The user says | What the check does | Calls |
-|---|---|---|---|
-| `silence` | "four hours with no conversions", "two hours without add-to-cart on mobile" | Day total, then the timestamp of the most recent event. Fires when the gap reaches `hours` inside active hours | 1–2 |
-| `drop` | "less than half of normal by mid-afternoon" | Day-to-date against the `expected` curve for this weekday and hour | 1 |
-| `spike` | "if one campaign triples in an hour" | The mirror of `drop` | 1–2 |
-| `threshold` | "if revenue does not reach 2,000 today", "if brand-es drops below 10 conversions a day" | One reading against a fixed number | 1 |
-
-Anything else — rules about saved segments, about a metric
-that would take more than two calls, or comparing two sites — is out of scope.
-Say so plainly and offer the nearest rule that is in scope.
+Out of scope: saved segments, a metric costing more than two calls, and
+comparisons between sites. Say so and offer the nearest rule that is in scope.
 
 ## Procedure
 
@@ -127,81 +59,67 @@ Sensible defaults you may apply without asking: `expires_at` six months out,
 
 ### 2. Verify the metric exists, and that the rule will not be noise (1–2 calls)
 
-**Check both surfaces before saying an event is not tracked.** The user says
-"demo requests" or "sales"; they do not say whether the site records that as a
-conversion or a microconversion, and you cannot tell from the word. Call
-`list_microconversion_types`; if the name is not there, call
-`get_conversions(period=30d)` before concluding anything — and the other way
-round. Only when it is in **neither** is the event genuinely untracked, and only
-then do you list what does exist and stop.
+**Check both surfaces before saying an event is not tracked.** You cannot tell
+from the word whether "sales" is a conversion or a microconversion. Call
+`list_microconversion_types`, and if the name is not there call
+`get_conversions(period=30d)` — and the other way round. Only when it is in
+**neither** is it untracked, and only then list what does exist and stop.
 
-Getting this wrong is not a near miss. A run told a SaaS account that
-`demo_request` was not being tracked, having looked only at the microconversion
-list; it was the site's macro conversion, 41 of them that month. Set
-`metric.kind` from where you actually found the event, never from the word the
-user used.
+Set `metric.kind` from where you actually found the event, never from the word
+the user used: a run that checked only the microconversion list told a SaaS
+account its macro conversion was untracked.
 
-**Noise check: how often would it fire on a normal site?** A `silence` rule of
-four hours on an event that happens three times a day fires most afternoons and
-teaches the user to ignore you. Measure it, from the 30-day count:
+**Noise check: how often would it fire on a normal site?** **Do not do this
+arithmetic yourself** — run the calculator:
 
-1. `rate` = 30-day count ÷ (active hours a day × 30). Use the active hours the
-   user gave, or the ones you are about to propose.
-2. `λ` = `rate` × the window, in active hours. For "fewer than 1 today" the
-   window is one day's active hours.
-3. `p` = e^−λ, the chance that a perfectly normal window holds zero events.
+```
+echo '{"count_30d":72,"active_hours_per_day":16,"window_hours":4}' \
+  | node skills/seal-copilot/scripts/calc.mjs false-alarm
+```
 
-   | λ | 0.5 | 1 | 2 | 3 | 4 | 5 | 6 | 8 |
-   |---|---|---|---|---|---|---|---|---|
-   | e^−λ | 61% | 37% | 14% | 5% | 1.8% | 0.7% | 0.25% | 0.03% |
+For a `threshold` rule pass `threshold` too, and it uses the Poisson tail.
 
-4. False alarms a month ≈ 30 × max(1, active hours a day ÷ window hours) × `p`.
+**When its verdict is `too noisy`, refuse the rule as written**, and say which
+of the two failures it is, because they need different fixes. `reason` tells
+you: *fires too often* wants a longer window; *would be open most of the time*
+means the event is too rare for any silence window and a threshold rule is the
+shape that fits. Quote `incidents_per_month` in the user's terms, not
+`empty_windows_per_month` — the second is how often a window is empty, and a
+watcher notifies once per episode, not once per window.
 
-**Above one false alarm a month, refuse the rule as written.** Say the figure
-in the user's terms — "it would fire about 8 times a month with nothing
-wrong", or "almost every day" when it is 30 or more — and show `λ` behind it.
-
-For a `threshold` below N with N > 1, `p` is the Poisson tail P(count < N).
-Shortcut: an expected count of 10 or more per period, with N at most half of
-it, stays under one false alarm a month on a daily or weekly period.
-
-**Every alternative you propose passes the same test, and you give its
-figure.** A real run refused "4 hours without CTA clicks" on a site doing 2.4 a
-day, then offered a 12-hour silence and a daily "fewer than 1" threshold. Both
-have λ = 2.4 — a false alarm about 9% of days, nearly three a month — so it
-refused one noisy rule by recommending two. At that volume the sound options
-are longer: two days without a click (λ = 4.8, about one false alarm a
-quarter), or a weekly threshold. If nothing short enough to be useful passes,
-say so: at this volume the alert can catch broken tracking, not a bad
+**Every alternative goes through the calculator too.** Offering another rule
+with the same λ is the easiest mistake: a 12-hour silence and a daily "fewer
+than 1" threshold on 2.4 clicks a day both sit at λ = 2.4. If nothing useful
+passes, say so — at that volume an alert catches broken tracking, not a bad
 afternoon.
+
+These are Poisson estimates and real traffic clusters. `watcher/preview.mjs`
+replays the rule over the site's own history and names the days it would have
+fired; offer it when the user wants more than an estimate.
+
+Without a shell, do the arithmetic and say in the answer that it was done
+without the calculator.
 
 ### 3. Fill `expected`, for `drop` and `spike` only (0–1 calls)
 
-- If `<state-dir>/<site_id>/watchdog-baseline.json` exists and has not expired,
-  take the cumulative-by-hour curve from it. No call.
-- Otherwise one call for the same weekday last week, spread across active hours,
-  and set `"expected_basis": "last-week-flat"` so the check can say the
-  comparison is coarse.
+`expected` is `{ basis, cumulative_by_hour }`, where `cumulative_by_hour` has
+one entry per weekday (`mon`…`sun`) of exactly **24** cumulative counts, hours
+0–23. Those names are what reads it; any other key is refused at the write.
 
-Never leave `expected` null on a `drop` or `spike` rule. A check that has to
-invent its own expectation is the guessed threshold this plugin refuses to use.
+- From an unexpired `watchdog-baseline.json`: its `cumulative[dow]` *is* that
+  array. `basis: "watchdog-baseline"`. No call.
+- Otherwise one call for the same weekday last week, spread across active
+  hours, with `basis: "last-week-flat"` so the check can say it is coarse.
+
+Never leave `expected` null on a `drop` or `spike`: a check that invents its own
+expectation is the guessed threshold this plugin refuses to use.
 
 ### 4. Save it
 
-Add the rule to `<state-dir>/<site_id>/alerts.json`. **The file is an object
-with a `rules` array, never a bare list:**
-
-```json
-{ "site_id": "demo-store", "rules": [ { "id": "no-conversions-4h", … } ] }
-```
-
-Read the file first; if it exists, append to its `rules` and write the whole
-object back. The session-start hook, `monday-briefing` and `setup-audit` read
-`rules` — a bare array written by a real run was invisible to all three. Full
-schema in `skills/seal-copilot/references/state-schema.md`. This file is what
-makes "my alerts", "run my alert X" and "delete the alert" answerable later.
-If the filesystem is not writable, say once that the rule could not be saved,
-and print it as JSON so the user can keep it.
+Read `<state-dir>/<site_id>/alerts.json`, append to its `rules` array, and
+write the whole object back. It is what makes "my alerts", "run my alert X" and
+"delete the alert" answerable later. If the filesystem is not writable, say so
+once and print the rule as JSON so the user can keep it.
 
 ## Managing what exists
 
@@ -223,40 +141,26 @@ and print it as JSON so the user can keep it.
 Under 10 lines on a successful creation:
 
 1. The rule in one sentence, in the user's own terms, with the hours it covers.
-2. One honest line: it is saved, not watched automatically yet — automatic
-   alerts arrive with Sealmetrics' native alert engine.
+2. One honest line: it is saved, and this plugin watches nothing by itself.
 3. How to use it today: "run my alert <id>" checks it now.
-4. One line on how to delete it.
+4. For continuous watching, print the rule as JSON and say it goes into Seal
+   Watch (`watcher/README.md`). Never claim it is already watched: you cannot
+   see from here whether that service has this site.
+5. One line on how to delete it.
 
 **Never** a first check time, a cadence, or "I'll let you know": no process
-exists that would keep that promise.
+exists that would keep that promise. Then nothing — no summary of the JSON, no
+explanation of the grammar.
 
-Then nothing. No summary of the JSON, no explanation of the grammar.
-
-If you refused the rule as noisy, say the number that made you refuse and offer
-the specific alternative, with its own false-alarm figure — never a bare "that
-would be too noisy".
+On a refusal, give the number that caused it and the specific alternative with
+its own false-alarm figure. Never a bare "that would be too noisy".
 
 ## What you do NOT do
 
-- Do not create a rule on an event you did not confirm exists.
-- Do not create a `silence` or `drop` rule without active hours.
-- Do not create a scheduled task, routine, cron or Cowork task for a rule, and
-  do not say or imply that a rule is being watched automatically.
-- Do not create a second rule that duplicates one already active; say which
-  existing rule covers it.
-
----
-
-**Every run that ends in a decision logs it — a rule created, a rule refused as
-noisy, an event not tracked. Before the answer, not after it, with the Read and
-Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
-and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
-Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `3` here), `verdict` (one of `on_track`, `watch`, `act`,
-`kpis_only`, `refused`, `error`), `scheduled` (always `false` here), `notes` (one line).
-Use `on_track` for a rule created, `refused` for a rule declined as noisy or on
-an untracked event. A real run logged its first refusal and skipped the second,
-so the log said one alert request had happened when two had. A run that only
-stops to ask the question in step 1 logs when it finishes. Skip silently if
-the path is not writable.
+- Do not create a rule on an event you did not confirm exists on one of the two
+  surfaces.
+- Do not create a second rule that duplicates an active one; say which existing
+  rule covers it.
+- Do not imply anything is watching. The schema refuses a `silence` or `drop`
+  rule with no active hours and a `drop` with no expectation, so those are
+  settled; this one is on you.

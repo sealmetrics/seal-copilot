@@ -1,0 +1,81 @@
+{
+  "title": "profile.json",
+  "description": "What Seal Copilot knows about one site, so no later run rediscovers it. These field names are the contract: in certification 9 twelve skills wrote twelve different shapes and not one used site_name or events, which is the one thing the profile exists to prevent.",
+  "type": "object",
+  "required": ["site_id", "site_name", "connector", "discovery_cached_at"],
+  "additionalProperties": false,
+  "x-synonyms": {
+    "name": "site_name",
+    "domain": "site_name",
+    "domains": "site_name",
+    "event_names": "events",
+    "conversion_event": "events.purchase",
+    "microconversion_events": "events",
+    "microconversion_types": "events",
+    "atc_event": "events.add_to_cart",
+    "product_identifier_table": "product_identifier.table",
+    "discovered_at": "discovery_cached_at",
+    "created_at": "discovery_cached_at",
+    "generated_at": "discovery_cached_at",
+    "first_run": "discovery_cached_at",
+    "first_seen": "first_data_date",
+    "stale_after": "discovery_cached_at",
+    "business_type": "vertical",
+    "industry": "vertical"
+  },
+  "properties": {
+    "site_id": { "type": "string", "minLength": 1 },
+    "site_name": { "type": "string", "minLength": 1 },
+    "account_id": {
+      "enum": ["same-as-site", "refused", "unknown"],
+      "description": "Not a second identifier: a record of whether the configuration tool family answered for this site."
+    },
+    "connector": {
+      "enum": ["remote", "local"],
+      "description": "remote is the OAuth connector in .mcp.json (42 tools); local is npx @sealmetrics/mcp (64). Not 'remote-oauth'."
+    },
+    "timezone": { "type": "string", "pattern": "^([A-Za-z_]+/[A-Za-z_+/-]+|UTC)$", "patternHint": "an IANA zone such as Europe/Madrid, not an offset" },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "patternHint": "the ISO 4217 code from get_site, e.g. EUR or USD" },
+    "vertical": { "enum": ["ecommerce", "hotels", "saas", "unknown"] },
+    "events": {
+      "type": "object",
+      "description": "The site's REAL event names, keyed by the role they play.",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "product_identifier": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["key", "table"],
+          "additionalProperties": false,
+          "properties": {
+            "key": { "type": "string", "minLength": 1 },
+            "table": { "enum": ["conversion_items", "microconversions", "conversions", "both"] }
+          }
+        }
+      ]
+    },
+    "thresholds": { "type": "object", "additionalProperties": { "type": "number" } },
+    "targets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "revenue": { "type": "number" },
+        "conversions": { "type": "number" },
+        "leads": { "type": "number" },
+        "month": { "type": "string", "pattern": "^\\d{4}-\\d{2}$" }
+      }
+    },
+    "first_data_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "discovery_cached_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "patternHint": "today's date as YYYY-MM-DD; the 7-day refresh rule reads this field and a profile without it can never be judged fresh or stale"
+    },
+    "scheduling_offered": { "type": "object", "additionalProperties": { "type": "boolean" } },
+    "js_api": { "type": "object", "description": "Cached js_api signatures from get_tracking_code, so a snippet is never written from memory." },
+    "notes": { "type": "string", "maxLength": 300 },
+    "extra": { "type": "object", "description": "Anything else a skill wants to remember. Use this rather than inventing a top-level field." }
+  }
+}

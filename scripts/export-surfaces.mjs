@@ -90,16 +90,44 @@ function exportClaudeAi() {
     // The ZIP holds a folder named after the skill, with SKILL.md inside.
     const stage = join(out, '.stage', skill);
     mkdirSync(stage, { recursive: true });
-    writeFileSync(join(stage, 'SKILL.md'), `---\nname: ${skill}\ndescription: ${JSON.stringify(short)}\n---\n\n${body}\n`);
+    // Each skill is uploaded alone here, so a path that reaches across the
+    // plugin resolves to nothing. Flatten them to the copies staged below.
+    const flat = body
+      .replace(/`skills\/seal-copilot\/references\//g, '`references/')
+      .replace(/skills\/seal-copilot\/scripts\//g, 'scripts/')
+      .replace(/seal-copilot\/hooks\/schemas\//g, 'schemas/');
+    writeFileSync(join(stage, 'SKILL.md'), `---\nname: ${skill}\ndescription: ${JSON.stringify(short)}\n---\n\n${flat}\n`);
 
     // Skills that lean on a shared reference get their own copy: on Claude.ai
     // each skill is uploaded alone and cannot see its siblings.
     const needed = [...body.matchAll(/`(?:skills\/seal-copilot\/)?references\/([a-z-]+)\.md`/g)].map((m) => m[1]);
-    const refs = [...new Set(['methodology', ...needed])];
+    // run-protocol is unconditional: every skill's first line names it, and a
+    // skill that arrives without it has no instructions about silence, site
+    // resolution or state at all.
+    const refs = [...new Set(['run-protocol', 'methodology', ...needed])];
     mkdirSync(join(stage, 'references'), { recursive: true });
     for (const r of refs) {
       const rp = join(refsDir, `${r}.md`);
-      if (existsSync(rp)) writeFileSync(join(stage, 'references', `${r}.md`), readFileSync(rp, 'utf8'));
+      if (existsSync(rp)) {
+        writeFileSync(join(stage, 'references', `${r}.md`), readFileSync(rp, 'utf8')
+          .replace(/`skills\/seal-copilot\/references\//g, '`references/')
+          .replace(/skills\/seal-copilot\/scripts\//g, 'scripts/'));
+      }
+    }
+    // The calculator, for any skill that calls it. Claude on the web has no
+    // shell, so the skill says so and does the arithmetic itself — but Cowork
+    // and a local Codex do, and the file has to be there when they look.
+    if (/calc\.mjs/.test(body) || refs.some((r) => /calc\.mjs/.test(
+          existsSync(join(refsDir, `${r}.md`)) ? readFileSync(join(refsDir, `${r}.md`), 'utf8') : ''))) {
+      mkdirSync(join(stage, 'scripts'), { recursive: true });
+      writeFileSync(join(stage, 'scripts', 'calc.mjs'), readFileSync(join(skillsDir, 'seal-copilot', 'scripts', 'calc.mjs'), 'utf8'));
+    }
+    // The state schemas, for the same reason: they are the contract the skill
+    // is told to write to.
+    const schemaDir = join(plugin, 'hooks', 'schemas');
+    if (existsSync(schemaDir)) {
+      mkdirSync(join(stage, 'schemas'), { recursive: true });
+      for (const f of readdirSync(schemaDir)) writeFileSync(join(stage, 'schemas', f), readFileSync(join(schemaDir, f), 'utf8'));
     }
   }
   if (problems.length) {
@@ -139,9 +167,14 @@ account; no API key to handle.
 Descriptions are trimmed to Claude.ai's 200-character limit, so a skill fires on
 fewer phrasings — name it directly if it does not trigger.
 
-There is no memory between conversations. Each skill closes with a
-\`SEAL-STATE\` block: paste it back when you next open the topic, or keep it in
-a Project so every conversation there starts with it.
+There is no filesystem here, so nothing persists on its own. Every answer
+closes with a fenced \`seal-state\` block — the site profile and any open
+recommendations. Paste it back at the start of your next conversation, or keep
+it in a Project so every conversation there starts with it, and the next report
+can follow up on the last one.
+
+There is no shell either, so the arithmetic is done by the model rather than by
+\`scripts/calc.mjs\`. The skills say so in the answer when it matters.
 `);
   return { skills: skills.length };
 }
@@ -258,7 +291,25 @@ function exportCodex() {
   return { skills: skills.length };
 }
 
+/**
+ * The repository README quotes how many eval cases there are, and it said 32
+ * when there were 35. A number kept by hand in prose drifts; this one is
+ * generated between markers and `check.sh` fails when it is stale.
+ */
+function stampReadme() {
+  const f = join(root, 'README.md');
+  if (!existsSync(f)) return;
+  const cases = (readFileSync(join(root, 'evals', 'cases.mjs'), 'utf8').match(/^    id: '/gm) || []).length;
+  const before = readFileSync(f, 'utf8');
+  const after = before.replace(/<!-- gen:cases -->[\s\S]*?<!-- \/gen:cases -->/,
+    `<!-- gen:cases -->${cases} cases<!-- /gen:cases -->`);
+  if (after !== before) writeFileSync(f, after);
+  return cases;
+}
+
 rmSync(dist, { recursive: true, force: true });
+const stamped = stampReadme();
+if (stamped) console.log(`README.md — ${stamped} eval cases`);
 const ai = exportClaudeAi();
 console.log(`dist/claude-ai — ${ai.skills} skills as ZIPs`);
 

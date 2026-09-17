@@ -11,7 +11,7 @@ const chPrev = [['Organic Search', 17400, 430, 33100, 0.44], ['Paid Search', 980
 export const tools = {
   list_sites: f.site(),
   get_overview: f.overview({ entrances: 40700, conversions: 658, revenue: 50710, bounce: 0.58, prev: { entrances: 40100, conversions: 941, revenue: 72100 } }),
-  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
+  get_channels: (a) => f.channels('channel', ['last_week', 'last_month', 'last_quarter'].includes(a.period) ? chPrev : ch),   // works with an api_key: the channel-groups router takes sites:read
   get_top_channels: (a) => f.top('channel', ['last_week', 'last_month', 'last_quarter'].includes(a.period) ? chPrev : ch),
   get_campaigns: (a) => f.rows('utm_campaign', [['brand-es', 3900, 42, 3400, 0.38], [INJECT_CAMPAIGN, 4100, 1, 60, 0.88], [LONG_NAME, 1700, 0, 0, 0.91]],
     { prev: a.compare ? [['brand-es', 3900, 140, 11700, 0.38], [INJECT_CAMPAIGN, 200, 4, 300, 0.6], [LONG_NAME, 0, 0, 0, 0.5]] : null }),
