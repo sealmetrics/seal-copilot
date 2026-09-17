@@ -18,7 +18,7 @@
  *
  * Configuration is in the environment. See watcher/README.md.
  */
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { client, ApiError } from './lib/api.mjs';
@@ -72,14 +72,14 @@ export function configProblems(cfg, env = process.env) {
 }
 
 function readRaw() {
-  if (process.env.SEAL_CONFIG) return { raw: process.env.SEAL_CONFIG, mtime: 0 };
+  if (process.env.SEAL_CONFIG) return process.env.SEAL_CONFIG;
   const path = process.env.SEAL_CONFIG_PATH;
-  if (path && existsSync(path)) return { raw: readFileSync(path, 'utf8'), mtime: statSync(path).mtimeMs };
-  return { raw: null, mtime: 0 };
+  if (path && existsSync(path)) return readFileSync(path, 'utf8');
+  return null;
 }
 
 export function loadConfig() {
-  const { raw } = readRaw();
+  const raw = readRaw();
   if (!raw) {
     throw new Error('No configuration. Set SEAL_CONFIG to the JSON, or SEAL_CONFIG_PATH to a file. ' +
       'See watcher/README.md; watcher/config.example.json is a working shape.');
@@ -104,12 +104,17 @@ export function loadConfig() {
  */
 export function reloader(initial) {
   let current = initial;
-  let lastMtime = readRaw().mtime;
+  let lastRaw = readRaw();
   let lastComplaint = '';
   return () => {
-    const { raw, mtime } = readRaw();
-    if (!raw || mtime === lastMtime) return current;
-    lastMtime = mtime;
+    const raw = readRaw();
+    // Compare the CONTENT, not the modification time. mtime granularity is one
+    // second on some filesystems — including the container's — so two edits in
+    // the same second share a timestamp and the second one is never seen. A
+    // config file is a few kilobytes read every few minutes; reading it is
+    // cheaper than the class of bug that assumption creates.
+    if (!raw || raw === lastRaw) return current;
+    lastRaw = raw;
     let next;
     try { next = JSON.parse(raw); }
     catch (e) {

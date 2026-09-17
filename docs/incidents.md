@@ -357,3 +357,31 @@ refusal as silence would page every customer during an outage of ours.
 Nothing here replaces `evals/validate-fixtures.mjs`, which still needs a real
 key and is still unrun. But the watcher's own calls are no longer only tested
 against a fake.
+
+---
+
+## 2026-09-17 · The reload compared timestamps, and the container has one-second timestamps
+
+**Found by** the test suite inside the image, which is why it runs there.
+
+`reloader()` decided whether the config had changed by comparing `mtimeMs`. The
+75 tests passed on macOS and three of them failed in `node:22-alpine`: a valid
+edit was not picked up.
+
+Mtime granularity is one second on some filesystems, the container's included.
+Two writes in the same second share a timestamp, so the second one is invisible.
+The tests write twice in a row, which is the fast path a human hits too: edit,
+notice a typo, edit again.
+
+It now compares the file's **content**. A config is a few kilobytes read every
+few minutes, so reading it is far cheaper than the class of bug that assumption
+creates — a rule change that silently never takes effect, on a service whose
+whole job is to not be silent.
+
+**The lesson is about where tests run.** This is the second portability defect
+in one afternoon that only appeared outside the development machine, after the
+transport question that turned out to hinge on this laptop running the local
+MCP connector rather than the one users get. A suite that only ever runs in one
+environment is testing that environment as much as the code, which is the
+argument for the `RUN node watcher/test.mjs` line in the Dockerfile: the build
+failed instead of the first rule change.
