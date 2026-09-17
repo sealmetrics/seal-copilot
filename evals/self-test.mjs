@@ -258,6 +258,34 @@ console.log('\nstate contract');
        evidence: 'e', action: 'a', impact_month: 1840, metric: 'cr', baseline: 0.008, target: 0.021,
        verify_on: '2026-10-05', status: 'open' }).some((e) => /currency is required/.test(e)));
 
+  // The expectation curve: two readers, one shape. `check-alerts` and the
+  // watcher both read `expected.cumulative_by_hour[dow][hour]`, and the skill
+  // used to say `expected_basis` at rule level while describing the curve
+  // without naming its key. A curve under any other key validated as an
+  // object and then never fired — a rule saved and silently not watched.
+  const dropRule = (expected) => ({ site_id: 's', rules: [{ id: 'atc-half', family: 'drop',
+    metric: { kind: 'microconversion', type: 'add_to_cart' }, condition: { ratio: 0.5 },
+    active_hours: { from: 8, to: 24, days: ['mon'] }, timezone: 'Europe/Madrid',
+    created_at: '2026-09-17', status: 'active', expected }] });
+  const curve = { mon: Array(24).fill(10) };
+  ok('the curve the watcher reads is valid',
+     errs('alerts.json', dropRule({ basis: 'watchdog-baseline', cumulative_by_hour: curve })).length === 0,
+     errs('alerts.json', dropRule({ basis: 'watchdog-baseline', cumulative_by_hour: curve })));
+  ok('a curve under another key is refused',
+     errs('alerts.json', dropRule({ cumulative: curve })).some((e) => /cumulative_by_hour is required/.test(e)));
+  ok('and the error names the offending key',
+     errs('alerts.json', dropRule({ cumulative: curve })).some((e) => /cumulative is not a field/.test(e)));
+  ok('a curve short of 24 hours is refused',
+     errs('alerts.json', dropRule({ cumulative_by_hour: { mon: Array(12).fill(10) } }))
+       .some((e) => /at least 24/.test(e)));
+  ok('an unknown basis is refused',
+     errs('alerts.json', dropRule({ basis: 'vibes', cumulative_by_hour: curve }))
+       .some((e) => /basis must be one of/.test(e)));
+  // anyOf must report the branch the writer meant, not the null branch, which
+  // is shorter and says only "must be null".
+  ok('the error is about the object, not about null',
+     !errs('alerts.json', dropRule({ cumulative: curve })).some((e) => /must be null/.test(e)));
+
   ok('a bad jsonl line names its number',
      errs('runs.jsonl', '{"ts":"2026-09-08T00:00:00Z","skill":"a","calls":1,"budget":8,"verdict":"watch","scheduled":false,"notes":"n"}\n{oops}')
        .some((e) => /^line 2/.test(e)));

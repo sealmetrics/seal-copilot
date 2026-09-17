@@ -385,3 +385,42 @@ MCP connector rather than the one users get. A suite that only ever runs in one
 environment is testing that environment as much as the code, which is the
 argument for the `RUN node watcher/test.mjs` line in the Dockerfile: the build
 failed instead of the first rule change.
+
+---
+
+## 2026-09-17 · Two readers of one curve, and nobody checked they agreed
+
+**Found by** asking whether a rule `create-alert` writes is a rule the watcher
+can actually evaluate. It was not, for `drop` and `spike`.
+
+Three descriptions of the same field, none of them the same:
+
+| Where | What it said |
+|---|---|
+| `create-alert` step 3 | "take the cumulative-by-hour curve" — never naming the key — and set `"expected_basis": "last-week-flat"` at rule level |
+| `families.mjs` and `check-alerts` | read `expected.cumulative_by_hour[weekday][hour]` and `expected.basis` |
+| `alerts.json` schema | `expected: { "type": ["object", "null"] }` — any object at all |
+
+So the shape the skill described was refused by the hook (`expected_basis` is
+not a field), and the shape a model would most likely write instead —
+`expected.cumulative`, borrowing the baseline file's own key — **validated
+cleanly and could never be read**. A `drop` rule would save, report
+`no_expectation` on every evaluation, and never fire. Saved, and silently not
+watched: the exact failure this plugin refuses to ship.
+
+**Rules produced.**
+- The schema now fixes the shape: `cumulative_by_hour` is required, each
+  weekday is exactly 24 non-negative numbers, `basis` is one of two values, and
+  nothing else is allowed. A curve under another key is refused at the write.
+- `create-alert` names the fields rather than describing them, and says
+  `expected_basis` is not one.
+- Six self-test checks cover it, including that the error names the offending
+  key.
+
+**And a defect in the validator itself, exposed by the fix.** With
+`anyOf: [null, object]`, a nearly-correct object produced several useful errors
+while the `null` branch produced one useless one, and "report the closest
+branch" picked the shorter. Every malformed curve was reported as "must be
+null, got object": true, and it hid the mistake. It now prefers a branch whose
+declared type matches what was written, so the message is
+"`expected.cumulative` is not a field in this contract".

@@ -37,9 +37,8 @@ now, and Seal Watch is what watches it between checks.
 `skills/seal-copilot/references/alert-grammar.md`.** Read it before parsing the
 user's sentence.
 
-Out of scope, whatever the wording: rules about saved segments, a metric that
-would take more than two calls, and comparisons between two sites. Say so
-plainly and offer the nearest rule that is in scope.
+Out of scope: saved segments, a metric costing more than two calls, and
+comparisons between sites. Say so and offer the nearest rule that is in scope.
 
 ## Procedure
 
@@ -60,13 +59,11 @@ Sensible defaults you may apply without asking: `expires_at` six months out,
 
 ### 2. Verify the metric exists, and that the rule will not be noise (1–2 calls)
 
-**Check both surfaces before saying an event is not tracked.** The user says
-"demo requests" or "sales"; they do not say whether the site records that as a
-conversion or a microconversion, and you cannot tell from the word. Call
-`list_microconversion_types`; if the name is not there, call
-`get_conversions(period=30d)` before concluding anything — and the other way
-round. Only when it is in **neither** is the event genuinely untracked, and only
-then do you list what does exist and stop.
+**Check both surfaces before saying an event is not tracked.** You cannot tell
+from the word whether "sales" is a conversion or a microconversion. Call
+`list_microconversion_types`, and if the name is not there call
+`get_conversions(period=30d)` — and the other way round. Only when it is in
+**neither** is it untracked, and only then list what does exist and stop.
 
 Set `metric.kind` from where you actually found the event, never from the word
 the user used: a run that checked only the microconversion list told a SaaS
@@ -104,14 +101,17 @@ without the calculator.
 
 ### 3. Fill `expected`, for `drop` and `spike` only (0–1 calls)
 
-- If `<state-dir>/<site_id>/watchdog-baseline.json` exists and has not expired,
-  take the cumulative-by-hour curve from it. No call.
-- Otherwise one call for the same weekday last week, spread across active hours,
-  and set `"expected_basis": "last-week-flat"` so the check can say the
-  comparison is coarse.
+`expected` is `{ basis, cumulative_by_hour }`, where `cumulative_by_hour` has
+one entry per weekday (`mon`…`sun`) of exactly **24** cumulative counts, hours
+0–23. Those names are what reads it; any other key is refused at the write.
 
-Never leave `expected` null on a `drop` or `spike` rule. A check that has to
-invent its own expectation is the guessed threshold this plugin refuses to use.
+- From an unexpired `watchdog-baseline.json`: its `cumulative[dow]` *is* that
+  array. `basis: "watchdog-baseline"`. No call.
+- Otherwise one call for the same weekday last week, spread across active
+  hours, with `basis: "last-week-flat"` so the check can say it is coarse.
+
+Never leave `expected` null on a `drop` or `spike`: a check that invents its own
+expectation is the guessed threshold this plugin refuses to use.
 
 ### 4. Save it
 

@@ -44,13 +44,29 @@ export function validate(value, schema, path = '') {
   const at = path || 'the document';
 
   if (schema.anyOf) {
-    const branches = schema.anyOf.map((s) => validate(value, s, path));
-    if (branches.every((b) => b.length)) {
-      // Report the branch that came closest; listing every alternative buries
-      // the one the writer meant.
-      const best = branches.sort((a, b) => a.length - b.length)[0];
-      errors.push(...best);
-    }
+    const results = schema.anyOf.map((branch) => ({ branch, errs: validate(value, branch, path) }));
+    if (results.some((r) => !r.errs.length)) return errors;          // one branch fits
+
+    /*
+     * Report the branch the writer plainly meant, not the shortest one.
+     *
+     * Shortest-wins is wrong the moment a union has a `null` branch: an object
+     * that is nearly right produces several useful errors, while the null
+     * branch produces exactly one useless one. Every malformed expectation
+     * curve was reported as "must be null, got object" — true, unhelpful, and
+     * it hid the actual mistake.
+     *
+     * So prefer branches whose declared type matches what was written, and only
+     * fall back to all of them when none does.
+     */
+    const typeFits = (branch) => {
+      if (!branch.type) return true;
+      const types = Array.isArray(branch.type) ? branch.type : [branch.type];
+      return types.some((t) => matchesType(value, t));
+    };
+    const candidates = results.filter((r) => typeFits(r.branch));
+    const pool = candidates.length ? candidates : results;
+    errors.push(...pool.sort((a, b) => a.errs.length - b.errs.length)[0].errs);
     return errors;
   }
 
@@ -81,7 +97,10 @@ export function validate(value, schema, path = '') {
 
   if (typeOf(value) === 'array') {
     if (schema.minItems !== undefined && value.length < schema.minItems) {
-      errors.push(`${at} must have at least ${schema.minItems} item(s)`);
+      errors.push(`${at} must have at least ${schema.minItems} item(s), got ${value.length}`);
+    }
+    if (schema.maxItems !== undefined && value.length > schema.maxItems) {
+      errors.push(`${at} must have at most ${schema.maxItems} item(s), got ${value.length}`);
     }
     if (schema.items) value.forEach((v, i) => errors.push(...validate(v, schema.items, `${path}[${i}]`)));
   }
