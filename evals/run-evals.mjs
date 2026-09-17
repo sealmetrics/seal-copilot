@@ -20,6 +20,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assess } from './assess.mjs';
 import { parseStream } from './stream.mjs';
+import { validateFile } from '../seal-copilot/hooks/scripts/lib/validate.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -63,6 +64,42 @@ async function siteIdFor(fixture) {
   } catch { return ''; }
 }
 
+// The state schemas, so every case is judged against the contract and not only
+// the eight that carry a stateMustContain. The PreToolUse hook enforces these
+// in Claude Code and Cowork; here they are enforced for every surface, because
+// the suite exercises the same skills. See seal-copilot/hooks/schemas.
+const stateSchemas = Object.fromEntries(
+  readdirSync(join(root, 'seal-copilot', 'hooks', 'schemas'))
+    .map((f) => [f, JSON.parse(readFileSync(join(root, 'seal-copilot', 'hooks', 'schemas', f), 'utf8'))]));
+
+/**
+ * Validate every state file the run WROTE, skipping any the case seeded and the
+ * skill left untouched.
+ *
+ * That exclusion is the same line the hook draws: old state is readable, new
+ * state must match the contract. One case seeds a deliberately legacy profile
+ * (`name`, `domain`, `event_names`) to prove a run does not repeat its stale
+ * notes; judging that seed would fail the case for reproducing the bug it
+ * exists to guard against.
+ */
+function checkState(dir, seeded) {
+  const problems = [];
+  const walk = (d) => {
+    let entries; try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!stateSchemas[e.name]) continue;
+      let text; try { text = readFileSync(p, 'utf8'); } catch { continue; }
+      if (seeded.get(p) === text) continue;            // untouched seed
+      const { errors } = validateFile(e.name, text, stateSchemas);
+      for (const err of errors.slice(0, 4)) problems.push(`${e.name}: ${err}`);
+    }
+  };
+  walk(dir);
+  return problems;
+}
+
 // Read every file under the state directory, so a case can assert on what a
 // skill persisted — the recommendation ledger, the site profile, the baseline.
 function readState(dir) {
@@ -94,11 +131,12 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
           args: [join(here, 'mock-server', 'server.mjs')],
           env: {
             SEAL_FIXTURE: c.fixture, SEAL_CALL_LOG: callLog,
-            // Which connector to imitate. Default `local` keeps every existing
-            // case serving all sixty-two tools; cases that set `transport:
-            // 'remote'` get the forty-two the OAuth connector announces, which
-            // is what nearly every user actually has.
-            SEAL_TRANSPORT: c.transport || 'local',
+            // Which connector to imitate. `remote` is the default because it is
+            // what .mcp.json gives every user: 42 of the 64 tools. A case that
+            // needs one of the 22 the remote withholds says `transport:
+            // 'local'`. The default was `local` until 2026-09-17, so 32 of 35
+            // cases exercised a connector almost nobody runs.
+            SEAL_TRANSPORT: c.transport || 'remote',
             SEAL_NOW: now.toISOString(),
             PATH: process.env.PATH || '',
           },
@@ -188,10 +226,12 @@ async function runCase(c, siteId) {
   // other case starts from an empty state dir, which is how a real run read
   // "get_bot_stats refuse with Access denied" from an old run log and printed
   // it while the whole suite stayed green.
+  const seeded = new Map();
   for (const [rel, content] of Object.entries(c.seedState || {})) {
     const p = join(work, 'state', rel);
     mkdirSync(dirname(p), { recursive: true });
     writeFileSync(p, content);
+    seeded.set(p, content);
   }
   const steps = c.steps || [c];
   const failures = [];
@@ -226,6 +266,9 @@ async function runCase(c, siteId) {
       for (const re of c.stateMustContain)
         if (!re.test(state)) failures.push(`nothing under the state dir matches ${re}`);
     }
+    // Every case, not just the ones with an assertion: state that does not
+    // match the contract is a failure even when the answer was right.
+    for (const p of checkState(join(work, 'state'), seeded)) failures.push(`invalid state — ${p}`);
   }
 
   const state = readState(join(work, 'state'));

@@ -8,6 +8,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assess, GLOBAL_MUST_NOT_CALL, GLOBAL_MUST_NOT_MATCH } from './assess.mjs';
+import { validate, validateFile } from '../seal-copilot/hooks/scripts/lib/validate.mjs';
+import { readdirSync as _rd, readFileSync as _rf } from 'node:fs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cases = (await import(join(here, 'cases.mjs'))).default;
@@ -181,6 +183,77 @@ console.log('\nglobal bans and answer length');
   ok('narrating between tool calls fails', assess({ ...base, maxTextBlocks: 1 }, 'ok', [], 3).some(f => /narrated between tool calls/.test(f)));
   ok('a single report block passes', assess({ ...base, maxTextBlocks: 1 }, 'ok', [], 1).length === 0);
   ok('cases without the cap are unaffected', assess(base, 'ok', [], 5).length === 0);
+}
+
+// ---- the state contract. Prose held it until 2026-09-17, and in certification
+// 9 twelve skills wrote twelve different profiles with the suite green. These
+// checks are on the validator the PreToolUse hook and the runner both use.
+console.log('\nstate contract');
+{
+  const dir = new URL('../seal-copilot/hooks/schemas/', import.meta.url);
+  const schemas = Object.fromEntries(_rd(dir).map((f) => [f, JSON.parse(_rf(new URL(f, dir), 'utf8'))]));
+  const errs = (file, obj) => validateFile(file, typeof obj === 'string' ? obj : JSON.stringify(obj), schemas).errors;
+
+  const goodProfile = {
+    site_id: 'acct_demo', site_name: 'demo-store.com', connector: 'remote',
+    timezone: 'Europe/Madrid', currency: 'EUR', vertical: 'ecommerce',
+    events: { purchase: 'purchase', add_to_cart: 'add_to_cart' },
+    product_identifier: { key: 'sku', table: 'conversion_items' },
+    discovery_cached_at: '2026-09-17',
+  };
+  ok('a contract-shaped profile passes', errs('profile.json', goodProfile).length === 0);
+
+  // The exact shape certification 9 wrote, twelve times out of twelve.
+  const cert9 = { site_id: 'acct_demo', name: 'demo-store.com', domains: ['demo-store.com'],
+    timezone: 'Europe/Madrid', currency: 'EUR', connector: 'remote-oauth', vertical: 'ecommerce',
+    event_names: [], discovery_cached_at: '2026-09-13' };
+  const c9 = errs('profile.json', cert9);
+  ok('the profile certification 9 wrote is rejected', c9.length > 0);
+  ok('the error names site_name, not just "unknown field"', c9.some((e) => /write site_name instead/.test(e)));
+  ok('connector "remote-oauth" is rejected', c9.some((e) => /connector must be one of/.test(e)));
+  ok('event_names is pointed at events', c9.some((e) => /write events instead/.test(e)));
+
+  ok('a profile with no discovery_cached_at is rejected',
+     errs('profile.json', { ...goodProfile, discovery_cached_at: undefined }).some((e) => /discovery_cached_at is required/.test(e)));
+  ok('a date where a timestamp belongs is rejected',
+     errs('runs.jsonl', { ts: '2026-09-08', skill: 'x', calls: 1, budget: 8, verdict: 'watch', scheduled: false, notes: 'n' })
+       .some((e) => /ts does not look right/.test(e)));
+  ok('calls_used is pointed at calls',
+     errs('runs.jsonl', { ts: '2026-09-08T00:00:00Z', skill: 'x', calls_used: 9, budget: 10, verdict: 'watch', scheduled: false, notes: 'n' })
+       .some((e) => /write calls instead/.test(e)));
+  ok('an audit score is a valid verdict',
+     errs('runs.jsonl', { ts: '2026-09-08T00:00:00Z', skill: 'setup-audit', calls: 9, budget: 10, verdict: '3/10', scheduled: false, notes: 'n' }).length === 0);
+  ok('free text is not a valid verdict',
+     errs('runs.jsonl', { ts: '2026-09-08T00:00:00Z', skill: 'x', calls: 1, budget: 8, verdict: 'pixel live', scheduled: false, notes: 'n' })
+       .some((e) => /verdict must be one of/.test(e)));
+
+  ok('alerts.json as a bare array is rejected',
+     errs('alerts.json', [{ id: 'x' }]).some((e) => /must be object/.test(e)));
+  const dropNoExpected = { site_id: 's', rules: [{ id: 'd', family: 'drop', metric: { kind: 'microconversion', type: 'add_to_cart' },
+    condition: { ratio: 0.5 }, timezone: 'Europe/Madrid', created_at: '2026-09-17', status: 'active', expected: null }] };
+  const dn = errs('alerts.json', dropNoExpected);
+  ok('a drop rule without active_hours is rejected', dn.some((e) => /active_hours is required when/.test(e)));
+  ok('a drop rule with expected null is rejected', dn.some((e) => /expected must be filled in/.test(e)));
+  ok('a threshold rule needs no active_hours',
+     errs('alerts.json', { site_id: 's', rules: [{ id: 't', family: 'threshold', metric: { kind: 'revenue' },
+       condition: { below: 2000 }, timezone: 'Europe/Madrid', created_at: '2026-09-17', status: 'active' }] }).length === 0);
+
+  ok('impact_eur_month is pointed at impact_month',
+     errs('recommendations.jsonl', { id: 'a', date: '2026-09-17', skill: 's', pattern: 'p', subject: 'x',
+       evidence: 'e', action: 'a', impact_eur_month: 1840, metric: 'cr', baseline: 0.008, target: 0.021,
+       verify_on: '2026-10-05', status: 'open' }).some((e) => /write impact_month instead/.test(e)));
+  ok('a ledger entry must name its currency',
+     errs('recommendations.jsonl', { id: 'a', date: '2026-09-17', skill: 's', pattern: 'p', subject: 'x',
+       evidence: 'e', action: 'a', impact_month: 1840, metric: 'cr', baseline: 0.008, target: 0.021,
+       verify_on: '2026-10-05', status: 'open' }).some((e) => /currency is required/.test(e)));
+
+  ok('a bad jsonl line names its number',
+     errs('runs.jsonl', '{"ts":"2026-09-08T00:00:00Z","skill":"a","calls":1,"budget":8,"verdict":"watch","scheduled":false,"notes":"n"}\n{oops}')
+       .some((e) => /^line 2/.test(e)));
+  ok('an unknown state file is left alone', validateFile('property-map.md', '# map', schemas).known === false);
+  ok('every schema is valid JSON with a title', Object.values(schemas).every((x) => typeof x.title === 'string'));
+  // anyOf must report the closest branch, not every alternative.
+  ok('anyOf reports one branch', validate('nope', { anyOf: [{ enum: ['a'] }, { type: 'number' }] }, 'f').length === 1);
 }
 
 console.log(`\n${fails === 0 ? 'harness self-test passed' : fails + ' harness check(s) FAILED'}`);

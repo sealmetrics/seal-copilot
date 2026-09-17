@@ -16,6 +16,23 @@ announced at all, fall back to `~/.seal-copilot`.
 Everything below lives under `<state-dir>/<site_id>/`, outside the plugin
 directory (which is read-only after install). Create it on first write.
 
+**The field names in this file are checked, not merely documented.** Each state
+file has a schema in `seal-copilot/hooks/schemas/`, a `PreToolUse` hook
+validates every `Write` against it, and a write that does not match is refused
+with the fields to fix. The eval runner applies the same schemas to whatever a
+run leaves behind. So a profile written as `name`/`domain`/`event_names` no
+longer reaches the disk to be discovered as wrong weeks later — it is refused
+in the moment, naming `site_name` and `events`.
+
+Two consequences worth knowing before you write anything:
+
+- **State files are written whole, with `Write`.** An `Edit` on one is refused,
+  because a partial edit skips the check. To append to a `.jsonl` file, `Read`
+  it, add your line, and `Write` the file back.
+- **Anything the schema does not name goes under `extra`.** Do not invent a
+  top-level field; a run that wanted somewhere to put `lens_tier` has
+  `extra.lens_tier`.
+
 **No skill forks, and none should.** `context: fork` starts a fresh context
 that never received the SessionStart hook's output. A forked skill therefore
 cannot learn `<state-dir>` (it falls back to the literal `~/.seal-copilot` —
@@ -207,8 +224,12 @@ One JSON object per line, appended by any skill that issues a recommendation.
 This is the ledger that turns a report into consulting.
 
 ```json
-{"id":"2026-09-07-leaky-summer-sale-es","date":"2026-09-07","skill":"opportunity-scan","pattern":"leaky-campaign","subject":"summer-sale-es","evidence":"2,014 entrances, CR 0.8% vs channel avg 2.1%, 30d","action":"Fix ad-to-landing message match, or pause and reallocate","impact_eur_month":1840,"metric":"campaign CR","baseline":0.008,"target":0.021,"verify_on":"2026-10-05","status":"open"}
+{"id":"2026-09-07-leaky-summer-sale-es","date":"2026-09-07","skill":"opportunity-scan","pattern":"leaky-campaign","subject":"summer-sale-es","evidence":"2,014 entrances, CR 0.8% vs channel avg 2.1%, 30d","action":"Fix ad-to-landing message match, or pause and reallocate","impact_month":1840,"currency":"EUR","metric":"campaign CR","baseline":0.008,"target":0.021,"verify_on":"2026-10-05","status":"open"}
 ```
+
+`impact_month` is a number and `currency` is the site's ISO code from
+`profile.json` — never euros by default. The field was `impact_eur_month`, which
+is why a store reporting in dollars was handed a ledger in €.
 
 - `id` — `<date>-<pattern>-<subject>`, slugified. Used to detect repeats.
 - `metric`, `baseline`, `target` — what must move, and from where to where.
@@ -235,7 +256,7 @@ Before reporting anything new, read the ledger and act on entries where
 ### Repeat suppression (opportunity-scan)
 
 Do not re-report a pattern that already has an `open` entry for the same
-`subject`, unless the recomputed `impact_eur_month` has grown by ≥50%. In
+`subject`, unless the recomputed `impact_month` has grown by ≥50%. In
 that case report it as an escalation and say it was already flagged on
 `date`. Patterns with a `discarded` entry stay suppressed for 90 days.
 

@@ -113,7 +113,7 @@ names) **and
 `discovery_cached_at` as today's date** — the 7-day refresh rule reads that
 field, and a profile without it can never be judged fresh or stale. Append every
 finding you issued to `recommendations.jsonl` with its metric, baseline,
-target and `verify_on` date. Log the run in `runs.jsonl` — with the Read and
+target, `verify_on` date, and `impact_month` with the site's `currency`. Log the run in `runs.jsonl` — with the Read and
 Write tools, never a shell command — with exactly the
 fields the state schema lists: `ts`, `skill`, `calls`, `budget`, `verdict`,
 `scheduled`, `notes`. `ts` is a full ISO timestamp in UTC (`2026-09-08T14:02:11Z`),

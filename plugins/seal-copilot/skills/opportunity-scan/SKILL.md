@@ -108,5 +108,7 @@ recommendation. If fewer than 30 conversions in a cell, label the finding
 "directional — low sample" instead of dropping it silently.
 
 Append each reported opportunity to `recommendations.jsonl` with its metric,
-baseline, target and `verify_on` date. Log the run in `runs.jsonl`. Both writes use
+baseline, target, `verify_on` date, and `impact_month` with the site's
+`currency` — the schema requires both, and a figure without its currency is
+one a store reporting in dollars cannot use. Log the run in `runs.jsonl`. Both writes use
 the Read and Write tools, never a shell command, and happen before the report.

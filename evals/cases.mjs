@@ -260,7 +260,11 @@ export default [
     fixture: 'install-site-already-exists',
     // Installing lives in seal-install, with the local connector: the OAuth one
     // Seal Copilot declares does not announce provision_site or verify_setup.
+    // The transport has to be local for the same reason — on `remote` the tool
+    // this case forbids is not even announced, so mustNotCall would pass for
+    // the wrong reason.
     pluginDir: 'seal-install',
+    transport: 'local',
     prompt: 'Install Sealmetrics on demo-store.com. The repo is here.',
     maxCalls: 8,
     mustMatch: [/already (exists|has)|existing site/i],

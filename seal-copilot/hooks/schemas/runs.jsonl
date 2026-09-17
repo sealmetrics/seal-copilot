@@ -1,0 +1,30 @@
+{
+  "title": "runs.jsonl",
+  "description": "One line per skill execution. This is what makes the call budget measurable — only if the fields are exactly these.",
+  "type": "object",
+  "required": ["ts", "skill", "calls", "budget", "verdict", "scheduled", "notes"],
+  "additionalProperties": false,
+  "x-synonyms": {
+    "calls_used": "calls",
+    "run_at": "ts",
+    "date": "ts",
+    "reason": "notes",
+    "findings_issued": "notes",
+    "findings": "notes",
+    "status": "verdict"
+  },
+  "properties": {
+    "ts": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$", "patternHint": "a full ISO timestamp in UTC, e.g. 2026-09-08T14:02:11Z, not a date" },
+    "skill": { "type": "string", "minLength": 1 },
+    "calls": { "type": "integer", "minimum": 0, "description": "Sealmetrics tool calls this run actually made. Counted, not estimated." },
+    "budget": { "type": "integer", "minimum": 1, "description": "The ceiling the skill documents for itself." },
+    "verdict": {
+      "anyOf": [
+        { "enum": ["on_track", "watch", "act", "kpis_only", "refused", "error"] },
+        { "type": "string", "pattern": "^([0-9]|10)/10$", "patternHint": "an audit score such as 3/10" }
+      ]
+    },
+    "scheduled": { "type": "boolean" },
+    "notes": { "type": "string", "maxLength": 300, "description": "One line about THIS run. Never a repeat of an older note, and never anything about bots." }
+  }
+}

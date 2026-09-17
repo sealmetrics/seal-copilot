@@ -1,0 +1,25 @@
+{
+  "title": "watchdog-baseline.json",
+  "description": "The hour-of-week rhythm cart-watchdog compares against. Built once by calibrate-watchdog because the MCP has no hourly time series.",
+  "type": "object",
+  "required": ["site_id", "event", "mode", "calibrated_at", "expires_at"],
+  "additionalProperties": false,
+  "x-requiredWhen": [
+    { "when": { "mode": ["A", "B"] }, "require": ["cells", "cumulative"] },
+    { "when": { "mode": ["C"] }, "require": ["daily_median"] }
+  ],
+  "properties": {
+    "site_id": { "type": "string", "minLength": 1 },
+    "event": { "type": "string", "minLength": 1 },
+    "mode": { "enum": ["A", "B", "C"], "description": "A full 168 cells from 28 days, B one week, C day-of-week daily medians." },
+    "weeks": { "type": "integer", "minimum": 1 },
+    "calibrated_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "expires_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "cells": { "type": "object" },
+    "cumulative": { "type": "object" },
+    "daily_median": { "type": "object" },
+    "last_status": { "type": ["string", "null"] },
+    "last_checked_at": { "type": ["string", "null"] },
+    "notes": { "type": "string", "maxLength": 300 }
+  }
+}

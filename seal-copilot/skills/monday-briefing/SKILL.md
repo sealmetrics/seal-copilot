@@ -147,7 +147,8 @@ Suggested follow-up: "<one concrete next prompt the user can paste>"
 Keep the whole output under ~30 lines so it copy-pastes into email/Slack
 cleanly. No code blocks except the verdict box. No filler.
 
-Append the opportunity you reported to `recommendations.jsonl` and log the
+Append the opportunity you reported to `recommendations.jsonl` — with
+`impact_month` and the site's `currency`, both required — and log the
 run in `runs.jsonl` with exactly `ts`, `skill`, `calls`, `budget`, `verdict`,
 `scheduled`, `notes` — `budget` is `15` for this skill, `calls` is counted.
 
