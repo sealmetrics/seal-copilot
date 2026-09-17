@@ -249,10 +249,12 @@ With a real API key, one more check matters more than all of these:
 SEALMETRICS_API_KEY=sm_... node evals/validate-fixtures.mjs
 ```
 
-The eval fixtures are reconstructions from documented field names. Until that
-command has run clean, a green suite proves the skills are self-consistent, not
-that they match the real API. It compares response **shapes** only — key names
-and types, never your figures — and writes nothing unless you pass `--save`.
+**It ran clean on 2026-09-17**, against a real account: 33 tools compared, no
+mismatches, and the six refusals were exactly the scope-gated ones. Before that
+the fixtures were reconstructions from documented field names, and a green suite
+only proved the skills were self-consistent. It compares response **shapes**
+only — key names and types, never your figures — and writes nothing unless you
+pass `--save`. Re-run it whenever the API changes.
 
 `check.sh` needs no model and no API key, and CI runs it on every pull request.
 A second workflow checks weekly that the MCP has not moved under the plugin
