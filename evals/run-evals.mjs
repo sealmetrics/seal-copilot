@@ -247,7 +247,7 @@ async function runCase(c, siteId) {
   let calls = 0, rejected = 0, ms = 0, answer = '', toolNames = [], cliError = null;
 
   let seen = 0, lastSession = null, truncatedStep = false;
-  let lastCalls = [], lastCalcOutputs = [];
+  let lastCalls = [], lastCalcOutputs = [], shellWarnings = [];
   for (const [i, step] of steps.entries()) {
     const r = await runStep(c, step, siteId, work, callLog, step.continue ? lastSession : null);
     lastCalls = r.calls; lastCalcOutputs = r.calcOutputs || [];
@@ -274,7 +274,7 @@ async function runCase(c, siteId) {
   // default it is a warning, because twelve phrase bans in this repo have
   // failed correct answers and this assertion gets the same probation. Turn it
   // on globally once the suite has run clean with the warnings for three runs.
-  let fidelityNotes = [], shellWarnings = [];
+  let fidelityNotes = [];
   if (!cliError) {
     const withResponses = (lastCalls || []).filter((x) => x.response !== undefined);
     if (withResponses.length) {
