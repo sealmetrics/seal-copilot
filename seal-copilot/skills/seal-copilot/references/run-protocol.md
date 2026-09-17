@@ -42,8 +42,9 @@ Say so once, in one line, in the answer and in the run-log notes.
 
 ## 4. Write state to the contract
 
-The schemas in `seal-copilot/hooks/schemas/` are the contract, and a hook
-enforces them: a write that does not match is refused, naming the fields to fix.
+**You never need to read the schema, or look for it.** A hook checks every
+write, refuses one that does not match, and names the fields to fix. Write what
+`state-schema.md` documents and act on the refusal if it comes.
 
 - Use the **Read and Write tools, never a shell**, and write each file whole. An
   `Edit` on a state file is refused because it skips the check.
@@ -55,19 +56,18 @@ enforces them: a write that does not match is refused, naming the fields to fix.
 - State is optional. If the filesystem is not writable, do the work anyway and
   say once, in one line, that nothing could be cached. Never block on it.
 
-**Where there is no state directory at all** — Claude on the web and desktop
-have no filesystem, and no `State directory:` line appears — memory has to
-travel through the conversation instead. Close the answer with a fenced
-`seal-state` block of at most 25 lines: the profile as the schema defines it,
-plus any ledger entries still `open`. Say in one line that pasting it back at
-the start of the next conversation is what lets the next report follow up.
+**Where no state directory was announced** — Claude on the web and desktop have
+no filesystem — memory travels through the conversation instead. Close the answer
+with a fenced `seal-state` block of at most 25 lines: the profile, plus any
+ledger entries still `open`. Say in one line that pasting it back next time is
+what lets the next report follow up.
 
 When a prompt contains such a block, parse it as the starting state, under the
 same rule as the disk: its `site_id` has to be in what `list_sites` returns, or
 it belongs to another account and is ignored.
 
-Emit it **only** when no state directory was announced. In Claude Code and
-Cowork the files are the memory and a pasted block would compete with them.
+Emit it **only** when no state directory was announced: elsewhere the files are
+the memory, and a pasted block would compete with them.
 
 ## 5. Log the run, before the answer
 

@@ -210,3 +210,32 @@ rule at the end of five skills, and `funnel-analysis` had a step numbered 7
 stranded inside its Output section since before this work. Both are cosmetic,
 and both were introduced or exposed by a scripted edit across fifteen files —
 which is the argument for reading the diff of one after running such a script.
+
+---
+
+## 2026-09-17 · Naming a path the skill cannot resolve sends it hunting
+
+**Found by** the shell warnings in the run that verified the slimming. Both
+cases passed, and one of the warnings was
+`find /Users/rafa/code/sealmetrics/seal-copilot -type d -name schemas`.
+
+`run-protocol.md` and `state-schema.md` had been written to say "the schemas in
+`seal-copilot/hooks/schemas/` are the contract". That reads as an instruction to
+go and read them, and where they live depends entirely on how the plugin was
+installed — a marketplace install, a `--plugin-dir`, a Cowork bundle and a
+Claude.ai ZIP all differ. So the model searched the disk.
+
+It never needed to. The hook validates the write and names the fields to fix,
+including the field the writer probably meant; that feedback is the contract at
+the moment it matters. The prose contract is `state-schema.md`, which the skill
+already reaches by a path that resolves.
+
+**Rule produced.** Both files now say the schema is checked, not where it is,
+and that looking for it is unnecessary. No skill names a schema path any more.
+
+**Also observed, unresolved.** Both cases landed exactly on their eval cap — 10
+of 10 and 14 of 14 — against documented budgets of 8 and 12. One run each, so
+this is not yet a trend, and the two extra calls were Sealmetrics calls rather
+than file reads, which the protocol change does not touch. Worth watching in the
+next certification: if the caps are being reached routinely, either the budgets
+in the skills are wrong or a run is repeating a call it already made.

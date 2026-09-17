@@ -4,11 +4,12 @@ What Seal Copilot remembers about a site between runs. Without it every
 scheduled run rediscovers the same facts, every scan re-proposes the same
 finding, and no recommendation is ever verified.
 
-**The schemas in `seal-copilot/hooks/schemas/` are the contract**, one per file,
-and a `PreToolUse` hook enforces them: a `Write` that does not match is refused,
-naming the fields to fix. The eval runner applies the same schemas to whatever a
-run leaves behind. This file says what each store is *for*; the schema says what
-is valid.
+**The field names here are checked, not merely documented.** A `PreToolUse`
+hook validates every `Write` against a schema and refuses one that does not
+match, naming the fields to fix and the field you probably meant; the eval
+runner applies the same schemas to whatever a run leaves behind. You never need
+to find or read those files — this one is the contract, and the refusal tells
+you the rest.
 
 ## Where it lives
 

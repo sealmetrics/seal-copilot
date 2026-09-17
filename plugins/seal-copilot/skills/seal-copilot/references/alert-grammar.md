@@ -11,8 +11,8 @@ the remote connector does not announce; these rules need none of those and work
 on every connector.
 
 The file they live in is `<state-dir>/<site_id>/alerts.json`, an object with a
-`rules` array, and `seal-copilot/hooks/schemas/alerts.json` is the contract a
-hook enforces on every write.
+`rules` array, never a bare list — a hook refuses the write otherwise and says
+which field is wrong.
 
 ## The rule grammar
 
