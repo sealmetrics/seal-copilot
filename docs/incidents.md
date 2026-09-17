@@ -292,3 +292,42 @@ is already the one that design uses, so the rules translate.
 Joining them is manual today, so the skill prints the rule as JSON for the
 handover and is forbidden from claiming a rule is watched, because it cannot
 see whether the watcher has it.
+
+---
+
+## 2026-09-17 · A measure of false alarms, applied to real ones
+
+**Found by** a failing test while building `watcher/preview.mjs`, the command
+that replays a rule over a site's own history.
+
+The replay ended with a verdict copied from `create-alert`: above one incident a
+month, "too noisy". A synthetic fortnight with a single dead afternoon came back
+`too noisy` at 2.1 a month, and the assertion that it was `sound` failed.
+
+The code was doing what it was told, and what it was told was wrong.
+`create-alert`'s threshold is **one FALSE alarm a month**, estimated from the
+event's rate on a healthy site. A backtest counts every incident the rule would
+have opened, and some of those are real problems. Calling a rule noisy because
+it caught a genuine outage applies a measure of false positives to a quantity
+that includes true ones.
+
+**Rule produced.** The backtest reports and does not judge: the count, the rate,
+how many distinct days fired, and the first five incidents with their times,
+plus a `reading` that hands the decision to whoever knows whether the 5th was a
+real outage. `preview.mjs` exits zero on any successful replay, because an exit
+code would be pretending to know.
+
+The one thing it does assert is **density**: a rule that fires on a third of all
+days is describing the site's normal behaviour rather than an incident, and no
+knowledge of the dates is needed to say so.
+
+**Also built here.** The config reloads between passes, so adding or pausing a
+rule needs no redeploy — and a broken edit keeps the last good config running,
+because one typo in one rule would otherwise silence every rule on every site.
+`watcher/rules.mjs` edits that file and refuses to write anything the watcher
+could not load.
+
+**And a third defect of the same family as the rest.** The due-time schedule
+was a module-level `Map`, so one test's schedule suppressed the next test's
+rule and the report came back empty instead of wrong. State that belongs to a
+run does not belong to a module.

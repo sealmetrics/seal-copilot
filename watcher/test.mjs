@@ -10,7 +10,11 @@ import { store } from './lib/store.mjs';
 import { render, deliverer } from './lib/deliver.mjs';
 import { client } from './lib/api.mjs';
 import { activeMinutesBetween, isActive, localParts } from './lib/clock.mjs';
-import { pass } from './watch.mjs';
+import { pass, reloader, configProblems, ruleSchema } from './watch.mjs';
+import { backtest } from './lib/backtest.mjs';
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 let fails = 0;
 const ok = (name, cond, got) => {
@@ -199,6 +203,118 @@ console.log('\nan API that refuses');
   ok('a refusal is reported as an error', report[0]?.status === 'error', report);
   // The one thing this must never do.
   ok('and never as silence', !report.some((r) => r.status === 'fired'), report);
+}
+
+console.log('\nthe backtest');
+{
+  // Two weeks of a shop that sells through the day, with one dead afternoon.
+  const events = [];
+  for (let d = 1; d <= 14; d++) {
+    const day = `2026-09-${String(d).padStart(2, '0')}`;
+    // One sale every hour from 09:00 to 22:00 local (07:00–20:00Z), except
+    // on the 5th after 12:00 local.
+    for (let h = 7; h <= 20; h++) {
+      if (d === 5 && h > 10) continue;
+      events.push(`${day}T${String(h).padStart(2, '0')}:05:00Z`);
+    }
+  }
+  const window = { from: '2026-09-01T00:00:00Z', to: '2026-09-15T00:00:00Z' };
+  const r = backtest(silenceRule(), events, window);
+  ok('replays a silence rule', r.replayable && r.family === 'silence', r.replayable);
+  ok('finds the one dead afternoon', r.incidents === 1, { incidents: r.incidents, first: r.first_five });
+  ok('and dates it to the 5th', /2026-09-05/.test(r.first_five[0]?.local_day || ''), r.first_five[0]);
+  ok('reports a rate per month', typeof r.incidents_per_month === 'number');
+  // No verdict on noise: a backtest counts real incidents as well as false
+  // ones, and `create-alert`'s "one false alarm a month" threshold does not
+  // apply to a quantity that includes true positives. The first version of
+  // this asserted 'sound' and got 'too noisy' for one genuine outage.
+  ok('it reports a rate without judging it', r.verdict === undefined && typeof r.reading === 'string', r.reading);
+  ok('and points at the dates', /Look at the dates/.test(r.reading), r.reading);
+  ok('one day out of fourteen is not "most days"', r.share_of_days < 0.3, r.share_of_days);
+  ok('counts the events it examined', r.events_examined === events.length, r.events_examined);
+
+  // The same history with a one-hour rule is noise, and must say so.
+  const noisy = backtest(silenceRule({ id: 'no-purchases-1h', condition: { hours: 1 } }), events, window);
+  // Density IS assertable: a rule firing on most days describes the site, not
+  // an incident.
+  ok('a one-hour rule on hourly sales fires on most days',
+     noisy.share_of_days >= 0.3 && /normal behaviour/.test(noisy.reading),
+     { share: noisy.share_of_days, reading: noisy.reading });
+
+  // A threshold rule, replayed per day.
+  const thr = backtest({ id: 'under-10', family: 'threshold', metric: { kind: 'conversion', type: 'purchase' },
+    condition: { below: 10 }, timezone: TZ, created_at: '2026-09-17', status: 'active' }, events, window);
+  ok('a threshold rule is replayed per day', thr.replayable && thr.days_examined >= 14, thr.days_examined);
+  ok('and the dead day is the one that fires', thr.incidents >= 1 && thr.first_five.some((i) => i.local_day === '2026-09-05'),
+     thr.first_five);
+
+  // A drop rule with no expectation cannot be replayed, and says so instead of
+  // guessing one.
+  const noExp = backtest({ id: 'd', family: 'drop', metric: { kind: 'microconversion', type: 'add_to_cart' },
+    condition: { ratio: 0.5 }, active_hours: { from: 0, to: 24, days: ALL }, timezone: TZ,
+    created_at: '2026-09-17', status: 'active' }, events, window);
+  ok('a drop with no expectation refuses to replay', noExp.replayable === false, noExp);
+
+  // Night events must not rescue a rule that only watches the day.
+  const nightOnly = ['2026-09-01T01:00:00Z', '2026-09-02T01:00:00Z'];
+  const allNight = backtest(silenceRule(), nightOnly, { from: '2026-09-01T00:00:00Z', to: '2026-09-03T00:00:00Z' });
+  ok('sales only at night still leave the day silent', allNight.incidents >= 1, allNight);
+}
+
+console.log('\nconfig validation');
+{
+  const good = { sites: [{ site_id: 'demo', token_env: 'T', rules: [silenceRule()] }] };
+  const env = { T: 'sm_x' };
+  ok('a good config has no problems', configProblems(good, env).length === 0, configProblems(good, env));
+  ok('a missing token_env is named',
+     configProblems({ sites: [{ site_id: 'demo', rules: [] }] }, env).some((p) => /token_env/.test(p)));
+  ok('an unset token is named',
+     configProblems(good, {}).some((p) => /T is not set/.test(p)));
+  ok('no sites is a problem', configProblems({ sites: [] }, env).length === 1);
+  ok('a bad timezone is caught',
+     configProblems({ sites: [{ site_id: 'd', token_env: 'T', rules: [silenceRule({ timezone: 'Mars/Olympus' })] }] }, env)
+       .some((p) => /not an IANA timezone/.test(p)));
+  ok('two rules with one id are caught',
+     configProblems({ sites: [{ site_id: 'd', token_env: 'T', rules: [silenceRule(), silenceRule()] }] }, env)
+       .some((p) => /share this id/.test(p)));
+  ok('the rule schema is the plugin\'s', typeof ruleSchema().properties.family === 'object');
+}
+
+console.log('\nreloading the config');
+{
+  const dir = mkdtempSync(join(tmpdir(), 'seal-reload-'));
+  const file = join(dir, 'config.json');
+  const base = { sites: [{ site_id: 'demo', token_env: 'SEAL_TOKEN_RELOAD', rules: [silenceRule()] }] };
+  process.env.SEAL_TOKEN_RELOAD = 'sm_x';
+  const prevInline = process.env.SEAL_CONFIG;
+  delete process.env.SEAL_CONFIG;
+  process.env.SEAL_CONFIG_PATH = file;
+
+  writeFileSync(file, JSON.stringify(base));
+  const reload = reloader(base);
+  ok('no change returns the same config', reload() === base);
+
+  // Add a rule and bump the mtime past the cached one.
+  const two = { sites: [{ ...base.sites[0], rules: [silenceRule(), silenceRule({ id: 'second' })] }] };
+  writeFileSync(file, JSON.stringify(two));
+  const after = reload();
+  ok('a valid change is picked up', after.sites[0].rules.length === 2, after.sites[0].rules.length);
+
+  // A broken edit must NOT stop the watch: one typo in one rule would
+  // otherwise silence every rule on every site.
+  writeFileSync(file, '{ not json');
+  const kept = reload();
+  ok('invalid JSON keeps the last good config', kept.sites[0].rules.length === 2);
+  writeFileSync(file, JSON.stringify({ sites: [{ site_id: 'demo', token_env: 'SEAL_TOKEN_RELOAD', rules: [{ id: 'x', family: 'nonsense' }] }] }));
+  const kept2 = reload();
+  ok('an unusable rule keeps the last good config', kept2.sites[0].rules.length === 2);
+  // And recovery works.
+  writeFileSync(file, JSON.stringify(base));
+  ok('a fixed config is adopted again', reload().sites[0].rules.length === 1);
+
+  rmSync(dir, { recursive: true, force: true });
+  delete process.env.SEAL_CONFIG_PATH;
+  if (prevInline !== undefined) process.env.SEAL_CONFIG = prevInline;
 }
 
 console.log(`\n${fails === 0 ? 'watcher tests passed' : fails + ' watcher test(s) FAILED'}`);

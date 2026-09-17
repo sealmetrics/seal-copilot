@@ -75,22 +75,18 @@ account its macro conversion was untracked.
 **Noise check: how often would it fire on a normal site?** A four-hour
 `silence` rule on an event that happens three times a day fires most afternoons
 and teaches the user to ignore you. **Do not do this arithmetic yourself** —
-run the calculator, with the active hours the user gave or the ones you are
-about to propose:
+run the calculator:
 
 ```
 echo '{"count_30d":72,"active_hours_per_day":16,"window_hours":4}' \
   | node skills/seal-copilot/scripts/calc.mjs false-alarm
 ```
 
-It returns `lambda`, `p_quiet_window`, `false_alarms_per_month` and a
-`verdict`. For a `threshold` rule pass `threshold` too and it uses the Poisson
-tail instead of e^−λ.
+For a `threshold` rule pass `threshold` too, and it uses the Poisson tail.
 
-**Above one false alarm a month the verdict is `too noisy`: refuse the rule as
-written.** Say the figure in the user's terms — "it would fire about 8 times a
-month with nothing wrong", or "almost every day" past 30 — and give the λ
-behind it.
+**When its verdict is `too noisy`, refuse the rule as written.** Say the figure
+in the user's terms — "it would fire about 8 times a month with nothing wrong",
+or "almost every day" past 30 — and give the λ behind it.
 
 **Every alternative you propose goes through the calculator too, and you quote
 its figure.** Refusing one noisy rule and offering another with the same λ is
@@ -98,6 +94,10 @@ the easiest mistake here: on a site doing 2.4 clicks a day, a 12-hour silence
 and a daily "fewer than 1" threshold both sit at λ = 2.4. If nothing short
 enough to be useful passes, say so: at that volume an alert can catch broken
 tracking, not a bad afternoon.
+
+λ is an estimate. `watcher/preview.mjs` replays the rule over the site's real
+history and names the days it would have fired; mention it when the user wants
+more than an estimate.
 
 Without a shell, do the arithmetic and say in the answer that it was done
 without the calculator.

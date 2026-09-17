@@ -83,6 +83,19 @@ export function client({ token, siteId, baseUrl = BASE, fetchImpl = globalThis.f
       return latest ? latest.toISOString() : null;
     },
 
+    /**
+     * One page of raw events over an arbitrary range, for the backtest.
+     *
+     * The endpoint caps a range at 31 days and a page at 100 rows, so the
+     * caller pages and says when it stopped early. A silently truncated
+     * history makes a rule look quieter than it is.
+     */
+    async rawPage(kind, { start_date, end_date, conversion_type, page = 1 }) {
+      const r = await get(`/stats/${kind}/raw`, { start_date, end_date, conversion_type, limit: 100, page });
+      const rows = r?.data ?? r ?? [];
+      return Array.isArray(rows) ? rows : [];
+    },
+
     /** Entrances and revenue today. One call serves both, and every rule. */
     async overviewToday() {
       const r = await get('/stats/overview', { period: 'today' });

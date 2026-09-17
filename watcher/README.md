@@ -108,6 +108,55 @@ defences, and neither is optional in production.
   the grammar here is deliberately the one the product's design uses, so that is
   a translation and not a rewrite.
 
+## Putting a rule in, and taking one out
+
+The watcher re-reads its config between passes, so a rule change needs no
+redeploy. **A broken edit never stops the watch**: if the new config does not
+parse or does not validate, the problem is logged and the last good one keeps
+running, because one typo in one rule would otherwise silence every rule on
+every site.
+
+With the config on a volume (`SEAL_CONFIG_PATH`), edit it with the CLI rather
+than by hand — it refuses to write anything the watcher could not load:
+
+```
+node watcher/rules.mjs list
+node watcher/rules.mjs add acct_example < rule.json
+node watcher/rules.mjs pause acct_example no-purchases-4h
+node watcher/rules.mjs remove acct_example no-purchases-4h
+node watcher/rules.mjs check
+```
+
+`create-alert` prints the rule as JSON; that is what goes on stdin. A removed
+rule is kept in the file marked `deleted` with the date, so "did I have an
+alert on that?" has an answer.
+
+`node watcher/watch.mjs --check` validates the config and exits without
+watching, which is what to run after an edit.
+
+## Before trusting a rule: replay it
+
+```
+SEAL_TOKEN=sm_… node watcher/preview.mjs acct_example 14 < rule.json
+```
+
+`create-alert` already refuses a rule that a Poisson estimate says would fire
+more than once a month on a healthy site. This answers the same question from
+the site's own events: not "about three false alarms a month" but "it would have
+fired on the 4th, the 9th and the 11th".
+
+It reports the count, the rate, how many distinct days fired, and the first five
+incidents with their times. **It does not pronounce a rule noisy**, and that is
+deliberate: a backtest counts real incidents as well as false ones, so the
+"one false alarm a month" threshold does not apply to it. The one thing it will
+assert is density — a rule that fires on a third of all days is describing the
+site's normal behaviour rather than an incident.
+
+Conversion and microconversion rules only: revenue and entrances have no
+per-event endpoint to replay. The raw endpoints cap a range at 31 days and a
+page at 100 rows, so the command stops at 4,000 events and says when the sample
+was truncated, because a partial history makes a rule look quieter than it is.
+
 ## The rule grammar
 
 One grammar, three readers: the `create-alert` skill writes it, `check-alerts`

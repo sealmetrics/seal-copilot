@@ -18,7 +18,7 @@
  *
  * Configuration is in the environment. See watcher/README.md.
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { client, ApiError } from './lib/api.mjs';
@@ -37,10 +37,49 @@ const log = (...a) => console.log(new Date().toISOString(), ...a);
 const CADENCE_MINUTES = { silence: 5, drop: 15, spike: 15, threshold: 60 };
 
 // ---------------------------------------------------------------- config
-function loadConfig() {
-  const raw = process.env.SEAL_CONFIG
-    || (process.env.SEAL_CONFIG_PATH && existsSync(process.env.SEAL_CONFIG_PATH)
-        ? readFileSync(process.env.SEAL_CONFIG_PATH, 'utf8') : null);
+/** The rule contract is the plugin's, not a second one. */
+export function ruleSchema() {
+  const p = join(here, '..', 'seal-copilot', 'hooks', 'schemas', 'alerts.json');
+  return JSON.parse(readFileSync(p, 'utf8')).properties.rules.items;
+}
+
+/** @returns {string[]} everything wrong with this config, or an empty list. */
+export function configProblems(cfg, env = process.env) {
+  if (!cfg || typeof cfg !== 'object') return ['configuration is not an object'];
+  if (!Array.isArray(cfg.sites) || !cfg.sites.length) return ['configuration has no `sites`'];
+  const schema = ruleSchema();
+  const problems = [];
+  const seen = new Set();
+  for (const site of cfg.sites) {
+    if (!site.site_id) { problems.push('a site has no `site_id`'); continue; }
+    if (!site.token_env) {
+      problems.push(`${site.site_id}: no \`token_env\`. Name the variable that holds this client's token; never put the token in the config`);
+    } else if (!env[site.token_env]) {
+      problems.push(`${site.site_id}: ${site.token_env} is not set in the environment`);
+    }
+    for (const rule of site.rules || []) {
+      const key = `${site.site_id}:${rule.id}`;
+      if (seen.has(key)) problems.push(`${key}: two rules share this id`);
+      seen.add(key);
+      for (const e of validate(rule, schema, rule.id || 'rule')) problems.push(`${site.site_id}: ${e}`);
+      if (rule.timezone) {
+        try { localParts(new Date(), rule.timezone); }
+        catch { problems.push(`${site.site_id}/${rule.id}: ${rule.timezone} is not an IANA timezone`); }
+      }
+    }
+  }
+  return problems;
+}
+
+function readRaw() {
+  if (process.env.SEAL_CONFIG) return { raw: process.env.SEAL_CONFIG, mtime: 0 };
+  const path = process.env.SEAL_CONFIG_PATH;
+  if (path && existsSync(path)) return { raw: readFileSync(path, 'utf8'), mtime: statSync(path).mtimeMs };
+  return { raw: null, mtime: 0 };
+}
+
+export function loadConfig() {
+  const { raw } = readRaw();
   if (!raw) {
     throw new Error('No configuration. Set SEAL_CONFIG to the JSON, or SEAL_CONFIG_PATH to a file. ' +
       'See watcher/README.md; watcher/config.example.json is a working shape.');
@@ -48,30 +87,50 @@ function loadConfig() {
   let cfg;
   try { cfg = JSON.parse(raw); }
   catch (e) { throw new Error(`Configuration is not valid JSON: ${e.message}`); }
-  if (!Array.isArray(cfg.sites) || !cfg.sites.length) throw new Error('Configuration has no `sites`.');
-
-  // The rule contract is the plugin's, not a second one: same schema the
-  // PreToolUse hook enforces when create-alert writes a rule to disk.
-  const schemaPath = join(here, '..', 'seal-copilot', 'hooks', 'schemas', 'alerts.json');
-  const ruleSchema = JSON.parse(readFileSync(schemaPath, 'utf8')).properties.rules.items;
-
-  const problems = [];
-  for (const site of cfg.sites) {
-    if (!site.site_id) problems.push('a site has no `site_id`');
-    if (!site.token_env) problems.push(`${site.site_id}: no \`token_env\`. Name the variable that holds this client's token; never put the token in the config`);
-    else if (!process.env[site.token_env]) problems.push(`${site.site_id}: ${site.token_env} is not set in the environment`);
-    for (const rule of site.rules || []) {
-      for (const e of validate(rule, ruleSchema, rule.id || 'rule')) problems.push(`${site.site_id}: ${e}`);
-      if (rule.timezone) {
-        try { localParts(new Date(), rule.timezone); }
-        catch { problems.push(`${site.site_id}/${rule.id}: ${rule.timezone} is not an IANA timezone`); }
-      }
-    }
-  }
+  const problems = configProblems(cfg);
   if (problems.length) {
     throw new Error('Configuration is not usable:\n' + problems.map((p) => '  · ' + p).join('\n'));
   }
   return cfg;
+}
+
+/**
+ * Re-read the config between passes, so adding or pausing a rule takes effect
+ * without a redeploy.
+ *
+ * A broken edit must never stop the watch: if the new file does not parse or
+ * does not validate, the problem is logged once and the last good config keeps
+ * running. The alternative is that a typo in one rule silences every rule.
+ */
+export function reloader(initial) {
+  let current = initial;
+  let lastMtime = readRaw().mtime;
+  let lastComplaint = '';
+  return () => {
+    const { raw, mtime } = readRaw();
+    if (!raw || mtime === lastMtime) return current;
+    lastMtime = mtime;
+    let next;
+    try { next = JSON.parse(raw); }
+    catch (e) {
+      const msg = `config changed but is not valid JSON (${e.message}); keeping the previous one`;
+      if (msg !== lastComplaint) { log(msg); lastComplaint = msg; }
+      return current;
+    }
+    const problems = configProblems(next);
+    if (problems.length) {
+      const msg = `config changed but is not usable, keeping the previous one:\n` +
+        problems.map((p) => '  · ' + p).join('\n');
+      if (msg !== lastComplaint) { log(msg); lastComplaint = msg; }
+      return current;
+    }
+    const before = current.sites.reduce((a, s) => a + (s.rules || []).length, 0);
+    const after = next.sites.reduce((a, s) => a + (s.rules || []).length, 0);
+    log(`config reloaded: ${next.sites.length} site(s), ${after} rule(s) (was ${before})`);
+    lastComplaint = '';
+    current = next;
+    return current;
+  };
 }
 
 // ---------------------------------------------------------------- one rule
@@ -215,7 +274,15 @@ async function heartbeat(url, summary) {
 }
 
 async function main() {
-  const cfg = loadConfig();
+  let cfg = loadConfig();
+  // --check validates and exits: what to run in CI, or after editing a rule,
+  // before trusting that the service will still come up.
+  if (process.argv.includes('--check')) {
+    const rules = cfg.sites.reduce((a, s) => a + (s.rules || []).length, 0);
+    log(`configuration is usable: ${cfg.sites.length} site(s), ${rules} rule(s)`);
+    return process.exit(0);
+  }
+  const reload = reloader(cfg);
   const incidents = store(process.env.SEAL_STATE_PATH);
   const interval = Number(cfg.interval_seconds ?? process.env.SEAL_INTERVAL_SECONDS ?? 300) * 1000;
 
@@ -228,6 +295,7 @@ async function main() {
   let cycle = 0;
   for (;;) {
     const started = Date.now();
+    cfg = reload();
     let report = [];
     try { report = await pass(cfg, incidents); }
     catch (e) { log(`pass failed: ${e.message}`); }
@@ -256,4 +324,4 @@ async function main() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((e) => { console.error(e.message); process.exit(2); });
 }
-export { loadConfig, checkRule, gather, CADENCE_MINUTES };
+export { checkRule, gather, CADENCE_MINUTES };
