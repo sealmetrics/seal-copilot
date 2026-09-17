@@ -17,7 +17,14 @@ const TOOLS = new Set(Object.keys(schema));
 // production. See evals/tool-availability.json and PRD E14.
 const availability = JSON.parse(readFileSync(join(here, 'tool-availability.json'), 'utf8'));
 const FORBIDDEN = new Set(availability.forbidden.tools);
-const GATED = new Set(availability.gated.tools);
+// The gated set is what the remote connector does not announce, generated from
+// the MCP server source by evals/dump-transport-tools.mjs. Reading it here
+// instead of copying it is the fix for the hand-kept list that named
+// `get_channels`, `list_channel_rules` and `test_channel_rules` as withheld
+// when the remote serves all three.
+const transports = JSON.parse(readFileSync(join(here, 'remote-tools.json'), 'utf8'));
+const GATED = new Set(transports.hidden_on_remote);
+const PREFER = availability.preferAlternative?.tools || {};
 const REFUSAL = availability.markers.refusal;
 const LOCAL_ONLY = availability.markers.localOnly.toLowerCase();
 const LOCAL_ROOTS = availability.localOnlyRoots;
@@ -161,10 +168,19 @@ for (const file of files) {
     }
   }
 
-  // 3. Tools that exist in the schema but must not be called, and tools the
-  //    default connector does not announce. Both are invisible to rules 1-2.
+  // 3. Tools that exist in the schema but must not be called, tools the default
+  //    connector does not announce, and tools that work but are not the right
+  //    default. All three are invisible to rules 1-2.
   const localRoot = LOCAL_ROOTS.some((r) => rel.split('/').includes(r));
   for (const u of units(raw)) {
+    // A tool that works but is not the default: the mention has to name the
+    // preferred tool nearby, so it cannot read as a recommendation.
+    for (const [name, instead] of Object.entries(PREFER)) {
+      if (!new RegExp(`\\b${name}\\b`).test(u.text)) continue;
+      if (new RegExp(`\\b${instead}\\b`).test(u.block) || new RegExp(`\\b${instead}\\b`).test(u.heading || '')) continue;
+      errors.push({ file: rel, line: u.line, kind: 'prefer-alternative',
+        msg: `\`${name}\` works but is not the default. Name \`${instead}\` in the same block: "${u.text.trim().slice(0, 70)}"` });
+    }
     for (const name of new Set([...FORBIDDEN, ...GATED])) {
       if (!new RegExp(`\\b${name}\\b`).test(u.text)) continue;
       if (hasRefusal(u.text)) continue;

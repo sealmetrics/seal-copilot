@@ -157,9 +157,15 @@ console.log('\ntransport gating');
 console.log('\nglobal bans and answer length');
 {
   const base = { mustMatch: [], mustCall: [] };
-  ok('get_channels fails every case', assess(base, 'ok', [{ tool: 'get_channels' }]).some(f => /no skill may ever call/.test(f)));
   ok('get_marketing_playbook fails every case', assess(base, 'ok', [{ tool: 'get_marketing_playbook' }]).some(f => /no skill may ever call/.test(f)));
-  ok('the ban list is the one the linter reads', GLOBAL_MUST_NOT_CALL.includes('get_channels'));
+  // get_channels was banned here until 2026-09-17 because the methodology said
+  // it 403s for every modern key. The channel-groups router accepts sites:read,
+  // so the ban asserted something false and this check kept it alive. It is a
+  // preference now (get_top_channels is compact), enforced by the linter's
+  // prefer-alternative rule, not by a global ban on calling it.
+  ok('get_channels is not globally banned', !GLOBAL_MUST_NOT_CALL.includes('get_channels'));
+  ok('calling get_channels is not a global failure', assess(base, 'ok', [{ tool: 'get_channels' }]).length === 0);
+  ok('the ban list is the one the linter reads', GLOBAL_MUST_NOT_CALL.includes('get_marketing_playbook'));
   ok('a zero call budget is enforced', assess({ ...base, maxCalls: 0 }, 'ok', [{ tool: 'get_overview' }]).some(f => /budget/.test(f)));
   ok('an over-long healthy answer fails', assess({ ...base, maxAnswerChars: 40 }, 'x'.repeat(80), []).some(f => /cap 40/.test(f)));
   ok('a short answer passes the cap', assess({ ...base, maxAnswerChars: 40 }, 'ok', []).length === 0);

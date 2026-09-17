@@ -74,11 +74,9 @@ cached site belongs to one connection".
 6. Are paid sources classified correctly? Cross `get_traffic_mediums(30d)`
    with `get_top_channels(30d)`: a `cpc` or `paidsocial` medium carrying real
    volume while no paid channel shows it means the traffic is landing in
-   "Referral" or "Direct", so UTMs or channel rules are missing. Both tools are
-   announced on every connector, so this check always runs. **(local only)**
+   "Referral" or "Direct", so UTMs or channel rules are missing.
    `list_channel_rules` shows the user's actual rules and sharpens the finding;
-   without it, say which medium is misrouted and let the user compare against
-   their own rules in the dashboard.
+   it is announced on both connectors, so this check always runs in full.
 7. `get_top_campaigns(30d)` — UTM hygiene: "(not set)" dominating means
    campaigns run untagged.
 8. Is anyone watching? **No call** — do not call `list_alerts`, whose rules
@@ -137,23 +135,19 @@ table, `currency`, `connector`, and `discovery_cached_at` as today's date (the
 refresh rule reads it; the first real audit rewrote the profile and left it
 out).
 
-## Channel rules — the one place this plugin can write (local only)
+## Channel rules — the one place this plugin can write
 
-None of these tools is announced on the `remote` connector, so there the audit
-**proposes the rule in words and stops**: name the source, medium and campaign
-pattern and the channel it should land in, and tell the user to create it in the
-dashboard. That is the whole procedure on `remote` — do not describe the dry run
-as something you could have done.
-
-On `local`, when the audit finds paid traffic misclassified (cpc sessions
-landing in "Referral", or a source the site's rules do not cover), you may
-propose a fix and apply it:
+When the audit finds paid traffic misclassified (cpc sessions landing in
+"Referral", or a source the site's rules do not cover):
 
 1. Draft the rule and show it to the user in plain language.
 2. Dry-run it with `test_channel_rules` and report exactly which sessions
-   would reclassify and how the channel totals change.
+   would reclassify and how the channel totals change. This works on **both**
+   connectors, so the evidence is always available.
 3. **Only after the user explicitly confirms**, apply it with
-   `create_channel_rule` or `update_channel_rule`.
+   `create_channel_rule` or `update_channel_rule` — **(local only)**. On
+   `remote` the writers are not announced, so hand the user the dry-run result
+   and the rule in words and tell them to create it in the dashboard.
 
 Never call `create_channel_rule`, `update_channel_rule`, `delete_channel_rule`
 or `import_channel_rules` without that confirmation in the conversation. A
@@ -163,8 +157,8 @@ stop.
 
 **Close:** offer to re-audit after fixes ship, and name the first analysis
 that becomes possible once the top gap is closed. Where the fix is a channel
-rule (cpc traffic landing in "Referral"), propose the rule in words; offering
-to dry-run or apply it is **(local only)**, and never without the user
+rule (cpc traffic landing in "Referral"), propose the rule in words and show
+the dry run; applying it is **(local only)** and never happens without the user
 explicitly confirming. If a product identifier
 is missing, name `product-friction` as the unlocked analysis. If
 microconversions are sparse, name `property-explorer` as the next step

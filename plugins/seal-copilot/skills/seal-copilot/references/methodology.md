@@ -75,9 +75,8 @@ returns single-period data silently** — you will report "no change" on data
 that never contained a comparison.
 
 **Comparing channels period over period** therefore takes two calls with a
-**calendar-pair preset**, diffed by you — and the tool is `get_top_channels`,
-never `get_channels` (which 403s for every modern API key; see "A successful
-call can still be a failure"):
+**calendar-pair preset**, diffed by you, using the compact `get_top_channels`
+(`get_channels` returns the same rows and adds only pagination):
 
 - `get_top_channels(period=this_week)` vs `get_top_channels(period=last_week)`
 - `get_top_channels(period=this_month)` vs `get_top_channels(period=last_month)`
@@ -162,21 +161,29 @@ return belongs to another account on the same machine: ignore it rather than
 calling a site this connection cannot reach (see "A cached site belongs to one
 connection" in `state-schema.md`).
 
-**Twenty tools will refuse that same id with "Access denied" — by design.**
-Read from the backend and the MCP source on 2026-09-08. API keys (`sm_…`) can
-only carry the granular scopes `stats:read`, `sites:read`, `accounts:read`;
-an OAuth grant mints a server-side key with exactly the same three. The
-configuration routers — `/channel-groups`, `/bot-stats`, `/alerts`,
-`/segments`, `/webhooks` — require the generic `read` scope, and the scope
-hierarchy is one-way: `read` implies `stats:read`, never the reverse. So no
-API key and no OAuth connection can ever call `get_channels`,
-`get_bot_stats`, `get_suspicious_sessions`, `list_segments`, `get_segment`,
-`list_alerts`, `get_alert_history`, `get_alert_stats`, `list_webhooks`,
-`list_webhook_deliveries`, `get_webhook_stats`, `list_channel_rules`,
-`test_channel_rules`, the channel-rule write tools, `verify_setup`,
-`get_instrumentation_guide` or `verify_event_instrumented`. Only a dashboard
-session can. The MCP's remote transport hides these tools for that reason
-(decision of 2026-07-02); the local transport still lists them, and they 403.
+**Ten tools will refuse that same id with "Access denied" — by design.**
+API keys (`sm_…`) carry only `stats:read`, `sites:read`, `accounts:read` and
+the two channel-rule write scopes; an OAuth grant mints a read-only
+server-side key. The alerts, segments, bot-stats and webhooks routers require
+the generic `read` scope, and the hierarchy is one-way: `read` implies
+`stats:read`, never the reverse. So no API key and no OAuth connection can
+ever call `list_alerts`, `get_alert_history`, `get_alert_stats`,
+`list_segments`, `get_segment`, `list_webhooks`, `list_webhook_deliveries`,
+`get_webhook_stats`, `get_bot_stats` or `get_suspicious_sessions` — only a
+dashboard session can. The remote transport does not announce them; the local
+transport lists them and they 403.
+
+**`get_channels`, `list_channel_rules` and `test_channel_rules` are not among
+them.** The channel-groups router accepts `sites:read`, so reading channel
+metrics, reading the account's own channel rules and dry-running a rule work on
+both connectors. Prefer `get_top_channels` for a breakdown — the same rows in a
+compact array, while `get_channels` adds only `page` — but that is a
+preference, not a restriction. Only the four channel-rule **writers** are out of
+reach on `remote`, and they are not announced there at all.
+
+The lists live in `evals/remote-tools.json`, generated from the MCP server's
+own source. Nothing here is hand-kept: the previous hand-kept list of twenty
+named these three as unreachable and was wrong for two months.
 
 ## The connector decides which tools exist — read this before step one
 
@@ -189,8 +196,8 @@ costs nothing to read and there is no call that reveals it.
 
 | What you see | Connector | What it means |
 |---|---|---|
-| `list_alerts` and `list_segments` are not announced | `remote` — the OAuth connector in `.mcp.json`, which is what nearly every user installs | The twenty tools above are **not announced**. Do not plan a step around them |
-| All sixty-two tools listed | `local` — `npx @sealmetrics/mcp` with `SEALMETRICS_API_KEY` | They are announced. Twenty of them still 403 for a modern key, so treat them as best-effort |
+| `list_alerts` and `list_segments` are not announced | `remote` — the OAuth connector in `.mcp.json`, which is what nearly every user installs | 42 tools. The ten scope-gated ones and the twelve setup and channel-rule-write ones are **not announced**. Do not plan a step around them |
+| The list has 64 tools, among them `provision_site` and `detect_framework`, which are hidden on `remote` | `local` — `npx @sealmetrics/mcp` with `SEALMETRICS_API_KEY` | Everything is announced. The ten scope-gated ones still 403 for any key, so treat those as best-effort |
 
 Write the answer into `profile.json` as `connector`, once, so no later run has
 to work it out again. See `references/state-schema.md`.
@@ -211,11 +218,13 @@ they can act on.
   `create-alert`, `check-alerts` — use none of the withheld tools; the withheld
   alert tools are not available to them and belong to Sealmetrics' dashboard
   alerts, a different thing.
-- **Never call `get_channels`. Use `get_top_channels`.** It hits
-  `/stats/top-channels`, covered by `stats:read`, returns the same row shape as
-  a bare array, and takes a `period` — so a calendar pair
-  (`this_week` vs `last_week`) works exactly as before. It has no `compare`
-  either, so nothing is lost. This holds on both connectors.
+- **Use `get_top_channels` for a channel breakdown, on either connector.** It
+  returns a bare array of the same rows and takes a `period`, so a calendar pair
+  (`this_week` vs `last_week`) works. `get_channels` reaches the same data and
+  adds only `page`; neither accepts `compare`, so the compact one costs nothing.
+- **Reading and testing channel rules works on `remote`.** `list_channel_rules`
+  and `test_channel_rules` are announced everywhere. Writing a rule
+  (`create_channel_rule` and the other three) is **(local only)**.
 - **Installing tracking from scratch is a different plugin.** `seal-install`
   carries the local connector and the provisioning tools. When a user on
   `remote` asks you to install Sealmetrics, say so in one line and name it —

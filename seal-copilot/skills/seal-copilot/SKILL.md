@@ -37,7 +37,7 @@ context before this skill, the rules here take precedence.
 0a. **Settle the connector before anything else.** Look at the tool list you
    were given. If `list_alerts` and `list_segments` are not announced there,
    you are on the `remote` OAuth connector — what nearly every user has, and
-   which withholds twenty tools; all sixty-two means `local`. It costs no call. Steps
+   which announces 42 of the 64 tools; seeing `provision_site` means `local`. It costs no call. Steps
    marked **(local only)** in any skill are skipped on `remote`, and named once
    in the report's "Not checked" line. Full rules, and what to do instead, in
    `references/methodology.md` → "The connector decides which tools exist".
@@ -110,9 +110,9 @@ token to paste and no environment variable to set. Full table in
    (`this_week` vs `last_week`, `this_month` vs `last_month`) and diff it
    yourself. Full parameter rules in `references/methodology.md` — read them
    before composing any call you have not made before in this session.
-8. **Drill-down order.** The channel breakdown is **`get_top_channels`, and
-   never `get_channels`**, which 403s for every modern key and is never the
-   right call. Order: overview → channel → source/medium → campaign →
+8. **Drill-down order.** The channel breakdown is **`get_top_channels`** — the
+   same rows as `get_channels` in a compact array, which is why it is the
+   default. Order: overview → channel → source/medium → campaign →
    term/landing/device/country/browser → **product/SKU property** → other
    properties. Stop at the level where the cause is isolated.
 9. **Recommendation format.** Every recommendation includes: (a) evidence

@@ -22,9 +22,14 @@ const callLog = process.env.SEAL_CALL_LOG || '';
 //
 // A skill that plans a step around a tool the connector withheld is a defect
 // the single-transport mock could never see, because it served everything.
-const transport = process.env.SEAL_TRANSPORT || 'local';
-const availability = JSON.parse(readFileSync(join(here, '..', 'tool-availability.json'), 'utf8'));
-const withheld = transport === 'remote' ? new Set(availability.gated.tools) : new Set();
+// `remote` is the default because it is what .mcp.json declares and therefore
+// what nearly every user has. Cases that need a tool the remote withholds
+// declare `transport: 'local'`. Until 2026-09-17 the default was `local`, so
+// three cases out of thirty-five exercised the connector everyone actually runs.
+const transport = process.env.SEAL_TRANSPORT || 'remote';
+// Generated from the MCP server source; see evals/dump-transport-tools.mjs.
+const transports = JSON.parse(readFileSync(join(here, '..', 'remote-tools.json'), 'utf8'));
+const withheld = transport === 'remote' ? new Set(transports.hidden_on_remote) : new Set();
 
 const fixture = await import(pathToFileURL(join(here, '..', 'fixtures', `${fixtureName}.mjs`)).href);
 const tools = fixture.tools || {};

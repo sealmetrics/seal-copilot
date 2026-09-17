@@ -1,41 +1,21 @@
 {
-  "_why": "Two classes of tool the skills must handle deliberately. The linter (evals/lint-tool-calls.mjs) enforces both. See docs/PRD-seal-copilot-v1.md, E14.",
+  "_why": "Three classes of tool the skills must handle deliberately. The linter (evals/lint-tool-calls.mjs) enforces all three. The GATED set is not listed here: it is read from evals/remote-tools.json, which evals/dump-transport-tools.mjs generates from the MCP server's own source. It used to be a hand-kept list of twenty and it was wrong for two months — see docs/incidents.md, 2026-09-17.",
   "forbidden": {
-    "_why": "Must never be called by any skill, on any transport. get_channels 403s for every modern key and get_top_channels replaces it; get_marketing_playbook is a second, contradictory methodology; get_bot_stats and get_suspicious_sessions because Sealmetrics does not give bot data, by product decision (2026-09-13). A mention passes only if its own sentence carries a refusal marker.",
+    "_why": "Must never be called by any skill, on any transport. get_marketing_playbook is a second, contradictory methodology; get_bot_stats and get_suspicious_sessions because Sealmetrics does not give bot data, by product decision (2026-09-13). A mention passes only if its own sentence carries a refusal marker. get_channels was in this list until 2026-09-17 on the grounds that it '403s for every modern key'; the channel-groups router has accepted sites:read since PRD-055, so the claim was false and the ban enforced it. It is now under preferAlternative.",
     "tools": [
-      "get_channels",
       "get_marketing_playbook",
       "get_bot_stats",
       "get_suspicious_sessions"
     ]
   },
-  "gated": {
-    "_why": "Hidden by the remote (OAuth) connector, which is what .mcp.json declares and therefore what nearly every user has. They reach the backend routers that require the generic `read` or `write` scope, and no API key or OAuth grant can carry those. A mention passes only if its sentence carries a refusal marker, or its block is marked `(local only)`, or it lives under a local-only root.",
-    "tools": [
-      "get_channels",
-      "get_bot_stats",
-      "get_suspicious_sessions",
-      "list_segments",
-      "get_segment",
-      "list_alerts",
-      "get_alert_history",
-      "get_alert_stats",
-      "list_webhooks",
-      "list_webhook_deliveries",
-      "get_webhook_stats",
-      "list_channel_rules",
-      "test_channel_rules",
-      "create_channel_rule",
-      "update_channel_rule",
-      "delete_channel_rule",
-      "import_channel_rules",
-      "verify_setup",
-      "get_instrumentation_guide",
-      "verify_event_instrumented"
-    ]
+  "preferAlternative": {
+    "_why": "Tools that work but are not the right default. A mention must name the preferred tool in the same block, so a reader cannot take the mention as a recommendation. get_channels returns the same rows as get_top_channels and adds only `page`; neither accepts `compare`, so nothing is lost by preferring the compact one.",
+    "tools": {
+      "get_channels": "get_top_channels"
+    }
   },
   "markers": {
-    "_why": "A sentence naming a forbidden or gated tool must contain one of these, so that a reader (and a model) cannot mistake the mention for an instruction to call it. Deliberately tight: a bare `not` would pass `get_channels does not accept compare`, which is exactly the sentence that shipped a call to a tool that 403s.",
+    "_why": "A sentence naming a forbidden tool, or a tool the remote connector does not announce, must contain one of these, so that a reader (and a model) cannot mistake the mention for an instruction to call it. Deliberately tight: a bare `not` would pass `get_channels does not accept compare`, which is exactly the sentence that shipped a call to a tool believed to 403.",
     "refusal": [
       "never",
       "403",

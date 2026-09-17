@@ -61,10 +61,8 @@ real CPC/CPM from the ad platform to confirm.** Never present RPE as ROAS.
    split, and it is the main route: treat `cpc`, `paid`, `display`,
    `paidsocial`, `cpm`, `ppc` as paid, and say that is the classification you
    used.
-3. **(local only)** `list_channel_rules` — the user's own classification, which
-   beats the default above when it exists. Not announced on `remote`, so on
-   that connector step 2 is the whole answer and there is nothing to report as
-   missing.
+3. `list_channel_rules` — the user's own classification, which beats the
+   default above when it exists. Announced on both connectors.
 
 ## Step 2 — Channel-level scorecard
 
