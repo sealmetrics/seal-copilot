@@ -331,3 +331,29 @@ could not load.
 was a module-level `Map`, so one test's schedule suppressed the next test's
 rule and the report came back empty instead of wrong. State that belongs to a
 run does not belong to a module.
+
+---
+
+## 2026-09-17 · The watcher's API client, confirmed against production by accident
+
+A stale container image was run with a fake token and reached the live API
+before the timeout killed it. The result is worth keeping:
+
+```
+error acct_example (every rule) — /stats/overview → HTTP 401:
+{"error":{"code":"unauthorized","message":"Invalid API key"}}
+```
+
+That is the whole read path verified end to end against
+`my.sealmetrics.com/api/v1`: the base URL, the `/stats/overview` path, the
+`X-API-Key` header and the `account_id` query parameter are all what the server
+expects, because an invalid key produces a clean 401 rather than a 404 or a
+validation error. Only the credential was wrong.
+
+It also exercised the path that matters most: a 401 was reported as an error
+against every rule on the site and **nothing fired**. A watcher that read a
+refusal as silence would page every customer during an outage of ours.
+
+Nothing here replaces `evals/validate-fixtures.mjs`, which still needs a real
+key and is still unrun. But the watcher's own calls are no longer only tested
+against a fake.
