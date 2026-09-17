@@ -2,6 +2,32 @@
 
 **Repo:** `sealmetrics2/mcp-server` · **Esfuerzo:** medio día · **Prioridad:** alta, afecta a todo cliente MCP local
 
+> **Corrección del 17/09/2026 — leer antes de implementar.** La versión original
+> de este encargo hablaba de **veinte** herramientas e incluía `get_channels`,
+> `list_channel_rules` y `test_channel_rules`. Las tres **funcionan**: el router
+> `channel-groups` está protegido por
+> `require_any_scope("read", "sites:read", "channel_rules:write")` y una clave
+> moderna lleva `sites:read` (PRD-055 Bloque A). Verificado el 17/09 en
+> `api/src/sealmetrics_api/routers/channel_groups.py` y en `src/remote/gate.ts`
+> de 1.8.2 y del paquete publicado 1.9.1.
+>
+> Lo que hay que ocultar en local son **diez**, no veinte: las de los routers
+> `alerts`, `segments`, `bot-stats` y `webhooks`, que exigen el ámbito genérico
+> `read`. Son exactamente las de `REMOTE_EXCLUDED_TOOLS`, así que el punto 2 de
+> abajo ("completarla hasta las 20") **ya no aplica**: la lista está completa y
+> solo hay que reutilizarla.
+>
+> Las cuatro de escritura de reglas de canal son un caso aparte y **no** van en
+> esta lista: `channel_rules:write` y `channel_rules:publish` sí son ámbitos que
+> una clave de API puede llevar (PRD-055 Bloque B, `API_KEY_ALLOWED_SCOPES`), así
+> que en local funcionan con la clave adecuada. El remoto no las anuncia porque
+> su clave OAuth es de solo lectura.
+>
+> El plugin Seal Copilot ya no depende de esta lista escrita a mano:
+> `evals/dump-transport-tools.mjs` la genera del paquete publicado. Cuando esto
+> se implemente, ese script informará de diez herramientas retiradas del
+> transporte local y `check.sh` pedirá aceptar el cambio.
+
 ## Qué pasa
 
 Veinte herramientas del MCP llaman a rutas del backend que exigen el ámbito genérico `read` (`/channel-groups`, `/bot-stats`, `/alerts`, `/segments`, `/webhooks`) o `write`. Una clave de API solo puede llevar `stats:read`, `sites:read`, `accounts:read` (`api/src/sealmetrics_api/models/api_tokens.py`, `API_KEY_ALLOWED_SCOPES`), y la jerarquía de ámbitos es de un solo sentido (`auth/models.py`, `SCOPE_HIERARCHY`). Resultado: esas veinte herramientas devuelven 403 a cualquier clave moderna, siempre.
@@ -28,16 +54,21 @@ omitSetupTools: false,   // ver punto 3
 - Moverla a `src/tools/gate.ts` (o similar) como `API_KEY_EXCLUDED_TOOLS`, y que `remote/gate.ts` la reexporte para no romper imports.
 - Completarla hasta las 20 herramientas cuya ruta exige `read` o `write`. Las 12 actuales más:
 
-  | Herramienta | Ruta backend | Ámbito exigido |
-  |---|---|---|
-  | `test_channel_rules` | `POST /channel-groups/test` | `read` |
-  | `create_channel_rule` | `POST /channel-groups` | `write` |
-  | `update_channel_rule` | `PUT /channel-groups/{id}` | `write` |
-  | `delete_channel_rule` | `DELETE /channel-groups/{id}` | `write` |
-  | `import_channel_rules` | `POST /channel-groups/import` | `write` |
-  | `verify_setup` | `/bot-stats` o setup con `account_id` | `read` |
-  | `get_instrumentation_guide` | idem | `read` |
-  | `verify_event_instrumented` | idem | `read` |
+  | Herramienta | Ruta backend | Ámbito exigido | Estado 17/09 |
+  |---|---|---|---|
+  | `test_channel_rules` | `POST /channel-groups/test` | `read`, `sites:read` o `channel_rules:write` | **funciona — no ocultar** |
+  | `create_channel_rule` | `POST /channel-groups` | `write` o `channel_rules:write` | funciona con clave que lleve el ámbito; no ocultar en local |
+  | `update_channel_rule` | `PUT /channel-groups/{id}` | `write` o `channel_rules:write` | idem |
+  | `delete_channel_rule` | `DELETE /channel-groups/{id}` | `write` o `channel_rules:write` | idem |
+  | `import_channel_rules` | `POST /channel-groups/import` | `write` o `channel_rules:write` | idem |
+  | `verify_setup` | setup con `account_id` | por confirmar | comprobar con `grep require_scope` antes de decidir |
+  | `get_instrumentation_guide` | idem | por confirmar | idem |
+  | `verify_event_instrumented` | idem | por confirmar | idem |
+
+  Las tres de setup son las únicas de esta tabla que siguen en duda, y el
+  motivo de la duda es el mismo que produjo el error original: nadie leyó el
+  router. `grep -n 'require_scope' api/src/sealmetrics_api/routers/<router>.py`
+  antes de añadir ninguna.
 
   Verificar cada una con `grep -n 'require_scope' api/src/sealmetrics_api/routers/<router>.py` antes de cerrar la lista.
 
@@ -61,10 +92,16 @@ Su descripción actual dice "compact list of the top N". Ahora es **la** herrami
 ## Cómo comprobar que está hecho
 
 ```
-SEALMETRICS_API_KEY=sm_... npx @sealmetrics/mcp   # tools/list debe listar 42, no 62
+SEALMETRICS_API_KEY=sm_... npx @sealmetrics/mcp   # tools/list debe listar 54, no 64
 ```
 
-Y en el plugin Seal Copilot, `node evals/check-schema-drift.mjs` debe informar de 20 herramientas retiradas: es el resultado esperado, y el plugin ya no las llama.
+54 y no 42: el remoto oculta además las de setup y las de escritura de reglas
+(`omitSetupTools`), y en local eso no debe pasar — `provision_site`,
+`detect_framework` y `get_tracking_code` funcionan con clave, que es el punto 3.
+
+Y en el plugin, `node evals/dump-transport-tools.mjs` debe informar de diez
+herramientas retiradas del transporte local. Es el resultado esperado, y el
+plugin ya no las llama.
 
 ## Efecto en clientes
 
