@@ -10,7 +10,7 @@ import { store } from './lib/store.mjs';
 import { render, deliverer } from './lib/deliver.mjs';
 import { client } from './lib/api.mjs';
 import { activeMinutesBetween, isActive, localParts } from './lib/clock.mjs';
-import { pass, reloader, configProblems, ruleSchema } from './watch.mjs';
+import { pass, reloader, configProblems, ruleSchema, deliveryReport } from './watch.mjs';
 import { backtest } from './lib/backtest.mjs';
 import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -34,6 +34,36 @@ const silenceRule = (over = {}) => ({
   active_hours: { from: 8, to: 24, days: ALL },
   timezone: TZ, created_at: '2026-09-17', status: 'active', ...over,
 });
+
+console.log('where alerts go');
+{
+  const site = (over = {}) => ({ site_id: 'acct', token_env: 'SEAL_TOKEN_ACCT', rules: [], ...over });
+
+  const bare = deliveryReport({ sites: [site()] });
+  ok('a site with no channel says stdout',
+    bare.some((l) => l === 'acct: alerts go to stdout'), bare);
+  ok('and warns that nothing will be received',
+    bare.some((l) => l.startsWith('WARNING: 1 site(s) have no delivery channel')), bare);
+
+  process.env.SEAL_TEST_SLACK = 'https://hooks.slack.com/services/T/B/x';
+  const slack = deliveryReport({ sites: [site({ slack_webhook_env: 'SEAL_TEST_SLACK' })] });
+  ok('a configured Slack webhook is named',
+    slack.some((l) => l === 'acct: alerts go to slack'), slack);
+  ok('and no warning is raised',
+    !slack.some((l) => l.startsWith('WARNING')), slack);
+  delete process.env.SEAL_TEST_SLACK;
+
+  // The nasty one: it looks configured and delivers to stdout.
+  const missing = deliveryReport({ sites: [site({ slack_webhook_env: 'SEAL_TEST_ABSENT' })] });
+  ok('naming an unset variable is reported, not silently ignored',
+    missing.some((l) => l.includes('names slack_webhook_env SEAL_TEST_ABSENT')), missing);
+  ok('and it still admits the alert goes to stdout',
+    missing.some((l) => l === 'acct: alerts go to stdout'), missing);
+
+  const both = deliveryReport({ sites: [site({ webhook_url: 'https://example.com/hook' })] });
+  ok('an inline webhook url counts as a channel',
+    both.some((l) => l === 'acct: alerts go to webhook'), both);
+}
 
 console.log('the clock');
 {

@@ -232,17 +232,49 @@ async function checkRule({ api, site, rule, shared, incidents, deliver, now }) {
   return { rule: rule.id, status: verdict.status, headline: verdict.headline };
 }
 
+// ------------------------------------------------------------ where alerts go
+// Built in one place so that startup can report the very targets a firing rule
+// will use. Two different code paths answering "where does this go?" is how a
+// service ends up claiming Slack and writing to stdout.
+export function siteDeliverer(site, fetchImpl = globalThis.fetch) {
+  return deliverer({
+    slackWebhook: site.slack_webhook_env ? process.env[site.slack_webhook_env] : undefined,
+    webhookUrl: site.webhook_url,
+    webhookSecret: site.webhook_secret_env ? process.env[site.webhook_secret_env] : undefined,
+    fetchImpl, log,
+  });
+}
+
+// An alert nobody receives is the one failure this service exists to prevent,
+// and until now nothing said where alerts went until one fired. Two ways to get
+// that wrong: configuring no channel at all, and naming an environment variable
+// that is not set — which looks configured and delivers to stdout.
+export function deliveryReport(cfg) {
+  const lines = [];
+  let unreachable = 0;
+  for (const site of cfg.sites || []) {
+    for (const key of ['slack_webhook_env', 'webhook_secret_env']) {
+      if (site[key] && !process.env[site[key]]) {
+        lines.push(`WARNING: ${site.site_id} names ${key} ${site[key]}, but that variable is not set here.`);
+      }
+    }
+    const { targets } = siteDeliverer(site);
+    lines.push(`${site.site_id}: alerts go to ${targets.join(' + ')}`);
+    if (targets.length === 1 && targets[0] === 'stdout') unreachable++;
+  }
+  if (unreachable) {
+    lines.push(`WARNING: ${unreachable} site(s) have no delivery channel, so a firing rule only writes to this log. `
+      + 'Set slack_webhook_env or webhook_url on the site to be notified.');
+  }
+  return lines;
+}
+
 // ---------------------------------------------------------------- one pass
 export async function pass(cfg, incidents, now = new Date(), fetchImpl = globalThis.fetch) {
   const report = [];
   for (const site of cfg.sites) {
     const api = client({ token: process.env[site.token_env], siteId: site.site_id, fetchImpl });
-    const deliver = deliverer({
-      slackWebhook: site.slack_webhook_env ? process.env[site.slack_webhook_env] : undefined,
-      webhookUrl: site.webhook_url,
-      webhookSecret: site.webhook_secret_env ? process.env[site.webhook_secret_env] : undefined,
-      fetchImpl, log,
-    });
+    const deliver = siteDeliverer(site, fetchImpl);
 
     const due = (site.rules || []).filter((rule) => {
       const key = `${site.site_id}:${rule.id}`;
@@ -293,6 +325,7 @@ async function main() {
   if (process.argv.includes('--check')) {
     const rules = cfg.sites.reduce((a, s) => a + (s.rules || []).length, 0);
     log(`configuration is usable: ${cfg.sites.length} site(s), ${rules} rule(s)`);
+    for (const line of deliveryReport(cfg)) log(line);
     return process.exit(0);
   }
   const reload = reloader(cfg);
@@ -301,6 +334,7 @@ async function main() {
 
   const rules = cfg.sites.reduce((a, s) => a + (s.rules || []).filter((r) => r.status === 'active').length, 0);
   log(`watching ${rules} active rule(s) across ${cfg.sites.length} site(s), every ${interval / 1000}s`);
+  for (const line of deliveryReport(cfg)) log(line);
   if (!incidents.persistent) {
     log('WARNING: SEAL_STATE_PATH is unset, so incidents live in memory. A restart re-notifies an open incident.');
   }
