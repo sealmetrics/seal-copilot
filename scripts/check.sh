@@ -17,6 +17,7 @@ echo "→ Tool-call linter (seal-install)"; node "$ROOT/evals/lint-tool-calls.mj
 echo "→ Fixture arithmetic";      node "$ROOT/evals/fixtures/_check-coherence.mjs" | tail -1
 echo "→ Calculator";             node "$ROOT/evals/calc.test.mjs" | tail -1
 echo "→ Watcher";                node "$ROOT/watcher/test.mjs" | tail -1
+echo "→ Alert grammar contract"; node "$ROOT/evals/check-alert-contract.mjs" | tail -1
 echo "→ Skill size and duplication"; node "$ROOT/evals/check-skill-size.mjs" | sed 's/^/  /'
 echo "→ Dangling references"; node "$ROOT/evals/check-dangling.mjs" | tail -1
 echo "→ Numeric fidelity of golden outputs"; node "$ROOT/evals/check-fidelity-golden.mjs" | tail -1

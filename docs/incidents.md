@@ -424,3 +424,36 @@ branch" picked the shorter. Every malformed curve was reported as "must be
 null, got object": true, and it hid the mistake. It now prefers a branch whose
 declared type matches what was written, so the message is
 "`expected.cumulative` is not a field in this contract".
+
+---
+
+## 2026-09-17 · Two evaluators of one grammar, and nothing keeping them agreed
+
+**Noticed** rather than suffered, which is the point of writing it down before
+it costs anything.
+
+There are now four definitions of the alert rule grammar: the schema says what
+may be written, `alert-grammar.md` says what a reader is told, `check-alerts`
+evaluates it in prose, and `watcher/lib/families.mjs` evaluates it in code.
+They agree today — four families, four metric kinds, the same firing
+conditions, the same five-event quiet floor.
+
+Nothing was keeping them that way. And the shape of the failure is known,
+because it happened this morning: `create-alert` described an expectation curve
+in one shape while two readers expected another, and the rule saved cleanly and
+never fired. **A rule that validates and never fires looks exactly like a quiet
+site.** Add a fifth family in the schema and the watcher, forget the
+reference, and the next person writes a rule the docs never mention; add it to
+the schema alone and it validates and cannot be evaluated at all.
+
+**Rule produced.** `evals/check-alert-contract.mjs` compares the four
+definitions structurally: the families in all four, the metric kinds in the
+schema against the branches in the watcher's `gather()`, and the condition
+fields each family reads against the ones documented. Proven against three
+planted drifts — a family added to the schema alone, a metric kind the watcher
+cannot fetch, and a family dropped from the reference — and it names each side.
+
+It deliberately does not try to check that the arithmetic agrees. Prose and code
+cannot be compared that way; `watcher/test.mjs` pins the arithmetic against
+worked examples instead. The gate covers what someone changes in one place and
+forgets in the other three.
