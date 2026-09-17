@@ -4,7 +4,7 @@ export const meta = { name: 'saas-demo-drop',
 export const tools = {
   list_sites: f.site({ site_id: 'acct_saas', name: 'saas-demo.example', domains: ['saas-demo.example'] }),
   get_overview: f.overview({ entrances: 12800, conversions: 41, revenue: 0, prev: { entrances: 12400, conversions: 96, revenue: 0 } }),
-  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
+  get_channels: f.channels('channel', [['Organic Search', 6100, 22, 0, 0.47], ['Paid Search', 3400, 12, 0, 0.52], ['Direct', 2100, 7, 0, 0.44], ['Referral', 1200, 0, 0, 0.61]]),   // works with an api_key: the channel-groups router takes sites:read
   get_top_channels: f.top('channel', [['Organic Search', 6100, 22, 0, 0.47], ['Paid Search', 3400, 12, 0, 0.52], ['Direct', 2100, 7, 0, 0.44], ['Referral', 1200, 0, 0, 0.61]]),
   list_microconversion_types: f.microTypes(['pricing_view', 'cta_click', 'form_view']),
   get_microconversions: (a) => f.micro({ pricing_view: 3120, cta_click: 880, form_view: 611 },

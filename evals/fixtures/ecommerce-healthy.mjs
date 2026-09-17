@@ -26,8 +26,10 @@ export const tools = {
   list_sites: f.site(),
   get_site: f.siteDetail(),
   get_overview: (a) => f.overview(pick(a).overview),
-  // get_channels has no compare; the calendar-pair call returns last period's rows.
-  get_channels: (a) => f.rows('channel', ['last_week', 'last_month', 'last_quarter'].includes(a.period) ? pick(a).channelsPrev : pick(a).channels),   // legacy key carrying `read`: still works here
+  // get_channels has no compare; the calendar-pair call returns last period's
+  // rows. It wraps them under `channels` with a `total`, not in the paginated
+  // `data` envelope — three tools, three shapes for the same rows.
+  get_channels: (a) => f.channels('channel', ['last_week', 'last_month', 'last_quarter'].includes(a.period) ? pick(a).channelsPrev : pick(a).channels),
   get_top_channels: (a) => f.top('channel', ['last_week', 'last_month', 'last_quarter'].includes(a.period) ? pick(a).channelsPrev : pick(a).channels),
   get_campaigns: (a) => f.rows('utm_campaign', pick(a).campaigns, { prev: cmp(a, pick(a).campaigns, pick(a).campaignsPrev) }),
   get_top_campaigns: (a) => f.top('utm_campaign', pick(a).campaigns),

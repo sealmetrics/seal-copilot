@@ -457,3 +457,48 @@ It deliberately does not try to check that the arithmetic agrees. Prose and code
 cannot be compared that way; `watcher/test.mjs` pins the arithmetic against
 worked examples instead. The gate covers what someone changes in one place and
 forgets in the other three.
+
+---
+
+## 2026-09-17 · The fixtures met the real API, and the test data carried the same false belief
+
+**Ran** `evals/validate-fixtures.mjs` against a real account for the first time.
+The README had said since the beginning that "until that command has run clean,
+a green suite proves the skills are self-consistent, not that they match the
+real API". It had never run.
+
+**Result: 33 tools compared, 2 mismatches, and both were real.**
+
+`get_channels` returns `{ channels: [...], total }`. Not the paginated
+`{ data, has_next, page, page_size }` envelope the fixture modelled, and no
+`has_next` or `page` in the response at all even though the tool accepts a
+`page` argument. So the correction made this morning — that it "returns the
+same rows and adds only pagination" — was wrong in a *new* direction: the row
+fields are the same, the envelope is not. Three tools return these rows in
+three different shapes, and assuming they interchange means reading nothing.
+That is now a table in `mcp-calls.md` rather than a sentence.
+
+`list_channel_rules` returns `{ rules, total, default_count, custom_count }`,
+with `draft_forced` and `draft_forced_reason` on each rule from PRD-055. The
+fixture had a two-field placeholder.
+
+**And the same false belief was in the test data.** Eight fixtures modelled
+`get_channels` as returning "Access denied", one of them with the comment
+"modern api_key: read scope absent, 403 by design". So the eval suite was
+verifying behaviour against a falsehood, in the fixtures as well as in the
+prose. They now serve real data, in the real shape, except the two whose
+purpose *is* an error path.
+
+**The 6 refusals were exactly right.** `list_segments`, `list_alerts`,
+`get_alert_history`, `get_alert_stats`, `list_webhooks` and `get_webhook_stats`
+all returned "Access denied". That is the scope story, read from source this
+morning and now confirmed against production with a real key.
+
+**A check that could never pass.** Those six refusals counted as errors, so the
+command exited non-zero no matter what, and the README's "until it has run
+clean" was a bar nothing could clear. A gate that cannot go green is a gate
+nobody runs. Refusals from the known scope-gated set are now reported as
+`gated` and expected; a refusal from anything else is still a finding.
+
+It now exits 0: **33 compared, 0 mismatches, 0 unexpected errors, 6 refused as
+designed.** A green eval suite finally means more than self-consistency.

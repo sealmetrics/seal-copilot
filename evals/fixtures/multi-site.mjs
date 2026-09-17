@@ -8,5 +8,5 @@ export const tools = {
     { site_id: 'acct_c', name: 'hotel-costa.example', domains: ['hotel-costa.example'], timezone: 'Europe/Madrid' }],
   // The real server's wording, as text in a successful response.
   get_overview: { __textError: 'site_id is required. Either pass it as a parameter or set the SEALMETRICS_SITE_ID environment variable.' },
-  get_channels: { __textError: 'Access denied to site "acct_demo". Your API key may not have access to this site.' },   // modern api_key: read scope absent, 403 by design
+  get_channels: f.channels('channel', [['Organic Search', 4160, 103, 7920, 0.44], ['Paid Search', 2340, 56, 4520, 0.51]]),   // works with an api_key: the channel-groups router takes sites:read
 };

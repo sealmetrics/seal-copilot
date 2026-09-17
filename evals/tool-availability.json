@@ -9,7 +9,7 @@
     ]
   },
   "preferAlternative": {
-    "_why": "Tools that work but are not the right default. A mention must name the preferred tool in the same block, so a reader cannot take the mention as a recommendation. get_channels returns the same rows as get_top_channels and adds only `page`; neither accepts `compare`, so nothing is lost by preferring the compact one.",
+    "_why": "Tools that work but are not the right default. A mention must name the preferred tool in the same block, so a reader cannot take the mention as a recommendation. `get_channels` has the same row fields as `get_top_channels` but wraps them under a `channels` key instead of returning a bare array, and neither accepts `compare` — so the compact one is the default because there is nothing to unwrap and nothing to get wrong. Verified against the live API on 2026-09-17: it returns data, not the 403 this file asserted for two months.",
     "tools": {
       "get_channels": "get_top_channels"
     }

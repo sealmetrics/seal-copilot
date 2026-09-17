@@ -25,7 +25,8 @@ that never contained a comparison.
 
 **Comparing channels period over period** therefore takes two calls with a
 **calendar-pair preset**, diffed by you, using the compact `get_top_channels`
-(`get_channels` returns the same rows and adds only pagination):
+(`get_channels` has the same row fields under a different key — see
+"Reading responses"):
 
 - `get_top_channels(period=this_week)` vs `get_top_channels(period=last_week)`
 - `get_top_channels(period=this_month)` vs `get_top_channels(period=last_month)`
@@ -104,8 +105,7 @@ transport lists them and they 403.
 them.** The channel-groups router accepts `sites:read`, so reading channel
 metrics, reading the account's own channel rules and dry-running a rule work on
 both connectors. Prefer `get_top_channels` for a breakdown — the same rows in a
-compact array, while `get_channels` adds only `page` — but that is a
-preference, not a restriction. Only the four channel-rule **writers** are out of
+compact array — but that is a preference, not a restriction. Only the four channel-rule **writers** are out of
 reach on `remote`, and they are not announced there at all.
 
 The lists live in `evals/remote-tools.json`, generated from the MCP server's
@@ -147,9 +147,9 @@ they can act on.
   alert tools are not available to them and belong to Sealmetrics' dashboard
   alerts, a different thing.
 - **Use `get_top_channels` for a channel breakdown, on either connector.** It
-  returns a bare array of the same rows and takes a `period`, so a calendar pair
-  (`this_week` vs `last_week`) works. `get_channels` reaches the same data and
-  adds only `page`; neither accepts `compare`, so the compact one costs nothing.
+  returns a bare array and takes a `period`, so a calendar pair (`this_week` vs
+  `last_week`) works. `get_channels` reaches the same data in a different shape;
+  see "Reading responses".
 - **Reading and testing channel rules works on `remote`.** `list_channel_rules`
   and `test_channel_rules` are announced everywhere. Writing a rule
   (`create_channel_rule` and the other three) is **(local only)**.
@@ -197,6 +197,24 @@ percentages, so 2.4 means 2.4%.
 
 **`get_top_*` tools return a bare array** of the same row shape, no envelope,
 never a comparison.
+
+**The same channel rows come back in three different shapes.** Confirmed against
+the live API on 2026-09-17, and worth stating because assuming they interchange
+means reading nothing:
+
+| Tool | Shape |
+|---|---|
+| `get_top_channels` | a bare array of rows |
+| `get_channels` | `{ channels: [...], total }` — **not** the paginated envelope, and no `has_next` or `page` in the response even though the tool accepts a `page` argument |
+| the paginated list tools | `{ data, has_next, page, page_size, total }` |
+
+This is why `get_top_channels` is the default: it needs no unwrapping and there
+is nothing to get wrong.
+
+**`list_channel_rules` returns `{ rules, total, default_count, custom_count }`**,
+and each rule carries `channel_name`, the three `*_pattern` fields, `priority`,
+`is_default`, `is_active` and the `draft_forced` pair. It is readable on both
+connectors.
 
 **`list_microconversion_types` returns `array<string>`.**
 **`list_property_keys` returns `array<{ key, conversions_count,
