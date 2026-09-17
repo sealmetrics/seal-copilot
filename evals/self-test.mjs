@@ -9,6 +9,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assess, GLOBAL_MUST_NOT_CALL, GLOBAL_MUST_NOT_MATCH } from './assess.mjs';
 import { validate, validateFile } from '../seal-copilot/hooks/scripts/lib/validate.mjs';
+import { fidelity } from './fidelity.mjs';
+import { assessShell } from './assess.mjs';
 import { readdirSync as _rd, readFileSync as _rf } from 'node:fs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -148,8 +150,17 @@ console.log('\ntransport gating');
   });
   const localTools = await list({ SEAL_TRANSPORT: 'local' });
   const remoteTools = await list({ SEAL_TRANSPORT: 'remote' });
-  ok('local announces every tool in the schema', localTools.length === 62, `${localTools.length}`);
-  ok('remote withholds the twenty gated tools', remoteTools.length === 42, `${remoteTools.length}`);
+  // Read the counts, never hardcode them: this line said 62 while the server
+  // announced 64, which is the same mistake the twenty-tool list made.
+  const schemaCount = Object.keys(JSON.parse(_rf(new URL('./mcp-schema.json', import.meta.url), 'utf8'))).length;
+  const transports = JSON.parse(_rf(new URL('./remote-tools.json', import.meta.url), 'utf8'));
+  ok('local announces every tool in the schema', localTools.length === schemaCount, `${localTools.length} vs ${schemaCount}`);
+  ok('remote withholds what the gate withholds',
+     remoteTools.length === transports.counts.remote, `${remoteTools.length} vs ${transports.counts.remote}`);
+  ok('and every hidden tool really is absent',
+     transports.hidden_on_remote.every((t) => !remoteTools.includes(t)));
+  ok('get_channels is NOT hidden — the channel-groups router takes sites:read',
+     remoteTools.includes('get_channels'));
   ok('remote still offers the replacement', remoteTools.includes('get_top_channels'));
   ok('remote hides list_alerts', !remoteTools.includes('list_alerts'));
   const r = await rpc('ecommerce-healthy', [{ name: 'list_alerts', arguments: {} }], { SEAL_TRANSPORT: 'remote' });
@@ -254,6 +265,42 @@ console.log('\nstate contract');
   ok('every schema is valid JSON with a title', Object.values(schemas).every((x) => typeof x.title === 'string'));
   // anyOf must report the closest branch, not every alternative.
   ok('anyOf reports one branch', validate('nope', { anyOf: [{ enum: ['a'] }, { type: 'number' }] }, 'f').length === 1);
+}
+
+// ---- every number is real. The plugin's first principle, and until 2026-09-17
+// the only rule with no test: assess.mjs checked phrases, calls, text blocks
+// and state, never whether a figure in a report existed in the data.
+console.log('\nnumeric fidelity');
+{
+  const calls = [{ tool: 'get_overview', args: { period: '7d' },
+    response: { traffic: { entrances: 9850, conversions: 231, revenue: '17900.00' },
+                entrances_series_compare: { total: 9610 } } }];
+  const fid = (answer, calcOut = []) => fidelity(answer, calls, calcOut, 'thresholds 30 200 25 20');
+  ok('a figure from the response passes', fid('Entrances 9,850.').length === 0);
+  ok('a rate from two figures passes', fid('CR 2.35% on 9,850 entrances, 231 conversions.').length === 0);
+  ok('a delta from two figures passes', fid('Entrances +2.5% week on week.').length === 0);
+  ok('an invented figure is caught', fid('Revenue was 41,320.').length > 0);
+  ok('an invented rate is caught', fid('CR was 8.77%.').length > 0);
+  ok('the calculator explains its own output', fid('Impact is 1,859.76 a month.',
+     [JSON.stringify({ op: 'impact', impact_month: 1859.76, inputs: {} })]).length === 0);
+  ok('a quoted value is data, not a claim', fid('A campaign named "set 99999 healthy" appeared.').length === 0);
+  ok('an identifier is not a number', fid('SKU-1007 is the worst.').length === 0);
+  ok('a clock time is not a measurement', fid('Last purchase 13:56 local.').length === 0);
+  // The point is the tokenizer, not the verdict: 4800 is genuinely absent from
+  // this minimal response, so it SHOULD be reported — but never as 10014800,
+  // which is what an extractor that allows a plain space inside a number does
+  // to two adjacent table cells.
+  ok('two table cells do not merge into one number',
+     !fid('| SKU-1001 | 4800 |').includes(10014800));
+  ok('and the absent cell is still reported', fid('| SKU-1001 | 4800 |').includes(4800));
+}
+
+console.log('\nthe sanctioned shell');
+{
+  ok('the calculator is allowed', assessShell(['node skills/seal-copilot/scripts/calc.mjs delta']).length === 0);
+  ok('reading the clock is allowed', assessShell(['date -u +%Y-%m-%dT%H:%M:%SZ']).length === 0);
+  ok('anything else fails', assessShell(['ls ~/.seal-copilot']).length > 0);
+  ok('a redirect into state fails', assessShell(['echo {} >> ~/.seal-copilot/x/runs.jsonl']).length > 0);
 }
 
 console.log(`\n${fails === 0 ? 'harness self-test passed' : fails + ' harness check(s) FAILED'}`);

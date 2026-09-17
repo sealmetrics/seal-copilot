@@ -21,6 +21,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assess } from './assess.mjs';
 import { parseStream } from './stream.mjs';
 import { validateFile } from '../seal-copilot/hooks/scripts/lib/validate.mjs';
+import { fidelity } from './fidelity.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -246,8 +247,10 @@ async function runCase(c, siteId) {
   let calls = 0, rejected = 0, ms = 0, answer = '', toolNames = [], cliError = null;
 
   let seen = 0, lastSession = null, truncatedStep = false;
+  let lastCalls = [], lastCalcOutputs = [];
   for (const [i, step] of steps.entries()) {
     const r = await runStep(c, step, siteId, work, callLog, step.continue ? lastSession : null);
+    lastCalls = r.calls; lastCalcOutputs = r.calcOutputs || [];
     ms += r.ms;
     const stepCalls = r.calls.slice(seen);   // the log is cumulative; judge this step on its own calls
     seen = r.calls.length;
@@ -263,6 +266,32 @@ async function runCase(c, siteId) {
     for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected },
                            r.answer, stepCalls, r.textBlocks, r.shell))
       failures.push(label + f);
+  }
+
+  // Every number in the answer, traced to a tool result, the calculator, or one
+  // arithmetic step from either. `numericFidelity: true` makes it a failure; by
+  // default it is a warning, because twelve phrase bans in this repo have
+  // failed correct answers and this assertion gets the same probation. Turn it
+  // on globally once the suite has run clean with the warnings for three runs.
+  let fidelityNotes = [];
+  if (!cliError) {
+    const withResponses = (lastCalls || []).filter((x) => x.response !== undefined);
+    if (withResponses.length) {
+      const skillText = (() => {
+        try {
+          const dir = join(root, c.pluginDir || 'seal-copilot', 'skills');
+          return readdirSync(dir).map((sk) => {
+            try { return readFileSync(join(dir, sk, 'SKILL.md'), 'utf8'); } catch { return ''; }
+          }).join('\n') + readdirSync(join(dir, 'seal-copilot', 'references')).map((r) => {
+            try { return readFileSync(join(dir, 'seal-copilot', 'references', r), 'utf8'); } catch { return ''; }
+          }).join('\n');
+        } catch { return ''; }
+      })();
+      fidelityNotes = fidelity(answer, withResponses, lastCalcOutputs, skillText);
+      if (fidelityNotes.length && c.numericFidelity) {
+        failures.push(`number(s) in the answer that came from nowhere: ${fidelityNotes.join(', ')}`);
+      }
+    }
   }
 
   // Budget and rejections are judged once, across the whole case.
@@ -284,7 +313,7 @@ async function runCase(c, siteId) {
   return { id: c.id, fixture: c.fixture, error: cliError, state, truncated: truncatedStep,
            pass: !cliError && failures.length === 0,
            failures: cliError ? [`the CLI never ran the case: ${cliError}`] : failures,
-           calls, rejected, ms, answer, toolNames };
+           fidelityNotes, calls, rejected, ms, answer, toolNames };
 }
 
 // A session that never really ran: no answer, no tool call and no error — or
@@ -347,6 +376,9 @@ for (const c of selected) {
   const runLabel = RUNS > 1 ? ` ${r.passes}/${r.attempts}` : '';
   console.log(r.pass ? ` PASS${runLabel} (${r.calls} calls, ${(r.ms / 1000).toFixed(0)}s)`
                      : ` FAIL${runLabel} (${r.calls} calls) — ${r.failures.join('; ')}`);
+  if (r.fidelityNotes?.length && !selected.find(x => x.id === r.id)?.numericFidelity) {
+    console.log(`    fidelity warning — number(s) not traced to a tool result: ${r.fidelityNotes.slice(0, 6).join(', ')}`);
+  }
   if (!r.pass) {
     const called = r.toolNames?.length ? r.toolNames.join(', ') : '(none)';
     console.log(`    tools called: ${called}`);

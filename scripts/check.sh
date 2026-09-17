@@ -18,6 +18,7 @@ echo "→ Fixture arithmetic";      node "$ROOT/evals/fixtures/_check-coherence.
 echo "→ Calculator";             node "$ROOT/evals/calc.test.mjs" | tail -1
 echo "→ Skill size and duplication"; node "$ROOT/evals/check-skill-size.mjs" | sed 's/^/  /'
 echo "→ Dangling references"; node "$ROOT/evals/check-dangling.mjs" | tail -1
+echo "→ Numeric fidelity of golden outputs"; node "$ROOT/evals/check-fidelity-golden.mjs" | tail -1
 echo "→ Transport tool lists";   node "$ROOT/evals/dump-transport-tools.mjs" 2>/dev/null | tail -1 || \
   echo "  skipped — no sealmetrics2/mcp-server checkout beside this repo"
 echo "→ Eval harness self-test";  node "$ROOT/evals/self-test.mjs" | tail -1

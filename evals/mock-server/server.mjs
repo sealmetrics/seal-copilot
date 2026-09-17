@@ -108,6 +108,10 @@ function handle(msg) {
     // only handles protocol errors must fail here, not pass.
     if (out && out.__textError)
       return respond(id, { content: [{ type: 'text', text: `Error: ${out.__textError}` }] });
+    // Log what was SERVED, not only what was asked. Without the response body
+    // there is no way to check the plugin's first rule — that every number in
+    // an answer came from a tool result — and it had no test at all.
+    if (callLog) appendFileSync(callLog, JSON.stringify({ tool: name, args, response: out }) + '\n');
     return respond(id, { content: [{ type: 'text', text: JSON.stringify(out) }] });
   }
   if (method && method.startsWith('notifications/')) return;
