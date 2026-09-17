@@ -4,11 +4,17 @@ The shape of a rule this plugin saves, shared by `create-alert` (which writes
 one) and `check-alerts` (which evaluates one). The two share this grammar and
 nothing else.
 
-**Nothing watches these rules automatically.** `create-alert` saves them and
-`check-alerts` runs one when the user asks, until Sealmetrics' own alert engine
-watches them. They are unrelated to the account's dashboard alerts, whose tools
-the remote connector does not announce; these rules need none of those and work
-on every connector.
+**This plugin watches nothing by itself.** `create-alert` saves a rule and
+`check-alerts` runs one when the user asks. Continuous watching comes from
+**Seal Watch**, a small service that reads the same grammar and evaluates it
+every few minutes outside any AI client (`watcher/README.md` in this
+repository). Whether it is running for a given site is something you cannot see
+from here, so never assert that a rule is being watched: say it is saved, say
+how it is checked now, and hand over the rule for Seal Watch.
+
+These rules are unrelated to the account's dashboard alerts, whose tools the
+remote connector does not announce. They need none of those and work on every
+connector.
 
 The file they live in is `<state-dir>/<site_id>/alerts.json`, an object with a
 `rules` array, never a bare list — a hook refuses the write otherwise and says

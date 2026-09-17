@@ -75,7 +75,8 @@ Status line: `🟢 normal` / `⚠️ watch — <reason>` / `🔴 act now — <re
 ### Block C2 — Alerts (0 calls)
 Read `<state-dir>/<site_id>/alerts.json`. One line, and only when there is
 something to say: how many rules are saved and any expiring within 30 days.
-Saved rules are not watched automatically — never write that they are. Omit
+Never write that a saved rule is being watched: whether Seal Watch has it is
+not visible from here. Omit
 the block entirely if the file is unreadable or has no active rule.
 
 ## Output format (the one-pager)

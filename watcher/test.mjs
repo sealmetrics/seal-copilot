@@ -1,0 +1,205 @@
+#!/usr/bin/env node
+// Tests for the watcher, against a fake API and a fake clock.
+//
+// Nothing here touches the network. Both are injected, which is the reason the
+// families are pure functions and the client takes a `fetchImpl`: a watchdog
+// whose verdicts can only be checked against a live account is a watchdog
+// nobody checks.
+import { evaluate } from './lib/families.mjs';
+import { store } from './lib/store.mjs';
+import { render, deliverer } from './lib/deliver.mjs';
+import { client } from './lib/api.mjs';
+import { activeMinutesBetween, isActive, localParts } from './lib/clock.mjs';
+import { pass } from './watch.mjs';
+
+let fails = 0;
+const ok = (name, cond, got) => {
+  console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${name}`);
+  if (!cond) { fails++; if (got !== undefined) console.log('       got: ' + JSON.stringify(got)); }
+};
+const TZ = 'Europe/Madrid';
+const ALL = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const at = (s) => new Date(s);
+
+const silenceRule = (over = {}) => ({
+  id: 'no-conversions-4h', family: 'silence',
+  metric: { kind: 'conversion', type: 'purchase' },
+  condition: { hours: 4 },
+  active_hours: { from: 8, to: 24, days: ALL },
+  timezone: TZ, created_at: '2026-09-17', status: 'active', ...over,
+});
+
+console.log('the clock');
+{
+  ok('a watched hour is watched', isActive(at('2026-09-17T12:00:00Z'), silenceRule().active_hours, TZ));
+  ok('04:00 local is not', !isActive(at('2026-09-17T02:00:00Z'), silenceRule().active_hours, TZ));
+  ok('four watched hours are 240 minutes',
+     activeMinutesBetween(at('2026-09-17T08:00:00Z'), at('2026-09-17T12:00:00Z'), silenceRule().active_hours, TZ) === 240);
+  // The whole reason active_hours exists: overnight must not count. 20:00Z is
+  // 22:00 in Madrid, so only the two hours to midnight are watched. (Written
+  // as 22:00Z the first time, which is midnight local and therefore zero
+  // watched minutes — the assertion was a guess and the code was right.)
+  ok('overnight does not count',
+     activeMinutesBetween(at('2026-09-16T20:00:00Z'), at('2026-09-17T02:00:00Z'), silenceRule().active_hours, TZ) === 120,
+     activeMinutesBetween(at('2026-09-16T20:00:00Z'), at('2026-09-17T02:00:00Z'), silenceRule().active_hours, TZ));
+  ok('and a span entirely at night is zero',
+     activeMinutesBetween(at('2026-09-16T22:00:00Z'), at('2026-09-17T04:00:00Z'), silenceRule().active_hours, TZ) === 0);
+}
+
+console.log('\nsilence');
+{
+  const now = at('2026-09-17T14:00:00Z');                      // 16:00 local
+  const fires = evaluate(silenceRule(), { dayTotal: 3, lastEventAt: '2026-09-17T09:20:00Z', entrancesToday: 800 }, now);
+  ok('fires after four watched hours', fires.status === 'fires', fires);
+  ok('and names when it started', fires.startedAt === '2026-09-17T09:20:00Z');
+  ok('and states the elapsed time, not a clock time', /ago/.test(fires.headline), fires.headline);
+  const healthy = evaluate(silenceRule(), { dayTotal: 6, lastEventAt: '2026-09-17T13:42:00Z', entrancesToday: 800 }, now);
+  ok('does not fire 18 minutes in', healthy.status === 'ok', healthy);
+  ok('the healthy line is one line', !healthy.headline.includes('\n'));
+  // The distinction the customer has to act on.
+  ok('no traffic reads differently from no conversion',
+     /tracker or the site/.test(evaluate(silenceRule(), { dayTotal: 0, lastEventAt: null, searchedFrom: '2026-09-17T06:00:00Z', entrancesToday: 0 }, now).evidence.reading));
+  ok('traffic that does not convert says so',
+     /not converting/.test(fires.evidence.reading), fires.evidence.reading);
+  // Night must never page.
+  const night = evaluate(silenceRule(), { dayTotal: 0, lastEventAt: null, searchedFrom: '2026-09-17T00:00:00Z' }, at('2026-09-17T02:00:00Z'));
+  ok('outside the window it does not evaluate', night.status === 'outside_hours', night);
+}
+
+console.log('\ndrop and spike');
+{
+  const curve = Object.fromEntries(ALL.map((d) => [d, Array.from({ length: 24 }, (_, h) => h * 10)]));
+  const dropRule = { id: 'atc-half', family: 'drop', metric: { kind: 'microconversion', type: 'add_to_cart' },
+    condition: { ratio: 0.5 }, active_hours: { from: 0, to: 24, days: ALL }, timezone: TZ,
+    expected: { basis: 'watchdog-baseline', cumulative_by_hour: curve },
+    created_at: '2026-09-17', status: 'active' };
+  const now = at('2026-09-17T10:00:00Z');                      // 12:00 local → expected 120
+  ok('fires at 40% of normal', evaluate(dropRule, { dayToDate: 48, entrancesToday: 900 }, now).status === 'fires');
+  ok('watches at 60%', evaluate(dropRule, { dayToDate: 72, entrancesToday: 900 }, now).status === 'watch');
+  ok('is fine at 95%', evaluate(dropRule, { dayToDate: 114, entrancesToday: 900 }, now).status === 'ok');
+  ok('reports the ratio it used', evaluate(dropRule, { dayToDate: 48 }, now).evidence.ratio === 0.4);
+  // A quiet cell is not an incident.
+  const early = at('2026-09-17T05:00:00Z');                    // 07:00 local → expected 70
+  const quietCurve = Object.fromEntries(ALL.map((d) => [d, Array(24).fill(2)]));
+  ok('too quiet to judge is not an incident',
+     evaluate({ ...dropRule, expected: { cumulative_by_hour: quietCurve } }, { dayToDate: 0 }, early).status === 'too_quiet');
+  ok('a missing expectation refuses rather than guesses',
+     evaluate({ ...dropRule, expected: { cumulative_by_hour: {} } }, { dayToDate: 0 }, now).status === 'no_expectation');
+  const spikeRule = { ...dropRule, id: 'atc-triple', family: 'spike', condition: { ratio: 3 } };
+  ok('a spike fires at 3x', evaluate(spikeRule, { dayToDate: 400 }, now).status === 'fires');
+}
+
+console.log('\nthreshold');
+{
+  const rule = { id: 'revenue-under-2000', family: 'threshold', metric: { kind: 'revenue' },
+    condition: { below: 2000 }, timezone: TZ, created_at: '2026-09-17', status: 'active' };
+  const now = at('2026-09-17T20:00:00Z');
+  ok('fires under the floor', evaluate(rule, { value: 1400 }, now).status === 'fires');
+  ok('does not fire above it', evaluate(rule, { value: 2400 }, now).status === 'ok');
+  const ceiling = { ...rule, condition: { above: 100 } };
+  ok('a ceiling fires above', evaluate(ceiling, { value: 140 }, now).status === 'fires');
+}
+
+console.log('\nincidents');
+{
+  const s = store(null);
+  const t0 = at('2026-09-17T10:00:00Z');
+  ok('the first firing opens an incident', s.start('k', { at: t0.toISOString(), headline: 'x' }) !== null);
+  ok('the second does not', s.start('k', { at: at('2026-09-17T10:05:00Z').toISOString(), headline: 'x' }) === null);
+  ok('and it is open', s.open('k') !== null);
+  ok('resolving returns it', s.resolve('k', at('2026-09-17T11:00:00Z').toISOString()) !== null);
+  ok('resolving twice does not', s.resolve('k', at('2026-09-17T11:05:00Z').toISOString()) === null);
+  ok('cooldown blocks an immediate reopen', s.inCooldown('k', at('2026-09-17T11:10:00Z'), 60));
+  ok('and lets it reopen later', !s.inCooldown('k', at('2026-09-17T12:30:00Z'), 60));
+  ok('memory mode is honest about itself', s.persistent === false);
+}
+
+console.log('\nthe message');
+{
+  const verdict = { status: 'fires', headline: '3 today, last one 4h 40m ago',
+    startedAt: '2026-09-17T09:20:00Z',
+    evidence: { reading: 'traffic is arriving and not converting', entrances_today: 800 } };
+  const text = render({ rule: silenceRule(), siteId: 'demo', verdict, kind: 'fires' });
+  ok('leads with a symbol', text.startsWith('🔴'), text.split('\n')[0]);
+  ok('names when it began', /Started 2026-09-17T09:20/.test(text));
+  ok('carries the reading', /not converting/.test(text));
+  ok('points at the next step', /Seal Copilot/.test(text));
+  const done = render({ rule: silenceRule(), siteId: 'demo', kind: 'resolved',
+    incident: { started_at: '2026-09-17T09:20:00Z', last_seen_at: '2026-09-17T10:20:00Z' } });
+  ok('a recovery is one line', done.split('\n').length === 1 && done.startsWith('🟢'), done);
+}
+
+console.log('\nthe api client');
+{
+  const calls = [];
+  const fake = async (url) => {
+    calls.push(String(url));
+    const u = new URL(url);
+    if (u.pathname.endsWith('/stats/overview')) {
+      return { ok: true, status: 200, text: async () => JSON.stringify({ data: { traffic: { entrances: 800, conversions: 3 }, conversions: { revenue: '1400.50' } } }) };
+    }
+    if (u.pathname.endsWith('/stats/conversions')) {
+      return { ok: true, status: 200, text: async () => JSON.stringify({ data: { data: [{ conversion_type: 'purchase', count: 3 }] } }) };
+    }
+    if (u.pathname.endsWith('/stats/conversions/raw')) {
+      return { ok: true, status: 200, text: async () => JSON.stringify({ data: { data: [
+        { timestamp_utc: '2026-09-17T08:10:00Z' }, { timestamp_utc: '2026-09-17T09:20:00Z' }] } }) };
+    }
+    return { ok: false, status: 404, text: async () => 'nope' };
+  };
+  const api = client({ token: 't', siteId: 'demo', fetchImpl: fake });
+  const ov = await api.overviewToday();
+  ok('reads entrances and revenue', ov.entrances === 800 && ov.revenue === 1400.5, ov);
+  ok('finds the day total by type', (await api.conversionsToday('purchase')) === 3);
+  ok('takes the LATEST timestamp', (await api.lastEventAt('conversion', 'purchase', 3)) === '2026-09-17T09:20:00.000Z');
+  ok('asks for the last page', calls.some((c) => /conversions\/raw/.test(c) && /page=1/.test(c)), calls);
+  ok('sends the token as a header, never in the query', !calls.some((c) => /token|api_key=/i.test(c)));
+  ok('no event means null', (await api.lastEventAt('conversion', 'purchase', 0)) === null);
+  let threw = false;
+  try { await client({ token: 't', siteId: 'demo', fetchImpl: fake }).topReferrer(); } catch { threw = true; }
+  ok('a 404 throws rather than returning zero', threw);
+  ok('no token is refused at construction', (() => { try { client({ siteId: 'x' }); return false; } catch { return true; } })());
+}
+
+console.log('\na full pass');
+{
+  // A site with one silence rule, and a purchase four hours and forty minutes ago.
+  const sent = [];
+  const fake = async (url, init) => {
+    const u = new URL(url);
+    if (u.hostname === 'hooks.example') { sent.push(JSON.parse(init.body)); return { ok: true, status: 200, text: async () => 'ok' }; }
+    if (u.pathname.endsWith('/stats/overview')) return { ok: true, status: 200, text: async () => JSON.stringify({ data: { traffic: { entrances: 800, conversions: 3 } } }) };
+    if (u.pathname.endsWith('/stats/conversions')) return { ok: true, status: 200, text: async () => JSON.stringify({ data: { data: [{ conversion_type: 'purchase', count: 3 }] } }) };
+    if (u.pathname.endsWith('/stats/conversions/raw')) return { ok: true, status: 200, text: async () => JSON.stringify({ data: { data: [{ timestamp_utc: '2026-09-17T09:20:00Z' }] } }) };
+    return { ok: false, status: 500, text: async () => 'boom' };
+  };
+  process.env.SEAL_TOKEN_TEST = 'sm_test';
+  process.env.SEAL_SLACK_TEST = 'https://hooks.example/x';
+  const cfg = { sites: [{ site_id: 'demo', token_env: 'SEAL_TOKEN_TEST', slack_webhook_env: 'SEAL_SLACK_TEST', rules: [silenceRule()] }] };
+  const incidents = store(null);
+  const now = at('2026-09-17T14:00:00Z');
+  const r1 = await pass(cfg, incidents, now, fake);
+  ok('the rule fires', r1[0]?.status === 'fired', r1);
+  ok('and a notification went out', sent.length === 1 && /no-conversions-4h/.test(sent[0].text), sent);
+  // Immediately again: the cadence must hold it back, not re-notify.
+  const r2 = await pass(cfg, incidents, at('2026-09-17T14:01:00Z'), fake);
+  ok('a second pass one minute later checks nothing', r2.length === 0, r2);
+  // Past the cadence, still failing: still open, no second notification.
+  const r3 = await pass(cfg, incidents, at('2026-09-17T14:10:00Z'), fake);
+  ok('still failing does not notify twice', sent.length === 1 && r3[0]?.status === 'still_open', { r3, sent: sent.length });
+}
+
+console.log('\nan API that refuses');
+{
+  const fake = async () => ({ ok: false, status: 403, text: async () => 'Access denied' });
+  process.env.SEAL_TOKEN_BAD = 'sm_bad';
+  const cfg = { sites: [{ site_id: 'demo', token_env: 'SEAL_TOKEN_BAD', rules: [silenceRule()] }] };
+  // Its own store, so the schedule the previous block wrote cannot suppress it.
+  const report = await pass(cfg, store(null), at('2026-09-17T14:00:00Z'), fake);
+  ok('a refusal is reported as an error', report[0]?.status === 'error', report);
+  // The one thing this must never do.
+  ok('and never as silence', !report.some((r) => r.status === 'fired'), report);
+}
+
+console.log(`\n${fails === 0 ? 'watcher tests passed' : fails + ' watcher test(s) FAILED'}`);
+process.exit(fails ? 1 : 0);

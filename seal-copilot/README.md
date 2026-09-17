@@ -64,11 +64,18 @@ Four kinds of rule: **silence** (N hours with no event), **drop** and **spike**
 number for the day). Ask "my alerts" to list them, and "delete the alert" to
 remove one.
 
-**Rules are not watched automatically yet.** Scheduling them as Claude Code
-routines was tried and does not hold up: routines run at most hourly, count
-against a daily cap, and only load the plugin from a repository. Automatic
-alerts will come from Sealmetrics' own alert engine; the rules you save now use
-the same grammar.
+**What watches them is a separate service.** The plugin saves a rule and checks
+it on request; it schedules nothing. Continuous watching is
+[Seal Watch](../watcher/README.md): a dependency-free loop that reads the same
+rule grammar, evaluates it every five minutes with no model, and delivers to
+Slack or a webhook. It runs on your own infrastructure with your own Sealmetrics
+token and needs no change to Sealmetrics.
+
+Scheduling the check as a Claude Code routine was tried instead and does not
+hold up: routines run at most hourly, count against a daily cap, and only load
+the plugin from a repository. When Sealmetrics' own alert engine ships it
+becomes the destination, and the grammar is already the one it is designed
+around.
 
 ## Install
 

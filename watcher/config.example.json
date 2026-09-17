@@ -1,0 +1,33 @@
+{
+  "_why": "One entry per site. Tokens are NEVER in here: `token_env` names the Railway variable that holds the client's own token, so this file can live in git and a client can rotate or revoke their token without anyone touching the config.",
+  "interval_seconds": 300,
+  "sites": [
+    {
+      "site_id": "acct_example",
+      "token_env": "SEAL_TOKEN_ACCT_EXAMPLE",
+      "slack_webhook_env": "SEAL_SLACK_ACCT_EXAMPLE",
+      "rules": [
+        {
+          "id": "no-purchases-4h",
+          "family": "silence",
+          "metric": { "kind": "conversion", "type": "purchase" },
+          "condition": { "hours": 4 },
+          "active_hours": { "from": 9, "to": 23, "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] },
+          "timezone": "Europe/Madrid",
+          "created_at": "2026-09-17",
+          "expires_at": "2027-03-17",
+          "status": "active"
+        },
+        {
+          "id": "revenue-under-2000",
+          "family": "threshold",
+          "metric": { "kind": "revenue" },
+          "condition": { "below": 2000 },
+          "timezone": "Europe/Madrid",
+          "created_at": "2026-09-17",
+          "status": "active"
+        }
+      ]
+    }
+  ]
+}

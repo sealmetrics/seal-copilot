@@ -127,10 +127,12 @@ pattern for 90 days.
 
 ### `alerts.json`
 
-**Nothing watches these rules automatically.** `create-alert` saves them,
-`check-alerts` runs one when the user asks. Never describe a rule here as being
-watched. When Sealmetrics' native alert engine ships, the server becomes the
-source of truth and this file is history.
+**This file is not what watches them.** `create-alert` saves a rule here and
+`check-alerts` runs one when the user asks; Seal Watch evaluates the same
+grammar continuously from its own config. Never describe a rule here as being
+watched — you cannot see whether Seal Watch has it. When Sealmetrics' native
+engine ships, the server becomes the source of truth and this file is
+history.
 
 A deleted rule stays in the file with its date, so "did I have an alert on
 that?" has an answer. `last_fired` is when a run last found the rule firing: a

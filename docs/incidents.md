@@ -239,3 +239,56 @@ this is not yet a trend, and the two extra calls were Sealmetrics calls rather
 than file reads, which the protocol change does not touch. Worth watching in the
 next certification: if the caps are being reached routinely, either the budgets
 in the skills are wrong or a run is repeating a call it already made.
+
+---
+
+## 2026-09-17 · Seal Watch, and why the evaluation left the product
+
+**Decided** after establishing that no customer can have an alert today: rules
+are stored, delivery exists, and nothing evaluates. `check_and_trigger` is
+called only from a test, creating a rule needs the `write` scope that only a
+dashboard session carries, and the dashboard has no alerts screen.
+
+The constraint was to fix it without touching `sealmetrics2`. That is possible
+for one reason, verified before any code was written: **everything a rule needs
+in order to be judged is under `/stats/`, which the API guards with
+`stats:read`, and every API key carries that scope.** What the product does not
+open up is saving and evaluating rules, and both can live outside it.
+
+`watcher/` is that evaluator. No dependencies, no model, 50 tests against a fake
+API and a fake clock. It reuses the plugin's own rule schema and validator, so a
+rule the plugin's hook accepts is a rule the watcher accepts, and a malformed
+one stops the service at startup naming the field — a watcher that skips the
+rule it cannot parse is a watcher that silently is not watching.
+
+**Three bugs found while building it**, all of the same kind as the ones this
+repository keeps producing:
+
+1. `activeMinutesBetween` compared its cursor to the next step *after*
+   assigning it, so the guard always fired and silently dropped a minute an
+   hour: a four-hour window measured 237 minutes.
+2. The due-time schedule was a module-level `Map`, which made a pass
+   non-reentrant. One test's schedule suppressed the next test's rule, and the
+   report came back empty rather than wrong. It lives in the incident store now.
+3. The deliverer did not take the injected `fetch`, so a test posted to the
+   real internet and reported a delivery failure as a test failure.
+
+**And a third guessed assertion.** The overnight test expected 120 watched
+minutes between `22:00Z` and `04:00Z`. In Madrid `22:00Z` is midnight, so the
+whole span sits outside a 08:00–24:00 window and zero was correct. That is the
+third time in one day an assertion was written from an expectation instead of
+from the arithmetic, after the Poisson tail and the DST span. The rule that
+came out of it holds here too: compute the expected value, do not estimate its
+magnitude.
+
+**What this deliberately does not do.** No email, because Sealmetrics already
+owns alert email and deliverability for a customer's domain is not something to
+reimplement. No rules in the dashboard, because they live in the watcher's
+config. And it is not the destination: when the native engine ships, the grammar
+is already the one that design uses, so the rules translate.
+
+**The seam still open.** A rule created by `create-alert` lands in
+`alerts.json` on the machine that created it; Seal Watch reads its own config.
+Joining them is manual today, so the skill prints the rule as JSON for the
+handover and is forbidden from claiming a rule is watched, because it cannot
+see whether the watcher has it.

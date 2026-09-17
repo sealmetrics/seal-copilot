@@ -169,9 +169,9 @@ equivalent scheduled task in Cowork.
 `/seal-copilot:cart-watchdog`. Neither can be invoked by the model, so a
 scheduled "run my Monday briefing" reaches nothing.
 
-**Alert rules are never scheduled.** `create-alert` saves them and
-`check-alerts` runs one on request, until Sealmetrics' own alert engine watches
-them.
+**Alert rules are never scheduled here.** `create-alert` saves them,
+`check-alerts` runs one on request, and Seal Watch (`watcher/README.md`) is what
+watches them continuously.
 
 On a scheduled run the skill output is the entire response — no greeting, no
 preamble. Optimised for forwarding.

@@ -1,0 +1,132 @@
+# Seal Watch
+
+The loop that makes a saved alert rule actually watch. It runs outside
+Sealmetrics and needs no change to it.
+
+## Why this exists outside the product
+
+Sealmetrics stores alert rules, and it can already deliver a notification by
+email, Slack and signed webhook. What it does not do is evaluate a rule:
+`check_and_trigger` is called only from a test, there is no cron entry for it,
+and creating a rule needs the `write` scope that only a dashboard session
+carries — where there is no alerts screen. So today nothing watches anything.
+
+Everything needed to *judge* a rule, though, sits under `/stats/`, which the API
+guards with `stats:read`. Every API key carries that scope. So the evaluation
+can live here, reading the same data a report reads.
+
+**It runs no model.** The verdicts are arithmetic: cheap, deterministic, and the
+same every time. That is the difference from the scheduled-model approach tried
+and retired in plugin 1.13.0, which could not run more often than hourly, was
+capped per account per day, and needed a repository to load the plugin at all.
+
+## What it does
+
+Every five minutes, for each rule that is due and inside its watch window:
+
+| Family | Reads | Fires when |
+|---|---|---|
+| `silence` | today's count, then the newest event's timestamp | no event for N **watched** hours |
+| `drop` | today's running total | it falls to `ratio` of what this weekday and hour normally reach |
+| `spike` | the same, mirrored | it reaches `ratio` above normal, and then it names what the top referrer did |
+| `threshold` | one reading | a flat floor or ceiling is crossed |
+
+One `/stats/overview` call per site per pass is shared by every rule on it, so
+the whole service stays under a request a minute. The API allows 240 a minute on
+a Growth plan, so the limit is never the constraint.
+
+An incident opens once and closes when the condition recovers. A rule that is
+still failing reports "still open", never a second notification, and cannot
+reopen inside its cooldown.
+
+**A failed read is never a verdict.** If the API refuses or times out, the rule
+is reported as an error and nothing is delivered. Treating a failed read as
+silence would page every customer during an outage of ours.
+
+## Configuration
+
+Two variables and one per client:
+
+| Variable | Required | What |
+|---|---|---|
+| `SEAL_CONFIG` | yes, or `SEAL_CONFIG_PATH` | The JSON in `config.example.json`, inline |
+| `SEAL_CONFIG_PATH` | | A path to that JSON instead, for a Railway volume |
+| `SEAL_TOKEN_<SITE>` | yes, per site | **The client's own Sealmetrics API token.** Named by `token_env` in the config |
+| `SEAL_SLACK_<SITE>` | | A Slack incoming webhook. Without one, and without `webhook_url`, notifications go to the log |
+| `SEAL_STATE_PATH` | strongly advised | Where incidents persist. Without it they live in memory and a restart re-notifies an open one |
+| `SEAL_HEARTBEAT_URL` | strongly advised | Pinged every cycle. See *If it dies* |
+| `SEALMETRICS_BASE_URL` | | Defaults to `https://my.sealmetrics.com/api/v1` |
+
+**Tokens are never in the config file.** The config names the variable; the
+variable holds the token. That is what lets a client rotate or revoke their own
+token without anyone editing anything, and it keeps the config committable.
+
+A client creates their token at **my.sealmetrics.com → Settings → API Tokens**.
+It needs nothing beyond the default read scopes. If they revoke it, their rules
+report an error and stop; nobody else's are affected.
+
+## Deploying on Railway
+
+1. New service from this repository. **Root directory `/`**, Dockerfile path
+   `watcher/Dockerfile`. Not root `watcher`: the rule validator is the plugin's,
+   which is outside this directory, so the build context has to be the
+   repository.
+2. Add the variables above. One `SEAL_TOKEN_*` per client.
+3. Add a volume and point `SEAL_STATE_PATH` at a file on it, for example
+   `/data/incidents.json`, so a redeploy does not re-notify an open incident.
+4. Point `SEAL_HEARTBEAT_URL` at a dead-man's-switch.
+
+There is nothing to install: no dependencies, and the image runs the test suite
+at build time, so a broken watcher fails the deploy instead of the first alert.
+
+`node watcher/watch.mjs --once` runs a single pass and exits non-zero if any
+site errored. That is what to use from a cron, or to check a new rule by hand
+before trusting it.
+
+## If it dies
+
+This is the failure that matters: if the service stops, nothing fires and
+nobody notices, because silence is what a healthy watchdog produces. Two
+defences, and neither is optional in production.
+
+- **The heartbeat.** Every cycle it logs a line and, if `SEAL_HEARTBEAT_URL` is
+  set, posts the cycle summary. Point it at a service that alerts when the ping
+  *stops* (healthchecks.io and Better Stack both do this for free). A watchdog
+  without a watchdog is a single point of silent failure.
+- **`--once` from a second place.** A daily `--once` run somewhere else, whose
+  failure you would see, proves the whole chain still works end to end.
+
+## What it is not
+
+- **No email.** Sealmetrics already has alert email with templates and an
+  unsubscribe path. Reimplementing that here would mean owning deliverability
+  for someone else's domain. Slack and webhooks cover the same need until the
+  native engine ships.
+- **No rules in the dashboard.** These rules live here, not in the product, so
+  they do not appear in the Sealmetrics UI.
+- **Not the destination.** When Sealmetrics' own evaluator ships, rules migrate:
+  the grammar here is deliberately the one the product's design uses, so that is
+  a translation and not a rewrite.
+
+## The rule grammar
+
+One grammar, three readers: the `create-alert` skill writes it, `check-alerts`
+evaluates it on request, and this service watches it. It is validated against
+`seal-copilot/hooks/schemas/alerts.json`, the same schema the plugin's hook
+enforces, so a rule that is valid for one is valid for all three. The families
+and every field are documented in
+`seal-copilot/skills/seal-copilot/references/alert-grammar.md`.
+
+A malformed rule stops the service at startup with the field to fix. That is
+deliberate: a watcher that skips the rule it cannot parse is a watcher that
+silently is not watching.
+
+## Tests
+
+```
+node watcher/test.mjs
+```
+
+Fifty checks against a fake API and a fake clock, including the two that matter
+most: overnight hours do not count toward a silence window, and a refused read
+is never reported as silence. `scripts/check.sh` runs them.

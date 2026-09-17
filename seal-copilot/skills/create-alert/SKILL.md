@@ -29,10 +29,9 @@ see whether a state file exists; Read answers that.
 are the plugin's own and need none of the tools the remote connector withholds.
 
 **This skill schedules nothing** — not `/schedule`, not a routine, not a cron,
-not a Cowork task, even when asked. Nothing can watch a rule yet; that arrives
-with Sealmetrics' own alert engine. Say so plainly: the rule is saved, and "run
-my alert X" checks it now through `check-alerts`. If the user asks for a
-schedule, that one sentence is the answer — do not offer a workaround.
+not a Cowork task, even when asked. Continuous watching is Seal Watch's job, not
+a host task's. Say so plainly: the rule is saved, "run my alert X" checks it
+now, and Seal Watch is what watches it between checks.
 
 **The rule grammar and the four families are in
 `skills/seal-copilot/references/alert-grammar.md`.** Read it before parsing the
@@ -141,10 +140,12 @@ once and print the rule as JSON so the user can keep it.
 Under 10 lines on a successful creation:
 
 1. The rule in one sentence, in the user's own terms, with the hours it covers.
-2. One honest line: it is saved, not watched automatically yet — automatic
-   alerts arrive with Sealmetrics' native alert engine.
+2. One honest line: it is saved, and this plugin watches nothing by itself.
 3. How to use it today: "run my alert <id>" checks it now.
-4. One line on how to delete it.
+4. For continuous watching, print the rule as JSON and say it goes into Seal
+   Watch (`watcher/README.md`). Never claim it is already watched: you cannot
+   see from here whether that service has this site.
+5. One line on how to delete it.
 
 **Never** a first check time, a cadence, or "I'll let you know": no process
 exists that would keep that promise. Then nothing — no summary of the JSON, no
