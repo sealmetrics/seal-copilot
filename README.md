@@ -67,7 +67,7 @@ ChatGPT and Codex share. Chat and Work both read it.
 | `scripts/export-surfaces.mjs` | Renders every other surface from the plugin. |
 | `watcher/` | **Seal Watch**: the loop that makes a saved alert rule watch. Runs on Railway, no dependencies, no model. |
 | `evals/` | <!-- gen:cases -->36 cases<!-- /gen:cases --> against a mock Sealmetrics API, on both connectors. |
-| `docs/` | The PRD and the specification. |
+| `docs/` | The PRDs, the specification, and `incidents.md`. |
 
 The Codex tree is the one generated thing that lives in git, because a remote
 marketplace *is* a git repository: what is not committed does not install. Edit
