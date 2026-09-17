@@ -21,17 +21,43 @@ export const GLOBAL_MUST_NOT_MATCH = [
 ];
 
 // The shell is sanctioned for exactly two things: the deterministic calculator,
-// and reading the clock in check-alerts. Anything else — and above all a
-// redirect into the state directory, which a real run once used to append its
-// run log — is a failure whatever the answer said.
-const SANCTIONED_SHELL = /calc\.mjs|^\s*date\b/;
+// and reading the clock in check-alerts.
+//
+// Two classes of unsanctioned command, and they are not equally serious.
+//
+// A command that WRITES into the state directory is a failure: a real run once
+// appended its run log with `cat >>`, which worked because that session
+// happened to allow a shell and silently does nothing on one that does not. It
+// also walks around the schema validation.
+//
+// A read-only command — `ls` to see whether a state file exists, `find` to
+// locate a skill — is waste, not damage, and the first run of this assertion
+// failed two otherwise-correct answers on it. Read answers whether a file
+// exists, so the rule stands; it is a warning until the protocol has had a
+// chance to be read. Twelve phrase bans in this repo have failed correct
+// answers, and a hard failure on day one is how that happens again.
+// `date` may carry a leading environment assignment (`TZ=UTC date -u …`).
+const SANCTIONED_SHELL = /calc\.mjs|^\s*(?:[A-Za-z_][A-Za-z_0-9]*=\S*\s+)*date\b/;
+const READ_ONLY_SHELL = /^\s*(?:ls|find|cat|head|tail|stat|pwd|wc|file|tree|grep|rg)\b/;
+
+/** @returns {{failures: string[], warnings: string[]}} */
 export function assessShell(commands = []) {
-  return commands.filter((c) => !SANCTIONED_SHELL.test(c))
-    .map((c) => `ran a shell command the plugin does not sanction: ${JSON.stringify(c.slice(0, 80))}`);
+  const failures = [], warnings = [];
+  for (const c of commands) {
+    if (SANCTIONED_SHELL.test(c)) continue;
+    const where = JSON.stringify(String(c).slice(0, 80));
+    if (READ_ONLY_SHELL.test(c)) {
+      warnings.push(`used the shell to look around instead of Read: ${where}`);
+    } else {
+      failures.push(`ran a shell command that could change state: ${where}`);
+    }
+  }
+  return { failures, warnings };
 }
 
 export function assess(c, answer, calls, textBlocks = 1, shellCommands = []) {
-  const failures = [...assessShell(shellCommands)];
+  const shell = assessShell(shellCommands);
+  const failures = [...shell.failures];
   const names = calls.map(x => x.tool);
   const rejected = calls.filter(x => x.rejected);
   for (const re of c.mustMatch || []) if (!re.test(answer)) failures.push(`missing ${re}`);

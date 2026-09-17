@@ -43,6 +43,11 @@ Vertical playbooks: `skills/seal-copilot/references/ecommerce-playbook.md`
    run `get_property_breakdown` on the product identifier for both
    stages and surface the worst SKUs. Hand off to the `product-friction`
    skill for the full per-SKU treatment.
+7. **Entry-path check** (1 call, optional).
+   `get_landing_pages_by_content_group(period=30d)` — if one content group
+   supplies most entrances but almost none of the conversions, the funnel
+   problem starts before the first stage. This is the common shape on
+   blog-heavy and SaaS sites; see pattern 14.
 
 ## Output format
 
@@ -55,14 +60,7 @@ Vertical playbooks: `skills/seal-copilot/references/ecommerce-playbook.md`
    best-segment rate, in € using site AOV.
 5. **Verify:** re-run plan after the fix ships.
 
-7. **Entry-path check** (1 call, optional). `get_landing_pages_by_content_group(
-   period=30d)` — if one content group supplies most entrances but almost none
-   of the conversions, the funnel problem starts before the first stage. This
-   is the common shape on blog-heavy and SaaS sites; see pattern 14.
-
 If the site has no funnel configured and no microconversions, say so and
 offer the `setup-audit` skill instead of improvising. If microconversions
 exist but their property naming is unknown, suggest `property-explorer`
 as a one-time first step.
-
----

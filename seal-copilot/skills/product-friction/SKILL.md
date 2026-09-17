@@ -150,5 +150,3 @@ was too thin to isolate the cause rather than inventing one.
   row cap whenever a number came from `*_raw`.
 - Do not invent stock or margin data; if the user wants margin-weighted
   ranking they must paste COGS.
-
----

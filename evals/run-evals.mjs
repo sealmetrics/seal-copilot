@@ -18,7 +18,7 @@ import { readFileSync, readdirSync, writeFileSync, mkdirSync, mkdtempSync, exist
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { assess } from './assess.mjs';
+import { assess, assessShell } from './assess.mjs';
 import { parseStream } from './stream.mjs';
 import { validateFile } from '../seal-copilot/hooks/scripts/lib/validate.mjs';
 import { fidelity } from './fidelity.mjs';
@@ -251,6 +251,7 @@ async function runCase(c, siteId) {
   for (const [i, step] of steps.entries()) {
     const r = await runStep(c, step, siteId, work, callLog, step.continue ? lastSession : null);
     lastCalls = r.calls; lastCalcOutputs = r.calcOutputs || [];
+    shellWarnings = shellWarnings.concat(assessShell(r.shell || []).warnings);
     ms += r.ms;
     const stepCalls = r.calls.slice(seen);   // the log is cumulative; judge this step on its own calls
     seen = r.calls.length;
@@ -273,7 +274,7 @@ async function runCase(c, siteId) {
   // default it is a warning, because twelve phrase bans in this repo have
   // failed correct answers and this assertion gets the same probation. Turn it
   // on globally once the suite has run clean with the warnings for three runs.
-  let fidelityNotes = [];
+  let fidelityNotes = [], shellWarnings = [];
   if (!cliError) {
     const withResponses = (lastCalls || []).filter((x) => x.response !== undefined);
     if (withResponses.length) {
@@ -313,7 +314,7 @@ async function runCase(c, siteId) {
   return { id: c.id, fixture: c.fixture, error: cliError, state, truncated: truncatedStep,
            pass: !cliError && failures.length === 0,
            failures: cliError ? [`the CLI never ran the case: ${cliError}`] : failures,
-           fidelityNotes, calls, rejected, ms, answer, toolNames };
+           fidelityNotes, shellWarnings, calls, rejected, ms, answer, toolNames };
 }
 
 // A session that never really ran: no answer, no tool call and no error — or
@@ -376,6 +377,7 @@ for (const c of selected) {
   const runLabel = RUNS > 1 ? ` ${r.passes}/${r.attempts}` : '';
   console.log(r.pass ? ` PASS${runLabel} (${r.calls} calls, ${(r.ms / 1000).toFixed(0)}s)`
                      : ` FAIL${runLabel} (${r.calls} calls) — ${r.failures.join('; ')}`);
+  for (const w of r.shellWarnings || []) console.log(`    shell warning — ${w}`);
   if (r.fidelityNotes?.length && !selected.find(x => x.id === r.id)?.numericFidelity) {
     console.log(`    fidelity warning — number(s) not traced to a tool result: ${r.fidelityNotes.slice(0, 6).join(', ')}`);
   }

@@ -136,5 +136,3 @@ not be screened is not a pattern that came back empty.
   low — confirm with the user it is not a high-value rare event (e.g.
   "demo_request" is rare but valuable).
 - Do not delete alerts/webhooks for the user; recommend, do not act.
-
----

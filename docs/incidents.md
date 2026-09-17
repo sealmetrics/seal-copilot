@@ -171,3 +171,42 @@ calculator exists to prevent, reproduced in the test for the calculator.
 **Rule produced.** A test asserts the arithmetic, not an expectation about it.
 The case now checks `p_quiet_window === 0.0293` and
 `false_alarms_per_month === 0.88`, with a comment saying why.
+
+---
+
+## 2026-09-17 · The new assertion failed two correct answers on its first run
+
+**Found by** running `healthy-says-so` and `drop-isolates-campaign` to check
+that slimming the skills had not changed behaviour.
+
+It had not: both answers were right. `healthy-says-so` produced the verdict,
+the KPI table, the attribution line and no manufactured findings, in 8 calls
+against a budget of 8. `drop-isolates-campaign` isolated the cause to one
+campaign on one landing page with a full evidence chain, in 12 calls — and in a
+**single text block**, which is what the case had been failing on one run in
+three before the silence rule stopped being written nine times over.
+
+Both failed anyway, on the shell assertion added the same afternoon. The
+offending commands were `ls <state dir>` and `ls <plugin dir>`: the model
+looking around before reading a file.
+
+That is the pattern this repository has been bitten by twelve times — a new
+assertion that fails a correct answer — and it was committed as a hard failure
+on day one while the numeric-fidelity assertion beside it was given probation.
+Inconsistent, and the inconsistency cost two red cases.
+
+**Rules produced.**
+- `assessShell` returns failures and warnings separately. A command that could
+  **write** fails: a redirect into the state directory walks around the schema
+  check and silently does nothing on a surface with no shell. A **read-only**
+  command (`ls`, `find`, `cat`, `stat`…) warns: it is waste, not damage.
+- The rule is now stated where a model will read it, in
+  `references/run-protocol.md`: never use `ls` or `find` to see what exists,
+  read the path and handle the miss. It had only ever been written inside
+  `create-alert`, so no other skill had been told.
+
+**Also fixed here.** Removing the run-log footers left a trailing horizontal
+rule at the end of five skills, and `funnel-analysis` had a step numbered 7
+stranded inside its Output section since before this work. Both are cosmetic,
+and both were introduced or exposed by a scripted edit across fifteen files —
+which is the argument for reading the diff of one after running such a script.

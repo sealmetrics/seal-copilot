@@ -113,5 +113,3 @@ budget decisions need their cost reality. Provide the **ratio** and the
 - Do not recommend scaling a campaign with <30 conversions; flag as
   "directional only".
 - Do not propose absolute budget numbers; propose ratios and tests.
-
----

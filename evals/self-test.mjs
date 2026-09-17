@@ -297,10 +297,19 @@ console.log('\nnumeric fidelity');
 
 console.log('\nthe sanctioned shell');
 {
-  ok('the calculator is allowed', assessShell(['node skills/seal-copilot/scripts/calc.mjs delta']).length === 0);
-  ok('reading the clock is allowed', assessShell(['date -u +%Y-%m-%dT%H:%M:%SZ']).length === 0);
-  ok('anything else fails', assessShell(['ls ~/.seal-copilot']).length > 0);
-  ok('a redirect into state fails', assessShell(['echo {} >> ~/.seal-copilot/x/runs.jsonl']).length > 0);
+  const sh = (c) => assessShell([c]);
+  const clean = (c) => sh(c).failures.length === 0 && sh(c).warnings.length === 0;
+  ok('the calculator is allowed', clean('node skills/seal-copilot/scripts/calc.mjs delta'));
+  ok('reading the clock is allowed', clean('date -u +%Y-%m-%dT%H:%M:%SZ'));
+  ok('a leading env assignment does not break it', clean('TZ=UTC date -u +%Y'));
+  // Looking around is waste, not damage. It failed two otherwise-correct runs
+  // the first time this was a hard assertion, so it warns instead.
+  ok('ls warns rather than fails', sh('ls ~/.seal-copilot').warnings.length === 1 && sh('ls ~/.seal-copilot').failures.length === 0);
+  ok('find warns too', sh('find / -name SKILL.md').warnings.length === 1);
+  // Writing is the real hazard: it walks around the schema check and does
+  // nothing at all on a surface with no shell.
+  ok('a redirect into state fails', sh('echo {} >> ~/.seal-copilot/x/runs.jsonl').failures.length === 1);
+  ok('and so does anything else that could write', sh('rm -rf /tmp/x').failures.length === 1);
 }
 
 console.log(`\n${fails === 0 ? 'harness self-test passed' : fails + ' harness check(s) FAILED'}`);

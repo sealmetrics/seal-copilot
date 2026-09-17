@@ -47,6 +47,9 @@ enforces them: a write that does not match is refused, naming the fields to fix.
 
 - Use the **Read and Write tools, never a shell**, and write each file whole. An
   `Edit` on a state file is refused because it skips the check.
+- **Never use `ls` or `find` to see what exists.** Read a path and handle the
+  miss; that is the answer, in one call, on every surface. Two runs spent shell
+  calls listing a directory before reading the file in it.
 - Anything the schema does not name goes under `extra`. Never invent a
   top-level field.
 - State is optional. If the filesystem is not writable, do the work anyway and

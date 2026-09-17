@@ -96,5 +96,3 @@ constraint on you, not information for the user.
 If the change is a spike, check it converts and name the referrer carrying it (step 1) before celebrating.
 Never speculate beyond the data — if two causes remain plausible, present
 both with their evidence.
-
----
