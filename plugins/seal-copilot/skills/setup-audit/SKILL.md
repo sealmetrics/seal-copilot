@@ -11,9 +11,9 @@ short-description: 'Score a Sealmetrics implementation and list the gaps by valu
 
 # Setup Audit
 
-Before writing your answer, read `examples/output.md` in this skill directory
-and match its density, structure and tone. It is the reference for what a good
-run of this skill looks like.
+**Follow `skills/seal-copilot/references/run-protocol.md`:** no text until the answer, resolve the site with `list_sites` first, write state to the schema before answering, log the run. Match `examples/output.md`.
+
+Budget: **≤13 Sealmetrics calls.**
 
 Grade the implementation and produce a prioritized improvement list.
 Re-auditing is the normal workflow — ship a fix, audit again — so a repeat
@@ -21,7 +21,7 @@ request always runs the full procedure, even minutes after the last one. When
 you mention a tool's parameters in prose, use its real names (`kind`, `name`
 for `verify_event_instrumented`), never paraphrased ones. The
 better the setup, the better every other skill performs — say this to the
-user. Budget: ≤13 calls, and `get_tracking_code` is the first call after the
+user. and `get_tracking_code` is the first call after the
 site is resolved.
 
 Steps marked **(local only)** need the local connector; on `remote` they are
@@ -30,24 +30,14 @@ scored as passing. Settle which connector you are on before step 0 — see "The
 connector decides which tools exist" in
 `skills/seal-copilot/references/methodology.md`.
 
-**Resolve the site before any call that takes a `site_id`, without announcing
-it.** If `list_sites` has not already run in this conversation, it is your first
-call: one call, counted in the budget. Use anything cached under
-`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
-`site_id` is in the list. If it is not, that state was written by another
-Sealmetrics account on this machine: ignore it for this run, resolve the site
-from the list, asking if there are several, and never delete the other
-account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
-cached site belongs to one connection".
-
 ## Procedure
 
 0. `get_tracking_code` — **first, once the site is resolved.** Its `js_api`
    signatures are the only source for any snippet you will hand the developer
-   at the end. The first real audit spent nine calls on discovery, reached the
-   snippet with none left, and wrote one from memory — flagged as unfetched,
-   still copy-pasteable, and wrong for the site. A budget squeeze drops the
-   second microconversion pass or the alert check; it never drops this call.
+   at the end. An audit that spends its budget on discovery reaches the snippet
+   with none left and writes one from memory: still copy-pasteable, and wrong
+   for the site. A budget squeeze drops the second microconversion pass or the
+   alert check; it never drops this call.
 1. `get_site` — basics: domains, timezone, tracking status.
 2. `get_overview(30d)` — is data flowing at expected volume? If the site has
    **no data at all**, stop auditing: there is nothing to score until the pixel
@@ -163,14 +153,3 @@ explicitly confirming. If a product identifier
 is missing, name `product-friction` as the unlocked analysis. If
 microconversions are sparse, name `property-explorer` as the next step
 once volume grows.
-
----
-
-**Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
-and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
-Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `13` here), `verdict` (one of `on_track`, `watch`, `act`,
-`kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
-(boolean), `notes` (one line). The first real audit wrote `calls_used` and a
-free-text verdict because this footer said "calls used" in prose; the field
-names are the contract. Skip silently if the path is not writable.

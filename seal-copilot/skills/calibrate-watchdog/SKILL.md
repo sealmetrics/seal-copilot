@@ -14,26 +14,16 @@ short-description: 'Learn a site''s hourly add-to-cart rhythm so the watchdog ha
 
 # Calibrate Watchdog
 
-Before writing your answer, read `examples/output.md` in this skill directory
-and match its density, structure and tone. It is the reference for what a good
-run of this skill looks like.
+**Follow `skills/seal-copilot/references/run-protocol.md`:** no text until the answer, resolve the site with `list_sites` first, write state to the schema before answering, log the run. Match `examples/output.md`.
 
-Build the hour-of-week baseline that makes intraday monitoring meaningful,
-and store it so the hourly watchdog never has to rebuild it. Budget: ≤40 tool
-calls — high because it runs once and every later watchdog run costs ≤6.
+Budget: **≤40 Sealmetrics calls** — high because this runs once per site and
+every later watchdog run then costs ≤6.
+
+Build the hour-of-week baseline that makes intraday monitoring meaningful, and
+store it so the hourly watchdog never has to rebuild it.
 
 This is a **manual, explicit** skill. Never run it from a casual question and
 never run it on a schedule.
-
-**Resolve the site before any call that takes a `site_id`, without announcing
-it.** If `list_sites` has not already run in this conversation, it is your first
-call: one call, counted in the budget. Use anything cached under
-`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
-`site_id` is in the list. If it is not, that state was written by another
-Sealmetrics account on this machine: ignore it for this run, resolve the site
-from the list, asking if there are several, and never delete the other
-account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
-cached site belongs to one connection".
 
 ## Why this is a separate skill
 
@@ -93,22 +83,23 @@ Every row carries `date`, `hour` (local, 0–23) and `timestamp_local`. Bucket
 by `date` and `hour` directly — do not parse the timestamp, and never use
 `timestamp_utc`, since the site's own day boundaries are what matter.
 
-**Modes A and B.** Bucket events into day-of-week × hour-of-day. For each of
-the 168 cells store:
+**Modes A and B. Do not bucket 168 cells by hand** — pipe the raw rows to the
+calculator, which returns `cells`, `cumulative` and `daily_median` already in
+the shape `watchdog-baseline.json` requires:
 
-- `median` — median event count for that cell across the weeks you have
-  (in mode B, the single week's count is the median)
-- `gap` — typical minutes between events in that cell: `60 / median` when
-  `median ≥ 1`, otherwise `60`
+```
+echo '<the raw rows>' | node skills/seal-copilot/scripts/calc.mjs baseline-168
+```
 
-**Mode C.** For each day of week store the daily total as `median`, plus an
-`hourly_share` curve assumed flat. Say explicitly that hour-level judgments
-are not available in this mode.
+Each cell carries `median` (across the weeks you have) and `gap` (typical
+minutes between events). `cumulative[dow][h]` is the sum of medians for hours
+0…h, which is what the watchdog compares a running day-to-date total against,
+because the aggregate tool returns a day total and not an hourly series. An
+hour with no events on a date that *is* in the data counts as a real zero, not
+as missing — the calculator handles that; a hand count does not.
 
-Also compute and store the **cumulative expectation** per day of week: for
-each hour h, the sum of medians for hours 0…h. The watchdog compares a
-running day-to-date total against this, because the aggregate tool it uses
-returns a day total, not an hourly series.
+**Mode C.** Store each day-of-week total as `median` with a flat hourly share,
+and say explicitly that hour-level judgments are unavailable in this mode.
 
 ## Step 4 — Store it
 
@@ -159,14 +150,3 @@ Output, in under 15 lines:
   that exists beats a perfect one that costs 300 calls.
 - Do not overwrite an existing baseline without saying what changed
   (event, mode, or median volume) versus the previous one.
-
----
-
-**Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
-and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
-Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `40` here), `verdict` (one of `on_track`, `watch`, `act`,
-`kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
-(boolean), `notes` (one line). The first real audit wrote `calls_used` and a
-free-text verdict because this footer said "calls used" in prose; the field
-names are the contract. Skip silently if the path is not writable.

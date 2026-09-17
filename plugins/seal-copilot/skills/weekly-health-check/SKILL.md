@@ -10,41 +10,16 @@ short-description: 'Weekly Sealmetrics performance report with a verdict and top
 
 # Weekly Health Check
 
-Before writing your answer, read `examples/output.md` in this skill directory
-and match its density, structure and tone. It is the reference for what a good
-run of this skill looks like.
+**Follow `skills/seal-copilot/references/run-protocol.md`:** no text until the answer, resolve the site with `list_sites` first, write state to the schema before answering, log the run. Match `examples/output.md`.
 
-**Before anything else: emit no text until the report.** **Your first action
-is a tool call, not a sentence** — not "State directory is empty, running
-discovery", not "Let me start with the overview", not "Now writing state files,
-then the report". Writing state before the report is something you do, not
-something you announce. And nothing between calls
-either: no "Drop confirmed, moving to channels", no "Drilling into campaigns",
-no "Checking seasonality". The user reads every one of those before your answer,
-and a run that narrates its way to a conclusion reads as one that has not
-reached it. Make the calls in silence; your first and only message is the
-finished report. **And nothing after it:** write the profile, the ledger and the
-run log *before* the report, never once it is written. A tool call after the
-report forces a second message, and a run that logged its diagnosis first and
-then added "Diagnosis complete: the drop traces to /collections/sale" made the
-user read the same finding twice.
+Budget: **≤8 Sealmetrics calls.**
 
-Produce a tight weekly performance report. Budget: ≤8 tool calls.
+Produce a tight weekly performance report.
 Apply the operating rules, thresholds, MCP call rules and failure modes from
 `skills/seal-copilot/references/methodology.md`.
 
 If the period has fewer than 30 conversions, report KPIs only and skip
 findings — say why in one line.
-
-**Resolve the site before any call that takes a `site_id`, without announcing
-it.** If `list_sites` has not already run in this conversation, it is your first
-call: one call, counted in the budget. Use anything cached under
-`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
-`site_id` is in the list. If it is not, that state was written by another
-Sealmetrics account on this machine: ignore it for this run, resolve the site
-from the list, asking if there are several, and never delete the other
-account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
-cached site belongs to one connection".
 
 ## Procedure
 
@@ -88,10 +63,8 @@ named a Bing campaign's collapse without it. One line; not optional because the
 week was quiet.
 
 **Then one line for anything the procedure could not do**, whenever a step's
-call was refused, returned an error as text, or was skipped. The first real
-run had a +35% traffic spike at 84% bounce and said nothing about the fact
-that the channel split was refused for the site — a reader cannot tell a
-complete report from a partial one unless you say so. Format:
+call was refused, returned an error as text, or was skipped. A reader cannot
+tell a complete report from a partial one unless you say so. Format:
 
 > Not checked: channel split — the API refused the channel breakdown for this
 > site ("Access denied"), so movers above are not broken down by channel.

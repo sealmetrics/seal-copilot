@@ -68,3 +68,41 @@ which kept the false claim alive through nine certifications.
 **Still open.** The local transport announces ten tools that always 403; that
 is the encargo in `docs/mcp-server-local-gate.md`, whose tool table needs
 correcting before anyone implements it.
+
+---
+
+## 2026-09-17 · Thirty-six thousand words of instructions, and four rules written nine times over
+
+**Found by** counting what a single `weekly-health-check` loads before its first
+tool result: 10,018 words.
+
+Every fix between 1.12.0 and 1.13.2 was written as an anecdote pasted into the
+skill that had failed. Four blocks had been copied verbatim across the skills:
+
+| Block | Copies | Words each |
+|---|---|---|
+| "Before anything else: emit no text until the report…" | 9 | 172 |
+| "Resolve the site before any call that takes a `site_id`…" | 14 | 101 |
+| The run-log footer with its seven fields | 12 | 104 |
+| "Before writing your answer, read `examples/output.md`…" | 15 | 31 |
+
+3,201 words of pure duplication, and the cost was not only context. The one
+case that would not pass three runs out of three in certification 9 was
+`drop-isolates-campaign`, failing on "2 text blocks, cap 1 — narrated between
+tool calls". The rule it broke was the one written nine times. Repetition is not
+enforcement.
+
+**Rules produced.**
+- `references/run-protocol.md` holds those four rules once, plus the state and
+  ledger contracts. Every skill names it in one line with its own budget.
+- `references/mcp-calls.md` takes the call rules and real response shapes out of
+  `methodology.md`. They are needed at one moment in a run — composing a call
+  you have not made before — while the rest of the methodology is needed
+  throughout, and carrying both on every question cost 1,500 words.
+- The skills carry rules in the imperative; the runs that produced them live in
+  this file. `evals/check-skill-size.mjs` fails the build on a word-count cap,
+  on any paragraph of 40+ words that appears in two files, and on a date inside
+  a `SKILL.md` — because a date is the signature of an anecdote.
+
+**Result.** A weekly loads 6,330 words instead of 10,018. The plugin's markdown
+is 30,382 words instead of 36,043, with two new reference files in it.

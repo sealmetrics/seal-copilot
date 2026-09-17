@@ -45,9 +45,12 @@ if (filters.length && !selected.length) {
 }
 
 // Every mock tool is pre-allowed so the run never blocks on a permission prompt.
+// Bash is allowed only for the calculator and for reading the clock: those are
+// the two shell commands the plugin sanctions, and assess.mjs fails any other.
 const allowedTools = [
   ...Object.keys(schema).map(t => `mcp__sealmetrics__${t}`),
   'Read', 'Write',
+  'Bash(node *calc.mjs*)', 'Bash(date *)',
 ].join(' ');
 
 // Anything that can create, change or fire a scheduled task outside this run.
@@ -180,6 +183,10 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
         // the site must come from state or from list_sites. With the variable
         // set, a stale profile is never put to the test.
         if (c.multiSite || c.noSiteEnv) delete e.SEALMETRICS_SITE_ID;
+        // noStateDir: Claude on the web has no filesystem and the session hook
+        // announces no directory, so memory has to travel in the conversation
+        // as a seal-state block. Nothing else exercises that path.
+        if (c.noStateDir) { delete e.SEAL_COPILOT_STATE_DIR; e.SEAL_COPILOT_NO_STATE = '1'; }
         return e;
       })(),
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -214,6 +221,7 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
 
       resolve({ cliError, calls, rejected, ms, answer, sessionId, truncated,
                 textBlocks: parsed.textBlocks ?? 1,
+                shell: parsed.shell ?? [], calcOutputs: parsed.calcOutputs ?? [],
                 toolNames: [...new Set(calls.map(x => x.tool))] });
     });
   });
@@ -253,7 +261,7 @@ async function runCase(c, siteId) {
     if (step.continue && !lastSession) failures.push(`step ${i + 1}: could not resume — no session id from step ${i}`);
     const label = steps.length > 1 ? `step ${i + 1}: ` : '';
     for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected },
-                           r.answer, stepCalls, r.textBlocks))
+                           r.answer, stepCalls, r.textBlocks, r.shell))
       failures.push(label + f);
   }
 

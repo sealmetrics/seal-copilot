@@ -14,23 +14,13 @@ short-description: 'Intraday check of add-to-cart against the learned baseline. 
 
 # Cart Watchdog
 
-Before writing your answer, read `examples/output.md` in this skill directory
-and match its density, structure and tone. It is the reference for what a good
-run of this skill looks like.
+**Follow `skills/seal-copilot/references/run-protocol.md`:** no text until the answer, resolve the site with `list_sites` first, write state to the schema before answering, log the run. Match `examples/output.md`.
+
+Budget: **≤6 Sealmetrics calls.**
 
 Catch live problems — broken AtC button, payment outage, tracking gap —
-before the daily report does. Budget: ≤6 tool calls. Designed for
+before the daily report does. Designed for
 **scheduled execution**, hourly during business hours.
-
-**Resolve the site before any call that takes a `site_id`, without announcing
-it.** If `list_sites` has not already run in this conversation, it is your first
-call: one call, counted in the budget. Use anything cached under
-`<state-dir>/<site_id>/` — profile, baseline, ledger, saved alert — only if that
-`site_id` is in the list. If it is not, that state was written by another
-Sealmetrics account on this machine: ignore it for this run, resolve the site
-from the list, asking if there are several, and never delete the other
-account's files. Rules in `skills/seal-copilot/references/state-schema.md`, "A
-cached site belongs to one connection".
 
 ## Step 0 — Load the baseline
 
@@ -58,9 +48,8 @@ the hours elapsed so far today, in the site's timezone.
 **Establish the current local hour before you compare, and say it in the
 answer.** The whole verdict hangs on it: guess an hour too early and the
 expectation shrinks to almost nothing, so a cart that has been dead since noon
-reads as healthy. A run did exactly that — "2 add-to-carts by ~09:00 matches the
-baseline" — hours after 09:00 had passed. **If you cannot establish the current
-hour with confidence, do not answer 🟢.** Say which figure you are missing. A
+reads as healthy. **If you cannot establish the current hour with confidence,
+do not answer 🟢.** Say which figure you are missing. A
 watchdog that cannot tell the time and reports all-clear is worse than one that
 admits it, because the user stops checking.
 
@@ -142,14 +131,3 @@ successful run.
 - Do not rebuild the baseline here — that is `calibrate-watchdog`'s job and it
   costs up to 40 calls.
 - Do not page the user during scheduled night hours unless they opted in.
-
----
-
-**Before the report, not after it, with the Read and Write tools — never a shell:** log the run in `<state-dir>/<site_id>/runs.jsonl` with exactly these fields
-and no others: `ts` (ISO timestamp, UTC), `skill`, `calls` (the number of
-Sealmetrics calls you made, counted), `budget` (this skill's documented
-ceiling, a number — `6` here), `verdict` (one of `on_track`, `watch`, `act`,
-`kpis_only`, `refused`, `error`, or the score for an audit), `scheduled`
-(boolean), `notes` (one line). The first real audit wrote `calls_used` and a
-free-text verdict because this footer said "calls used" in prose; the field
-names are the contract. Skip silently if the path is not writable.

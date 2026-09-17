@@ -732,4 +732,34 @@ export default [
     transport: 'remote',
     mustMatch: [/🔴|⚠️|\bact\b|\bwatch\b|\bfires?\b/i, /\b8\b/],
   },
+  // ---- Claude on the web and desktop have no filesystem, so the session hook
+  // announces no state directory and memory has to travel in the conversation.
+  // The export README promised a seal-state block from 1.11.0; no skill emitted
+  // one until 1.14.0 ----
+  {
+    id: 'seal-state-round-trip',
+    fixture: 'ecommerce-healthy',
+    noStateDir: true,
+    noSiteEnv: true,
+    maxCalls: 14,
+    steps: [
+      { prompt: 'Run my weekly health check.',
+        // The block, and an honest line about what it is for.
+        mustMatch: [/```seal-state/, /"site_name"/, /paste|pegar|next conversation|próxima/i],
+        maxTextBlocks: 1 },
+      // Pasted back, discovery must not run again: the profile is in the prompt.
+      { continue: false,
+        prompt: (now) => 'Run my weekly health check.\n\n```seal-state\n' + JSON.stringify({
+          site_id: 'acct_demo', site_name: 'demo-store.com', connector: 'remote',
+          timezone: 'Europe/Madrid', currency: 'EUR', vertical: 'ecommerce',
+          events: { purchase: 'purchase', add_to_cart: 'add_to_cart' },
+          discovery_cached_at: new Date(now).toISOString().slice(0, 10),
+        }, null, 2) + '\n```',
+        mustCall: ['list_sites'],
+        // list_sites still runs — it is ownership, not freshness — but the
+        // discovery calls the profile exists to save must not.
+        mustNotCall: ['list_property_keys', 'list_microconversion_types'],
+        maxTextBlocks: 1 },
+    ],
+  },
 ];

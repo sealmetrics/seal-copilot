@@ -29,11 +29,42 @@ const lines = [
   'Installing tracking is the separate seal-install plugin, not this one.',
   'Sealmetrics gives no bot data: never call get_bot_stats or',
   'get_suspicious_sessions, and never attribute traffic to bots.',
+  '',
+  // The run protocol, in the form a model needs before its first tool call.
+  // The full text is skills/seal-copilot/references/run-protocol.md; this is
+  // here so the rules are in context without costing a Read, and because four
+  // of them used to be copied into fifteen skills to achieve the same thing.
+  'Every skill in this plugin follows the same protocol:',
+  '1. Emit no text until the answer. The first action is a tool call, not a',
+  '   sentence, and nothing is said between tool calls. The answer is the only',
+  '   message, and no tool call follows it.',
+  '2. Resolve the site with list_sites before any call that takes a site_id.',
+  '   Cached state under <state-dir>/<site_id>/ applies only if that site_id is',
+  '   in the list; freshness proves nothing about which account connected.',
+  '3. Write state with Read and Write, never a shell, and write each file whole.',
+  '   The schemas in hooks/schemas/ are the contract and a hook enforces them:',
+  '   a write that does not match is refused with the fields to fix. Anything',
+  '   the schema does not name goes under "extra".',
+  '4. Log the run in runs.jsonl before the answer, never after it.',
+  '5. Any arithmetic beyond one operation goes through',
+  '   skills/seal-copilot/scripts/calc.mjs. Without a shell, do it yourself and',
+  '   say in the answer that it was done without the calculator.',
+  'Full text: skills/seal-copilot/references/run-protocol.md.',
 ];
 {
   const stateRoot = process.env.SEAL_COPILOT_STATE_DIR || join(homedir(), '.seal-copilot');
   if (process.env.SEALMETRICS_SITE_ID) lines.push(`Default site: ${process.env.SEALMETRICS_SITE_ID}.`);
-  lines.push(`State directory: ${stateRoot}`);
+  // SEAL_COPILOT_NO_STATE imitates a surface with no filesystem (Claude on the
+  // web), where memory has to travel in the conversation instead. Without it
+  // there is no way to exercise the seal-state fallback.
+  if (process.env.SEAL_COPILOT_NO_STATE) {
+    lines.push('No state directory on this surface: nothing persists between conversations.',
+      'Close the answer with a fenced seal-state block (profile + open ledger entries,',
+      '≤25 lines) and say that pasting it back next time is what lets the next report',
+      'follow up. If the prompt already carries one, use it as the starting state.');
+  } else {
+    lines.push(`State directory: ${stateRoot}`);
+  }
   try {
     const sites = existsSync(stateRoot)
       ? readdirSync(stateRoot, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name)

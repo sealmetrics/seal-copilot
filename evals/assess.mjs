@@ -20,8 +20,18 @@ export const GLOBAL_MUST_NOT_MATCH = [
   /(?<!["'“`])\bbots?\b[^.;,\n]{0,30}?\d+(\.\d+)?\s*%|\d+(\.\d+)?\s*%[^.;,\n]{0,30}?\bbots?\b(?!["'”`])/i,
 ];
 
-export function assess(c, answer, calls, textBlocks = 1) {
-  const failures = [];
+// The shell is sanctioned for exactly two things: the deterministic calculator,
+// and reading the clock in check-alerts. Anything else — and above all a
+// redirect into the state directory, which a real run once used to append its
+// run log — is a failure whatever the answer said.
+const SANCTIONED_SHELL = /calc\.mjs|^\s*date\b/;
+export function assessShell(commands = []) {
+  return commands.filter((c) => !SANCTIONED_SHELL.test(c))
+    .map((c) => `ran a shell command the plugin does not sanction: ${JSON.stringify(c.slice(0, 80))}`);
+}
+
+export function assess(c, answer, calls, textBlocks = 1, shellCommands = []) {
+  const failures = [...assessShell(shellCommands)];
   const names = calls.map(x => x.tool);
   const rejected = calls.filter(x => x.rejected);
   for (const re of c.mustMatch || []) if (!re.test(answer)) failures.push(`missing ${re}`);

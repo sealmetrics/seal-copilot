@@ -15,6 +15,11 @@ echo "  clean"
 echo "→ Tool-call linter";        node "$ROOT/evals/lint-tool-calls.mjs" "$ROOT/seal-copilot"
 echo "→ Tool-call linter (seal-install)"; node "$ROOT/evals/lint-tool-calls.mjs" "$ROOT/seal-install"
 echo "→ Fixture arithmetic";      node "$ROOT/evals/fixtures/_check-coherence.mjs" | tail -1
+echo "→ Calculator";             node "$ROOT/evals/calc.test.mjs" | tail -1
+echo "→ Skill size and duplication"; node "$ROOT/evals/check-skill-size.mjs" | sed 's/^/  /'
+echo "→ Dangling references"; node "$ROOT/evals/check-dangling.mjs" | tail -1
+echo "→ Transport tool lists";   node "$ROOT/evals/dump-transport-tools.mjs" 2>/dev/null | tail -1 || \
+  echo "  skipped — no sealmetrics2/mcp-server checkout beside this repo"
 echo "→ Eval harness self-test";  node "$ROOT/evals/self-test.mjs" | tail -1
 echo "→ Assertions vs golden outputs"; node "$ROOT/evals/check-assertion-contradictions.mjs" | tail -1
 echo "→ Plugin manifests";        claude plugin validate "$ROOT/seal-copilot" | tail -1
