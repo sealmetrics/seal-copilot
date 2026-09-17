@@ -1,5 +1,67 @@
 # Changelog
 
+## 1.15.0 — 2026-09-17
+
+Saved alert rules can now actually watch, and nothing in Sealmetrics had to
+change for it.
+
+### Added — Seal Watch
+Until now no customer could have an alert at all. Sealmetrics stores rules and
+can deliver notifications, but nothing evaluates one: `check_and_trigger` is
+called only from a test, creating a rule needs the `write` scope that only a
+dashboard session carries, and the dashboard has no alerts screen. The plugin
+could save a rule and check it on request, and that was the whole of it.
+
+`watcher/` closes that. It is possible outside the product for one reason:
+everything a rule needs in order to be judged sits under `/stats/`, which the
+API guards with `stats:read`, and every API key carries that scope. Only saving
+and evaluating rules are closed off, and both can live elsewhere.
+
+- The four families of the existing grammar, evaluated with arithmetic and no
+  model: cheap, deterministic, reproducible.
+- `silence` counts only **watched** hours, so a shop that closes at midnight is
+  not paged at 04:00. Verified across a daylight-saving change.
+- One `/stats/overview` per site per pass serves every rule on it, so the
+  service stays under a request a minute against a 240-per-minute limit.
+- Incidents rather than evaluations: one notification when a rule opens, "still
+  open" after that, a cooldown before it can reopen, and a line when it clears.
+- A failed read is never a verdict. Otherwise an outage of ours would fire every
+  silence rule at once.
+- A heartbeat every cycle, because the way a watchdog fails is silently.
+
+Rules are validated with the plugin's own schema and validator, so one contract
+serves the skill that writes a rule, the hook that checks the write, and the
+service that watches it. A malformed rule stops the service at startup naming
+the field: a watcher that skips what it cannot parse is a watcher that silently
+is not watching.
+
+Tokens are per client and never in the config. The config names the environment
+variable, the variable holds the token, so a client creates, rotates and revokes
+their own and nobody else's rules are affected.
+
+Deploys from `watcher/Dockerfile` with the repository as build context. The image
+runs its fifty tests at build time, so a broken watcher fails the deploy rather
+than the first alert.
+
+### Changed — what the skills may claim
+"Nothing watches these rules automatically" was true and is now conditional, so
+it is gone. In its place: this plugin watches nothing by itself, `check-alerts`
+runs a rule on request, and Seal Watch watches it between checks. The skills are
+**forbidden from claiming a rule is being watched**, because they cannot see
+whether the watcher has that site. `create-alert` prints the rule as JSON for
+the handover.
+
+That handover is manual today, and it is the seam still open: a rule created in
+a conversation lands in `alerts.json` on that machine, while Seal Watch reads
+its own config.
+
+### Not included
+No email. Sealmetrics already owns alert email, and deliverability for a
+customer's domain is not something to reimplement. No rules in the Sealmetrics
+dashboard, because they live in the watcher's config. And this is not the
+destination: when the native engine ships, the grammar here is already the one
+that design is built around, so the rules translate rather than being rewritten.
+
 ## 1.14.0 — 2026-09-17
 
 Five rules that were prose are now mechanisms, and three facts the plugin
