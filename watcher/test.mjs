@@ -334,6 +334,16 @@ console.log('\nthe rules CLI');
   const cfg = () => JSON.parse(readFileSync(cfgPath, 'utf8'));
   writeFileSync(cfgPath, JSON.stringify({ sites: [{ site_id: 'demo', token_env: 'T', rules: [] }] }));
 
+  // Bootstrap, from no file at all.
+  rmSync(cfgPath, { force: true });
+  ok('site creates the config', run(['site', 'demo', 'T']).code === 0 && cfg().sites[0].token_env === 'T');
+  ok('and sets a default interval', cfg().interval_seconds === 300);
+  ok('site is idempotent', run(['site', 'demo', 'T2']).code === 0 && cfg().sites.length === 1 && cfg().sites[0].token_env === 'T2');
+  // The mistake worth guarding: pasting the credential where the name goes.
+  ok('a pasted token is refused', run(['site', 'demo', 'sm_live_abc']).code === 1);
+  ok('and the refusal explains what to pass', /variable that holds it/.test(run(['site', 'demo', 'sm_live_abc']).out));
+  run(['site', 'demo', 'T']);
+
   const good = silenceRule();
   ok('add puts a rule in', run(['add', 'demo'], JSON.stringify(good)).code === 0 && cfg().sites[0].rules.length === 1);
   ok('add is idempotent on the same id',

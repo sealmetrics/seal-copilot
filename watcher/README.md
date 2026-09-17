@@ -120,6 +120,7 @@ With the config on a volume (`SEAL_CONFIG_PATH`), edit it with the CLI rather
 than by hand — it refuses to write anything the watcher could not load:
 
 ```
+node watcher/rules.mjs site acct_example SEAL_TOKEN_ACCT_EXAMPLE SEAL_SLACK_ACCT_EXAMPLE
 node watcher/rules.mjs list
 node watcher/rules.mjs add acct_example < rule.json
 node watcher/rules.mjs import acct_example ~/.seal-copilot/acct_example/alerts.json
@@ -127,6 +128,10 @@ node watcher/rules.mjs pause acct_example no-purchases-4h
 node watcher/rules.mjs remove acct_example no-purchases-4h
 node watcher/rules.mjs check
 ```
+
+`site` creates the entry, and takes the **name** of the variable rather than
+the token: it refuses a value that looks like one, because that is the mistake
+that puts a credential in a file.
 
 `add` takes the rule JSON that `create-alert` prints. `import` takes the whole
 file it writes — `<state-dir>/<site_id>/alerts.json` — which is the realistic
@@ -190,6 +195,6 @@ silently is not watching.
 node watcher/test.mjs
 ```
 
-89 checks against a fake API and a fake clock, including the two that matter
+94 checks against a fake API and a fake clock, including the two that matter
 most: overnight hours do not count toward a silence window, and a refused read
 is never reported as silence. `scripts/check.sh` runs them.

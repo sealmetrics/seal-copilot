@@ -7,6 +7,7 @@
  * reads it. The watcher re-reads its config between passes, so nothing needs a
  * redeploy.
  *
+ *   node watcher/rules.mjs site <site_id> <token_env> [slack_env]
  *   node watcher/rules.mjs list
  *   node watcher/rules.mjs add <site_id> < rule.json     # or paste on stdin
  *   node watcher/rules.mjs pause <site_id> <rule_id>
@@ -77,8 +78,37 @@ const readStdin = async () => {
 
 const [cmd, siteId, ruleId] = process.argv.slice(2);
 const cfg = read();
+cfg.sites ||= [];
 
 switch (cmd) {
+  case 'site': {
+    // Bootstrap. Without this the first step of a deploy is editing JSON by
+    // hand, which is exactly where a token ends up in a file by accident.
+    const tokenEnv = process.argv[4];
+    const slackEnv = process.argv[5];
+    if (!siteId || !tokenEnv) {
+      die('node watcher/rules.mjs site <site_id> <TOKEN_ENV_NAME> [SLACK_ENV_NAME]\n' +
+          'The token ENV NAME, not the token: the config is committable and the\n' +
+          "variable holds the client's own credential.");
+    }
+    if (/^sm_/.test(tokenEnv)) {
+      die('That looks like a token, not a variable name. Pass the NAME of the\n' +
+          'environment variable that holds it, for example SEAL_TOKEN_ACCT_DEMO.');
+    }
+    cfg.sites ||= [];
+    const existing = cfg.sites.find((x) => x.site_id === siteId);
+    const entry = existing || { site_id: siteId, rules: [] };
+    entry.token_env = tokenEnv;
+    if (slackEnv) entry.slack_webhook_env = slackEnv;
+    if (!existing) cfg.sites.push(entry);
+    cfg.interval_seconds ??= 300;
+    write(cfg);
+    console.log(`${existing ? 'Updated' : 'Added'} site ${siteId}, token from ${tokenEnv}` +
+      (slackEnv ? `, Slack from ${slackEnv}` : ', notifications to the log until a Slack webhook is set') +
+      `.\nNow add rules: node watcher/rules.mjs import ${siteId} <alerts.json>`);
+    break;
+  }
+
   case 'list': {
     if (!cfg.sites.length) { console.log(`${PATH} holds no sites yet.`); break; }
     for (const s of cfg.sites) {
@@ -196,6 +226,6 @@ switch (cmd) {
   }
 
   default:
-    die('Commands: list, add <site>, import <site> <file>, pause <site> <rule>, ' +
-        'resume <site> <rule>, remove <site> <rule>, check');
+    die('Commands: site <id> <token_env>, list, add <site>, import <site> <file>,\n' +
+        '          pause <site> <rule>, resume <site> <rule>, remove <site> <rule>, check');
 }
