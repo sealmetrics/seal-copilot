@@ -36,6 +36,36 @@ const silenceRule = (over = {}) => ({
   timezone: TZ, created_at: '2026-09-17', status: 'active', ...over,
 });
 
+console.log('state that proves it persists');
+{
+  const dir = mkdtempSync(join(tmpdir(), 'seal-store-'));
+
+  const good = store(join(dir, 'ok', 'incidents.json'));
+  ok('a writable path reports persistent', good.persistent === true);
+  ok('and gives no reason, because there is no problem', good.unwritableBecause === null);
+  good.start('site:rule', { at: '2026-09-18T10:00:00.000Z', headline: 'h', evidence: {} });
+  const reopened = store(join(dir, 'ok', 'incidents.json'));
+  ok('an open incident survives a restart', !!reopened.open('site:rule'));
+  ok('and starting it again notifies nobody',
+     reopened.start('site:rule', { at: '2026-09-18T11:00:00.000Z', headline: 'h', evidence: {} }) === null);
+
+  // The failure that reached production: a path that cannot be written, which
+  // used to report persistent: true and lose every incident on restart.
+  const blocked = store('/proc/seal-cannot-write/incidents.json');
+  ok('an unwritable path does NOT claim to persist', blocked.persistent === false);
+  ok('and says why, so the warning can name it',
+     typeof blocked.unwritableBecause === 'string' && blocked.unwritableBecause.length > 0,
+     blocked.unwritableBecause);
+  ok('while still working in memory for this run',
+     !!blocked.start('s:r', { at: '2026-09-18T10:00:00.000Z', headline: 'h', evidence: {} }) && !!blocked.open('s:r'));
+
+  const none = store(undefined);
+  ok('no path at all is not persistent and needs no reason',
+     none.persistent === false && none.unwritableBecause === null);
+
+  rmSync(dir, { recursive: true, force: true });
+}
+
 console.log('the webhook contract');
 {
   const SCHEMA = JSON.parse(readFileSync(new URL('./schemas/webhook-payload.json', import.meta.url), 'utf8'));

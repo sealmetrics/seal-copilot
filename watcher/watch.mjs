@@ -377,7 +377,12 @@ async function main() {
   log(`watching ${rules} active rule(s) across ${cfg.sites.length} site(s), every ${interval / 1000}s`);
   for (const line of deliveryReport(cfg)) log(line);
   if (!incidents.persistent) {
-    log('WARNING: SEAL_STATE_PATH is unset, so incidents live in memory. A restart re-notifies an open incident.');
+    // Two different failures, and telling them apart is the whole point: no path
+    // configured, or a path that cannot be written. The second one used to be
+    // invisible and re-notified an open incident on every redeploy.
+    log(incidents.unwritableBecause
+      ? `WARNING: ${process.env.SEAL_STATE_PATH} cannot be written, so incidents live in memory and a restart re-notifies an open one: ${incidents.unwritableBecause}`
+      : 'WARNING: SEAL_STATE_PATH is unset, so incidents live in memory. A restart re-notifies an open incident.');
   }
 
   let cycle = 0;
