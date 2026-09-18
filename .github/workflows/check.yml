@@ -21,3 +21,20 @@ jobs:
         run: npm install -g @anthropic-ai/claude-code
       - name: Offline gates
         run: bash scripts/check.sh
+
+  # The image runs the watcher tests as root in node:22-alpine, which is a
+  # different machine from the one `scripts/check.sh` runs on. A test that asked
+  # the host whether a path was writable passed on a Mac and in this job, and
+  # then failed the Railway build. Building here is what makes that a red pull
+  # request instead of a failed deploy.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the watcher image, which runs its tests
+        run: docker build -f watcher/Dockerfile -t seal-watch:ci .
+      - name: The configuration check must work in the image
+        run: |
+          docker run --rm \
+            -e SEAL_CONFIG='{"sites":[{"site_id":"ci","token_env":"SEAL_TOKEN_CI","rules":[]}]}' \
+            -e SEAL_TOKEN_CI=sm_ci seal-watch:ci node watcher/watch.mjs --check
