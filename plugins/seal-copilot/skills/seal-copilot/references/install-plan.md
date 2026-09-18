@@ -28,3 +28,34 @@ If the user accepted, the plan also lives in their repository as
 When both exist and the `plan_id` differ, the repository changed the plan after
 the approval recorded here: say so, and trust neither as the current install
 until the user confirms.
+
+## The four checks against the plan (`setup-audit` step 10)
+
+When `install-plan.json` exists for the site, the install was planned and
+approved event by event, so the audit compares the data against that plan and
+not only against the canonical funnel. Four checks, three of them from what
+steps 3 to 5 and 9 already returned, plus one call:
+
+- **Instrumented, not seen** — a planned `conv` or `micro` with zero events
+  in the period. Planned and written, but not arriving: the deploy dropped
+  it, or it fires under another name. If `approved_at` is less than 7 days
+  old, say it may be too early rather than broken.
+- **Drift** — an event arriving that the plan does not contain: someone added
+  a call outside the plan. Name it; do not call it wrong, and never
+  recommend renaming it.
+- **Lost property** — a property key the plan gives an event that
+  `list_property_keys` does not list (for purchase items, check
+  `table=conversion_items`). Planned, and not reaching the data.
+- **Broken revenue** — for each planned `conv` with a `value`:
+  `get_conversions_raw(period=7d, conversion_type=[name], limit=200)`. More
+  than 5% of rows with `amount` 0 or missing means revenue is being lost —
+  usually a total sent as a string, which the tracker drops. Give the share
+  and the row count. One call per revenue event; with more than one, check
+  the one with the most conversions and say the others were not checked.
+
+Each of these is a gap in the table, tagged **plan `<plan_id>`**, and its fix
+is always the same: **plan and simulate the change with `seal-install`**, then
+deploy and verify — never a code patch written here. The plan is the
+contract the installer checks calls against; a hand fix drifts from it again.
+Without the file, skip this step silently: most sites were not installed
+with a plan.

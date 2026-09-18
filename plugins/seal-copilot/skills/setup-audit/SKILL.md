@@ -82,34 +82,15 @@ connector decides which tools exist" in
    stage receives at least 10 events/day; below that the watchdog baseline
    will be too noisy to be useful and that is a gap worth flagging.
 10. **The approved install plan, when there is one.** If
-    `<state-dir>/<site_id>/install-plan.json` exists for this site, the install
-    was planned and approved event by event: audit the data against that plan,
-    not only against the canonical funnel. It is written by `seal-install`; its
-    shape is in `skills/seal-copilot/references/state-schema.md`. Four checks,
-    from what steps 3–5 and 9 already returned, plus one call:
-    - **Instrumented, not seen** — a planned `conv` or `micro` with zero events
-      in the period. Planned and written, but not arriving: the deploy dropped
-      it, or it fires under another name. If `approved_at` is less than 7 days
-      old, say it may be too early rather than broken.
-    - **Drift** — an event arriving that the plan does not contain: someone added
-      a call outside the plan. Name it; do not call it wrong, and never
-      recommend renaming it.
-    - **Lost property** — a property key the plan gives an event that
-      `list_property_keys` does not list (for purchase items, check
-      `table=conversion_items`). Planned, and not reaching the data.
-    - **Broken revenue** — for each planned `conv` with a `value`:
-      `get_conversions_raw(period=7d, conversion_type=[name], limit=200)`. More
-      than 5% of rows with `amount` 0 or missing means revenue is being lost —
-      usually a total sent as a string, which the tracker drops. Give the share
-      and the row count. One call per revenue event; with more than one, check
-      the one with the most conversions and say the others were not checked.
-
-    Each of these is a gap in the table, tagged **plan `<plan_id>`**, and its fix
-    is always the same: **plan and simulate the change with `seal-install`**, then
-    deploy and verify — never a code patch written here. The plan is the
-    contract the installer checks calls against; a hand fix drifts from it again.
-    Without the file, skip this step silently: most sites were not installed
-    with a plan.
+    `<state-dir>/<site_id>/install-plan.json` exists, the install was approved
+    event by event, so audit the data against that plan as well as against the
+    canonical funnel. The four checks, instrumented but not seen, drift, lost
+    property and broken revenue, are defined in
+    `skills/seal-copilot/references/install-plan.md` together with the single
+    extra call they need. Every gap is tagged **plan `<plan_id>`** and its fix is
+    always the same: plan and simulate the change with `seal-install`, then
+    deploy and verify. Never a code patch written here. Without the file, skip
+    this step silently, because most sites were not installed with a plan.
 
 ## Output format
 
