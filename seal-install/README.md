@@ -47,19 +47,46 @@ this does not.
 1. Works out where you are starting: no account, an account without this site,
    or a site that already exists. It never creates a duplicate.
 2. Creates the site — only after you accept the terms in your own words.
-3. Detects the framework, fetches the real snippet, and places it in `<head>`.
-4. Proves a pageview arrives before instrumenting anything else.
-5. Instruments the funnel for your vertical, passing revenue and a product
-   identifier on both the view and the add-to-cart events.
-6. Verifies each event by making it fire, not by reading the code.
-7. Writes the site profile Seal Copilot reads, so the first analysis is cheap.
+3. Detects the framework, fetches the real snippet and the event taxonomy, and
+   reads your code to find where each action happens.
+4. **Plans the install with you before touching a file:** `plan_install` checks
+   the event names, personal data, revenue sent as a number, double pageviews,
+   your site's domains and the payload size, and you approve the plan.
+5. Places the snippet and writes the planned events — and only those.
+6. **Simulates them before anything ships:** `simulate_install` runs the real
+   Sealmetrics tracker on the calls it wrote, in a local sandbox, and fixes what
+   the server would store wrongly or reject. With your dev server running, it
+   also walks the site in a local browser: the tag placed once, the tracker
+   loading, no CSP or console error, one hit per action, one pageview per
+   navigation. It asks before installing a browser and never touches a
+   non-local URL on its own.
+7. Asks you to deploy, then proves the first pageview and each event on the
+   live site — **against the plan**, not just for arriving: a purchase without
+   revenue or an event missing a planned property is reported as a mismatch, and
+   a test order with a recognisable total tells your order from a real one.
+8. Writes the approved plan and the site profile Seal Copilot reads, so the
+   first analysis is cheap.
+
+Planned, simulated and verified are reported separately. Only verified means an
+event reaches Sealmetrics.
 
 ## What it will not do
 
-Create an account without your explicit acceptance of the terms · pass any
-personal identifier into an event · invent an event name outside the
-instrumentation taxonomy · claim an event works because the code looks right ·
-deploy your site.
+Create an account without your explicit acceptance of the terms · edit a file
+before you approve the plan · write an event the plan does not contain · pass
+any personal identifier into an event · invent an event name outside the
+instrumentation taxonomy · call a simulated event verified · deploy your site.
+
+Planning and simulation need `@sealmetrics/mcp` 1.9.0 or later; the browser
+simulation needs the release that adds `level: "page"` and a Chrome, Edge or
+Chromium on the machine. On an older
+server the skill still asks for your approval of a written plan, and marks every
+event "not simulated". Verifying against the plan needs the release that adds
+`expect` to `verify_event_instrumented`.
+
+If you want, it keeps the approved plan in your repository as
+`.sealmetrics/plan.json`, so it is reviewed with the code and the `sealmetrics`
+CLI (0.2.0 or later) can check it in CI. It asks first.
 
 ## Next
 

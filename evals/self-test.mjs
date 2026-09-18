@@ -124,6 +124,27 @@ ok('over budget fails', assess(c, 'on track', [...good, { tool: 'a' }, { tool: '
 ok('rejected call fails', assess(c, 'on track', [...good, { tool: 'x', rejected: 'bad param' }]).some(f => f.includes('invalid call')));
 ok('allowRejected tolerates rejections', assess({ ...c, allowRejected: true }, 'on track', [...good, { tool: 'x', rejected: 'bad' }]).length === 0);
 ok('empty answer fails', assess(c, '   ', good).some(f => f.includes('empty')));
+const planCalls = [{ tool: 'plan_install', args: { events: [{ name: 'product_view' }] } }, { tool: 'plan_install', args: { events: [{ name: 'view_item' }] } }];
+const argsSpec = { callArgs: [{ tool: 'plan_install', mustMatch: [/view_item/], mustNotMatch: [/product_view/] }] };
+ok('callArgs judges the last call by default', assess(argsSpec, 'ok', planCalls).length === 0);
+ok('callArgs which:every sees an earlier bad call', assess({ callArgs: [{ ...argsSpec.callArgs[0], which: 'every' }] }, 'ok', planCalls).some(f => f.includes('forbidden')));
+ok('callArgs fails when the tool was never called', assess(argsSpec, 'ok', good).some(f => f.includes('never called plan_install')));
+ok('callArgs which:any passes when one call matches', assess({ callArgs: [{ tool: 'plan_install', which: 'any', mustMatch: [/product_view/] }] }, 'ok', planCalls).length === 0);
+ok('callArgs which:any fails when none matches', assess({ callArgs: [{ tool: 'plan_install', which: 'any', mustMatch: [/begin_checkout/] }] }, 'ok', planCalls).some(f => f.includes('no plan_install call')));
+
+// verify_event_instrumented test double (PRD-058 F4): the statuses the install skill must read.
+{
+  const { verifyEvent } = await import('./fixtures/_install.mjs');
+  const rows = { purchase: [{ amount: '89.00', properties: { currency: 'EUR' } }, { amount: '1.23', properties: { currency: 'EUR' } }], add_to_cart: [{ properties: { quantity: '1' } }] };
+  ok('verify double: value_exact picks the test order', verifyEvent({ kind: 'conv', name: 'purchase', expect: { value_exact: 1.23 } }, rows).status === 'verified');
+  ok('verify double: two rows without value_exact is verified_by_recency', verifyEvent({ kind: 'conv', name: 'purchase' }, rows).status === 'verified_by_recency');
+  ok('verify double: a missing planned property is a mismatch', verifyEvent({ kind: 'micro', name: 'add_to_cart', expect: { properties_required: ['product_id'] } }, rows).status === 'mismatch');
+  ok('verify double: value_* on a micro is an error', !!verifyEvent({ kind: 'micro', name: 'add_to_cart', expect: { value_min: 1 } }, rows).__textError);
+  ok('verify double: an unknown expect key is an error', !!verifyEvent({ kind: 'micro', name: 'add_to_cart', expect: { properties: ['product_id'] } }, rows).__textError);
+  ok('verify double: simulation_id alone is needs_expectation', verifyEvent({ kind: 'micro', name: 'add_to_cart', simulation_id: 'sim_x' }, rows).status === 'needs_expectation');
+  ok('verify double: capitalised name is not_lowercase', verifyEvent({ kind: 'conv', name: 'Purchase' }, rows).reason === 'not_lowercase');
+}
+ok('optional callArgs tolerates no call', assess({ callArgs: [{ ...argsSpec.callArgs[0], optional: true }] }, 'ok', good).length === 0);
 
 
 // The connector a user actually has announces forty-two tools, not sixty-two.
@@ -161,6 +182,10 @@ console.log('\ntransport gating');
      transports.hidden_on_remote.every((t) => !remoteTools.includes(t)));
   ok('get_channels is NOT hidden — the channel-groups router takes sites:read',
      remoteTools.includes('get_channels'));
+  // From the stack that added the install plan: the remote must not announce
+  // the two tools that only make sense on the user's own machine.
+  ok('remote hides the install plan and simulation',
+     !remoteTools.includes('plan_install') && !remoteTools.includes('simulate_install'));
   ok('remote still offers the replacement', remoteTools.includes('get_top_channels'));
   ok('remote hides list_alerts', !remoteTools.includes('list_alerts'));
   const r = await rpc('ecommerce-healthy', [{ name: 'list_alerts', arguments: {} }], { SEAL_TRANSPORT: 'remote' });

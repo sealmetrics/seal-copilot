@@ -48,11 +48,31 @@ if (filters.length && !selected.length) {
 // Every mock tool is pre-allowed so the run never blocks on a permission prompt.
 // Bash is allowed only for the calculator and for reading the clock: those are
 // the two shell commands the plugin sanctions, and assess.mjs fails any other.
-const allowedTools = [
+// Install cases work on a seeded repository, so they also get the editing and
+// search tools a developer session has; analysis cases never need them.
+const allowedToolsFor = (c) => [
   ...Object.keys(schema).map(t => `mcp__sealmetrics__${t}`),
   'Read', 'Write',
   'Bash(node *calc.mjs*)', 'Bash(date *)',
+  ...(c.seedRepo ? ['Edit', 'Glob', 'Grep'] : []),
 ].join(' ');
+
+// Every file of the working directory except the harness's own: the state dir
+// and the call log. What an install case is allowed to change is exactly this.
+function snapshotRepo(work) {
+  const out = {};
+  const walk = (d, rel) => {
+    let entries; try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (!rel && (e.name === 'state' || e.name === 'calls.jsonl')) continue;
+      if (e.isDirectory()) walk(join(d, e.name), r);
+      else { try { out[r] = readFileSync(join(d, e.name), 'utf8'); } catch {} }
+    }
+  };
+  walk(work, '');
+  return out;
+}
 
 // Anything that can create, change or fire a scheduled task outside this run.
 const SCHEDULER_TOOLS = ['RemoteTrigger', 'CronCreate', 'CronDelete', 'mcp__scheduled-tasks'].join(' ');
@@ -155,7 +175,7 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
       // Installing tracking lives in its own plugin, because the connector this
       // one declares cannot reach the provisioning tools. A case says which.
       '--plugin-dir', join(root, c.pluginDir || 'seal-copilot'),
-      '--allowed-tools', allowedTools,
+      '--allowed-tools', allowedToolsFor(c),
       // Never the scheduler. A user's own settings can allow it, and on
       // 2026-09-13 create-alert cases registered three real hourly cloud
       // routines — for a fixture site, with every connector on the account.
@@ -212,7 +232,12 @@ function runStep(c, step, siteId, work, callLog, resumeId = null) {
       let answer = parsed.text, cliError = null;
       const sessionId = parsed.sessionId || null;
       const truncated = !parsed.sawResult;        // stream ended before the CLI's result event
-      if (parsed.isError) cliError = parsed.result || 'unknown CLI error';
+      // An error result with no text used to read "unknown CLI error", which hid
+      // a reproducible failure behind a phrase. Name the subtype and whatever the
+      // CLI said on stderr.
+      if (parsed.isError) cliError = parsed.result
+        || [parsed.subtype, ...(parsed.errors || []).map(String), err.trim().slice(-300)].filter(Boolean).join(' — ')
+        || 'unknown CLI error';
       if (!answer.trim() && !cliError && err.trim()) cliError = err.trim().slice(0, 300);
 
       const calls = existsSync(callLog)
@@ -242,6 +267,12 @@ async function runCase(c, siteId) {
     writeFileSync(p, content);
     seeded.set(p, content);
   }
+  // A repository to install into, at the root of the working directory.
+  for (const [rel, content] of Object.entries(c.seedRepo || {})) {
+    const p = join(work, rel);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, content);
+  }
   const steps = c.steps || [c];
   const failures = [];
   let calls = 0, rejected = 0, ms = 0, answer = '', toolNames = [], cliError = null;
@@ -249,6 +280,7 @@ async function runCase(c, siteId) {
   let seen = 0, lastSession = null, truncatedStep = false;
   let lastCalls = [], lastCalcOutputs = [], shellWarnings = [];
   for (const [i, step] of steps.entries()) {
+    const before = step.repoUnchanged ? snapshotRepo(work) : null;
     const r = await runStep(c, step, siteId, work, callLog, step.continue ? lastSession : null);
     lastCalls = r.calls; lastCalcOutputs = r.calcOutputs || [];
     shellWarnings = shellWarnings.concat(assessShell(r.shell || []).warnings);
@@ -267,6 +299,19 @@ async function runCase(c, siteId) {
     for (const f of assess({ ...step, maxCalls: undefined, allowRejected: c.allowRejected },
                            r.answer, stepCalls, r.textBlocks, r.shell))
       failures.push(label + f);
+    // "Do not edit a file before approval" is behaviour, so it is judged on the
+    // files, not on what the answer says about them.
+    if (before) {
+      const after = snapshotRepo(work);
+      const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(k => before[k] !== after[k]);
+      if (changed.length) failures.push(`${label}repository changed in a step that must not edit it: ${changed.slice(0, 5).join(', ')}`);
+    }
+    for (const { file, mustMatch = [], mustNotMatch = [] } of step.repoMustMatch || []) {
+      let text = null; try { text = readFileSync(join(work, file), 'utf8'); } catch {}
+      if (text === null) { failures.push(`${label}${file} does not exist`); continue; }
+      for (const re of mustMatch) if (!re.test(text)) failures.push(`${label}${file} missing ${re}`);
+      for (const re of mustNotMatch) if (re.test(text)) failures.push(`${label}${file} contains forbidden ${re}`);
+    }
   }
 
   // Every number in the answer, traced to a tool result, the calculator, or one
@@ -310,8 +355,11 @@ async function runCase(c, siteId) {
   }
 
   const state = readState(join(work, 'state'));
+  // The arguments of every call, for the results file: a callArgs failure is
+  // unreadable without them, and the work dir is about to go.
+  const callTrace = existsSync(callLog) ? readFileSync(callLog, 'utf8').trim() : '';
   rmSync(work, { recursive: true, force: true });
-  return { id: c.id, fixture: c.fixture, error: cliError, state, truncated: truncatedStep,
+  return { id: c.id, fixture: c.fixture, error: cliError, state, callTrace, truncated: truncatedStep,
            pass: !cliError && failures.length === 0,
            failures: cliError ? [`the CLI never ran the case: ${cliError}`] : failures,
            fidelityNotes, shellWarnings, calls, rejected, ms, answer, toolNames };
@@ -390,6 +438,7 @@ for (const c of selected) {
       const f = join(here, 'results', `${r.id}.txt`);
       writeFileSync(f, `# ${r.id} (${r.fixture})\n# failures: ${r.failures.join('; ')}\n` +
                        `# tools: ${called}\n\n${r.answer || ''}` +
+                       (r.callTrace ? `\n\n\n===== TOOL CALLS =====\n${r.callTrace}` : '') +
                        (r.state ? `\n\n\n===== STATE DIR AFTER RUN =====\n${r.state}` : '\n\n(state dir empty)'));
       console.log(`    full answer: ${f}\n`);
     } catch { console.log(''); }
