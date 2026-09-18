@@ -585,3 +585,36 @@ Two rules from it. The Railway steps in `watcher/README.md` now name the branch
 and auto deploy as one step and say the toggle is not retroactive. And a claim
 about automation is only verified by the automation firing on an event nobody
 arranged: here, a later merge producing a build on its own.
+
+## 2026-09-18 · A test that asked the host whether a path was writable
+
+The watcher re-notified an incident that was still open after a redeploy.
+`persistent` meant "a path was given", never "the path can be written", and
+`persist()` swallowed every failure behind a comment claiming it "says so at
+startup". It could not: nothing had checked. A state file that was never
+written looked exactly like one that was.
+
+The fix was right and its test was not. To prove that an unwritable path does
+not claim to persist, the test used `/proc/seal-cannot-write/incidents.json`.
+That is unwritable on a developer's Mac, so the test passed locally and
+`scripts/check.sh` went green. Inside the Docker build, running as root with a
+different `/proc`, the path was not unwritable, the assertion failed, and the
+image failed to build. Production stayed on the previous deployment, so nothing
+broke, but the fix did not land either.
+
+This is the same shape as the reload test that compared timestamps: an
+assertion that quietly asks the host a question, answered one way on macOS and
+another in `node:22-alpine`. The rule then was to compare content instead of
+mtimes. The rule now is the same one generalised: **a test must construct the
+condition it is testing, not look for a host that happens to satisfy it.**
+
+Making the parent a regular file does construct it. `mkdir` onto a file is
+`ENOTDIR` for every user, root included, on every platform. Nothing is being
+asked of the environment.
+
+The cause of the original re-notification is still unconfirmed. The likely
+answer is that Railway mounts the volume as root while the container runs as
+`node`, but the Railway console would not connect to check, and shipping a fix
+for an unverified cause is what produced the auto-deploy mistake the day
+before. The hardened store exists to make the next deploy name the reason in
+its own log.
