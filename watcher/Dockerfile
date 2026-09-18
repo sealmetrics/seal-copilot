@@ -9,7 +9,9 @@
 # On Railway: root directory `/`, Dockerfile path `watcher/Dockerfile`.
 FROM node:22-alpine
 
-# No dependencies. Node 22 has fetch, and timezone maths is Intl.
+# No dependencies beyond su-exec, which the entrypoint uses to give the mounted
+# volume to `node` and then drop root for the process itself.
+RUN apk add --no-cache su-exec
 WORKDIR /app
 COPY watcher ./watcher
 COPY seal-copilot/hooks/scripts/lib ./seal-copilot/hooks/scripts/lib
@@ -21,6 +23,8 @@ RUN node watcher/test.mjs
 # A watchdog that cannot tell the time is useless, so pin the container to UTC
 # and let every rule's own timezone do the work.
 ENV TZ=UTC
-USER node
 
+# Root only long enough to give the volume to `node`; the entrypoint drops it
+# before the watcher starts, so the process itself is never privileged.
+ENTRYPOINT ["/app/watcher/entrypoint.sh"]
 CMD ["node", "watcher/watch.mjs"]
