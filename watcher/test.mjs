@@ -51,7 +51,16 @@ console.log('state that proves it persists');
 
   // The failure that reached production: a path that cannot be written, which
   // used to report persistent: true and lose every incident on restart.
-  const blocked = store('/proc/seal-cannot-write/incidents.json');
+  //
+  // Make the parent a FILE rather than picking a path the host happens to
+  // protect. mkdir onto a file is ENOTDIR for every user including root, so
+  // this holds on macOS, in CI and inside the image. The first version of this
+  // test used /proc, which is unwritable on a developer's machine and was not
+  // in the build sandbox: the test passed here and failed the Docker build,
+  // which is the same mistake as the reload test that compared timestamps.
+  const blocker = join(dir, 'not-a-directory');
+  writeFileSync(blocker, 'a file, so that mkdir onto it cannot succeed');
+  const blocked = store(join(blocker, 'incidents.json'));
   ok('an unwritable path does NOT claim to persist', blocked.persistent === false);
   ok('and says why, so the warning can name it',
      typeof blocked.unwritableBecause === 'string' && blocked.unwritableBecause.length > 0,
