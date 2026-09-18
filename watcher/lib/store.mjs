@@ -4,8 +4,8 @@
 // is still failing is "still open since", not a new incident. It reopens only
 // after it has recovered and broken again, and never inside the cooldown.
 //
-// State lives in a file when a path is given (a Railway volume), otherwise in
-// memory. Memory is honest about its cost: on a restart an open incident is
+// State lives in a file when a path is given AND that path proves writable (a
+// Railway volume), otherwise in memory. Memory is honest about its cost: on a restart an open incident is
 // forgotten and the next evaluation notifies again. That is a duplicate
 // notification, not a missed one, which is the right way round.
 
@@ -21,16 +21,41 @@ export function store(path) {
   state.incidents ||= {};
   state.due ||= {};
 
-  const persist = () => {
-    if (!path) return;
+  // Prove the path is writable instead of assuming it. `persistent` used to mean
+  // "a path was given", so a volume the process cannot write made every save
+  // fail inside a silent catch: the startup warning never appeared, the state
+  // file was never written, and each restart re-notified an incident that was
+  // still open. That is the one failure this file exists to prevent, and it
+  // reached production on 2026-09-18.
+  let writable = false;
+  let unwritableBecause = null;
+  if (path) {
     try {
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify(state, null, 2));
-    } catch { /* a read-only disk degrades to memory, and says so at startup */ }
+      writable = true;
+    } catch (e) { unwritableBecause = e.message; }
+  }
+
+  let warned = false;
+  const persist = () => {
+    if (!path || !writable) return;
+    try {
+      writeFileSync(path, JSON.stringify(state, null, 2));
+    } catch (e) {
+      // A disk that goes away mid-run degrades to memory, but says so once.
+      writable = false;
+      unwritableBecause = e.message;
+      if (!warned) {
+        warned = true;
+        console.log(`${new Date().toISOString()} WARNING: writing ${path} failed, incidents are in memory from now on and a restart will re-notify: ${e.message}`);
+      }
+    }
   };
 
   return {
-    persistent: Boolean(path),
+    get persistent() { return writable; },
+    get unwritableBecause() { return unwritableBecause; },
 
     /** The open incident for a rule, or null. */
     open(key) {
