@@ -21,8 +21,8 @@ request always runs the full procedure, even minutes after the last one. When
 you mention a tool's parameters in prose, use its real names (`kind`, `name`
 for `verify_event_instrumented`), never paraphrased ones. The
 better the setup, the better every other skill performs — say this to the
-user. and `get_tracking_code` is the first call after the
-site is resolved.
+user. Budget: ≤13 calls, 14 when an approved install plan exists (step 10), and
+`get_tracking_code` is the first call after the site is resolved.
 
 Steps marked **(local only)** need the local connector; on `remote` they are
 skipped and named once in the gap table as "not checkable from here", never
@@ -81,6 +81,16 @@ connector decides which tools exist" in
 9. `get_microconversions(period=30d)` — check that each canonical funnel
    stage receives at least 10 events/day; below that the watchdog baseline
    will be too noisy to be useful and that is a gap worth flagging.
+10. **The approved install plan, when there is one.** If
+    `<state-dir>/<site_id>/install-plan.json` exists, the install was approved
+    event by event, so audit the data against that plan as well as against the
+    canonical funnel. The four checks, instrumented but not seen, drift, lost
+    property and broken revenue, are defined in
+    `skills/seal-copilot/references/install-plan.md` together with the single
+    extra call they need. Every gap is tagged **plan `<plan_id>`** and its fix is
+    always the same: plan and simulate the change with `seal-install`, then
+    deploy and verify. Never a code patch written here. Without the file, skip
+    this step silently, because most sites were not installed with a plan.
 
 ## Output format
 
@@ -89,7 +99,8 @@ connector decides which tools exist" in
 **Then a gap table:** gap → why it matters (which analysis it unlocks) →
 how to fix → effort (S/M/L). Order by value unlocked, not by effort.
 
-For fixes, the snippet comes **verbatim** from the `js_api` signatures you
+For a gap tagged with the plan, the fix is the `seal-install` round in step 10,
+not a snippet. For other fixes, the snippet comes **verbatim** from the `js_api` signatures you
 fetched in step 0 — or, **(local only)**, from `get_instrumentation_guide`.
 Rules that are not negotiable:
 

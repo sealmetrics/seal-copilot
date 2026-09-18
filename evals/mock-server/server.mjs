@@ -17,8 +17,9 @@ const callLog = process.env.SEAL_CALL_LOG || '';
 
 // Which connector to imitate. `remote` is the OAuth server in the plugin's
 // .mcp.json — what nearly every user installs — and it does not announce the
-// twenty tools whose backend routes need the generic `read` or `write` scope.
-// `local` is `npx @sealmetrics/mcp`, which announces all sixty-two.
+// gated tools: backend routes that need the generic `read` or `write` scope,
+// and the install plan and simulation, which run code locally.
+// `local` is `npx @sealmetrics/mcp`, which announces every tool in the schema.
 //
 // A skill that plans a step around a tool the connector withheld is a defect
 // the single-transport mock could never see, because it served everything.

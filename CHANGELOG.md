@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.16.0 — 2026-09-18 (seal-install 1.15.0)
+
+The install work of four branches that never shipped, rebuilt on current main
+as one change. `setup-audit` now compares the data against the plan the user
+approved. The branches were opened before the size caps and the generated
+transport lists existed, so both were reconciled here rather than bypassed.
+
+`setup-audit` audits a site against its approved install plan. E9 of
+`docs/PRD-plan-simulate-v1.md` (F5).
+
+### Why
+An install that was planned, simulated and verified keeps changing after it ships:
+a checkout refactor sends the total as a string again, a component loses its
+`product_id`, someone adds a call nobody planned. The canonical funnel does not
+catch any of that on a site that already has the events — only the plan says what
+each event is supposed to carry.
+
+### Changed — `setup-audit`
+- **Step 10.** When `<state-dir>/<site_id>/install-plan.json` exists, four checks
+  against it:
+  - **Instrumented, not seen:** planned events with zero volume, with a "too
+    early" note under 7 days since approval.
+  - **Drift:** events arriving that the plan does not contain; named, never
+    renamed.
+  - **Lost property:** a planned key missing from `list_property_keys`
+    (`conversion_items` for purchase items).
+  - **Broken revenue:** more than 5% of the last 200 rows of a planned revenue
+    conversion with amount 0, from `get_conversions_raw`; one call.
+- Those gaps are tagged with the `plan_id`, and their fix is always a planning and
+  simulation round with `seal-install`, never a snippet written in the audit
+  (RF-902).
+- Budget 13 → 14 only when the plan exists; the reference output shows two plan
+  gaps.
+- `state-schema.md` names what `setup-audit` reads from the plan.
+
+### Evals
+- `setup-audit-checks-the-install-plan`, fixture `ecommerce-plan-drift`. A store
+  three weeks after its install:
+  - `begin_checkout` never arrives;
+  - `cta_click` was never planned;
+  - `product_id` is gone;
+  - 26 of 200 purchases have amount 0.
+- The case asserts the `plan_id`, each of the four findings, 13% (or 26/200), and
+  `seal-install` with a simulation as the fix.
+- `rawEvents` in `_lib.mjs` carries `amount` when a fixture gives one.
+
 ## 1.15.1 — 2026-09-17
 
 Saved alert rules can now actually watch, and nothing in Sealmetrics had to
@@ -188,6 +234,198 @@ from 62, including `plan_install` and `simulate_install`.
 **Not verified.** `validate-fixtures.mjs` and the three real-account runs need a
 Sealmetrics API key, which was not available; the full `--runs 3` certification
 has not been run. See `docs/PRD-mecanismo-v1.md` §11.
+
+## seal-install 1.15.0 — 2026-09-15 (Seal Copilot unchanged)
+
+The installer verifies each event against the approved plan, not just for
+arriving, and offers to keep the plan in the repository. Needs `@sealmetrics/mcp`
+with `expect` in `verify_event_instrumented` (sealmetrics2 PRD-058 F4,
+adinton/sealmetrics2#389).
+
+### Why
+An event that arrives is not an event that works. A purchase with the total as a
+string arrives with revenue 0; an add-to-cart that lost its `product_id` in a later
+edit arrives and breaks per-SKU analysis; and on a site with traffic, "a row
+with that name in the last minutes" may be a real visitor's. The verifier also
+confirmed microconversions of any name until F4 fixed its filter.
+
+### Changed — `install-sealmetrics`
+- **Step 7.** For each conversion with revenue, the skill asks for one test order
+  with a recognisable total once the site is live, and for the exact amount.
+- **Step 9.** `verify_event_instrumented` gets the last passing `simulation_id`
+  **and** an explicit `expect` built from `install-plan.json` — the deploy usually
+  happens in another session, where the simulation is no longer in memory:
+  `value_min` for a conversion with revenue, `value_exact` with the amount the user
+  paid (never an invented one), `properties_required` with the keys the call
+  always sends. Each status is read literally: only `verified` is ✓;
+  `verified_by_recency` is "✓ by recency" with a request for the test order;
+  `mismatch` is quoted, fixed, re-simulated and redeployed; `warning_pii` says the
+  stored rows carry it; `rejected` (`out_of_taxonomy`, `not_lowercase`) is a plan
+  change. On a connector without expectations: "✓ arrived, not compared".
+- **Step 10.** Offers `.sealmetrics/plan.json` and `.sealmetrics/cases.json` in the
+  repository — reviewed with the code, read by the next agent, and checked in CI
+  by `sealmetrics plan` / `simulate` (CLI 0.2.0). Written only on a yes; a CI
+  workflow only if asked, from the CLI's README.
+- Step 9 shows the exact call for a microconversion and a conversion, says
+  that `expect` takes only `value_min`, `value_exact` and `properties_required`,
+  that every call carries it (microconversions included), and that
+  `properties_required` comes from the plan, never from the code as deployed.
+  Coming back after the deploy starts at Step 8 from the saved plan and simulation.
+- The description triggers on verifying too ("the install is deployed, verify
+  it", "check the events arrive", "comprobar la instalación").
+- Two new "do not" rules: no invented test amount, no `.sealmetrics/` or CI
+  workflow without the user's yes. The reference output's third turn verifies
+  against the plan and shows a match by recency.
+
+### Seal Copilot reference
+- `state-schema.md`: `verified_by_recency` and `mismatch` are not verification;
+  the repository copy of the plan, and what a different `plan_id` there means.
+
+### Evals
+- `install-verifies-against-the-plan`: a deployed store whose add-to-cart lost
+  `product_id`, three recent `view_item` rows and two purchases (a real 89.00 and
+  the user's 1.23 test). Asserts the purchase is verified with `value_exact` 1.23,
+  `add_to_cart` with `properties_required` including `product_id`, no amount on a
+  microconversion, the mismatch named and the recency match not given a plain ✓.
+- Test double `verifyEvent` in `_install.mjs` with the F4 statuses; self-test
+  covers it. Fixture `install-verify-live`. `seedRepo` of the installed store and
+  `seedState` with the approved plan and its simulation.
+- What the first runs found, all fixed before this release:
+  - The skill did not load for "verify it all works", and the answer said the
+    install was "confirmed working end-to-end" with `add_to_cart` broken.
+    Fixed with the description triggers above.
+  - It sent `expect.properties` instead of `properties_required`. The verifier
+    ignored the unknown key and answered `verified`; it now rejects unknown keys
+    (adinton/sealmetrics2#389), and the double does the same.
+  - It took `properties_required` from the deployed code, which no longer sent
+    `product_id`.
+  - It passed only `simulation_id` for microconversions (2 runs in 3). The
+    verifier compared nothing and answered `verified`; it now answers
+    `needs_expectation` (adinton/sealmetrics2#389), the skill reads that status as
+    "call again with `expect`", and the double does the same.
+- `run-evals.mjs` writes every tool call with its arguments into
+  `results/<case>.txt`; a `callArgs` failure was unreadable without them.
+- `mcp-schema.json` / `mcp-schema-full.json`: `verify_event_instrumented` gains
+  `expect`, `simulation_id` and `lookback_minutes` (F4 build).
+
+## seal-install 1.14.0 — 2026-09-14 (Seal Copilot unchanged)
+
+The installer also simulates the install in a local browser when the site's dev
+server is running. Needs `@sealmetrics/mcp` with `simulate_install` at
+`level: "page"` (sealmetrics2 PRD-058 F3, adinton/sealmetrics2#387).
+
+### Changed — `install-sealmetrics`
+- **Step 6b.** After the call-level simulation passes, and only when the user has
+  said the dev server is running (or asked once), `simulate_install` with
+  `level: 'page'`, the local `base_url` and one flow per event built from the
+  selectors in the code the skill read. The browser run catches what the call
+  level cannot: the tag missing or twice, the tracker not loading, a CSP, a console
+  error, a hit not arriving exactly once, a navigation counted twice. Failures are
+  fixed within the same three rounds; a broken selector is fixed in the flow, not
+  in the site. A purchase that needs a real payment is not walked, and says so.
+- **Never on its own:** no browser or `playwright-core` install (on `unavailable`
+  it shows the commands and asks), no dev server started, no `allow_remote_url`
+  without the user's explicit request.
+- The `Simulated` column says which levels ran (`✓ call · ✓ page`) and why the
+  page level did not. Budget 22 → 24.
+
+### Evals
+- `install-simulates-in-the-browser`: with the dev server announced, a page-level
+  run against `localhost:3000` with flows for the planned events, never a remote
+  target, never a verification before deploy.
+- `install-asks-before-installing-a-browser`: on a machine without a browser the
+  skill names what is missing and asks.
+- Test double: `level: 'page'` answers `unavailable`, `invalid_input` for a
+  non-local `base_url`, or passing flows. New fixture
+  `install-plan-simulate-no-browser`. `callArgs` gains `which: 'any'`.
+- `mcp-schema.json` / `mcp-schema-full.json`: `simulate_install` parameters from
+  the F3 build.
+- All six install cases pass; the two new ones 3/3 each. The first run failed the
+  browser case on its own assertion, which banned the production domain anywhere
+  in the arguments — and the plan always carries it. It now judges `base_url`.
+- The reference output notes that its "Turn" headings are labels, after a run
+  printed them in its answer.
+
+## 1.13.3 — 2026-09-14 (seal-install 1.13.0)
+
+The installer plans an install with the user before it edits a file, and
+simulates the calls it wrote against the real tracker before it asks anyone to
+deploy. F2 of `docs/PRD-plan-simulate-v1.md`; the tools shipped in
+`@sealmetrics/mcp` 1.9.0 (sealmetrics2 PRD-058).
+
+### Why
+Until now the only test of an install was production. pixel-service answers
+204 to hits it rejects, so a purchase sent with the total as a string arrived,
+passed `verify_event_instrumented`, and stored revenue 0; a hit from a domain the
+site does not list, or a body over 15 KB, disappeared without an error; and the
+user approved nothing between "install Sealmetrics" and a diff across five files.
+
+### Changed — `install-sealmetrics`
+- **Step 3, plan.** The skill calls `plan_install` with the loader and every event
+  it intends to write, fixes every `block` finding without showing a blocked plan
+  to the user, shows `summary_markdown`, and waits for approval in the user's own
+  words. "Install Sealmetrics" is not approval of a plan. The approved plan is
+  saved as `install-plan.json` with `plan_id` and `approval_quote`; a change after
+  approval is a new plan with its own approval.
+- **Steps 4–5.** Only planned events are written.
+- **Step 6, simulate.** `simulate_install` with the call as written and synthetic
+  `vars` typed as the site produces them — a string total stays a string, which is
+  the point. Failures are fixed and re-simulated, at most three rounds; a stale plan
+  goes back to planning. Nobody is asked to deploy while a simulation fails.
+- **One deploy.** The pixel and the events ship together; `verify_setup` and then
+  `verify_event_instrumented` run on the live site.
+- **Planned, simulated, verified** are three columns in the final table and three
+  words the skill never merges.
+- On a connector without the new tools (before 1.9.0) the skill still asks for
+  approval of a written plan and marks events "not simulated".
+- Budget 15 → 22 calls. The reference output shows the three turns, including a
+  string total caught in simulation.
+- `state-schema.md` documents `install-plan.json` and `simulations/`.
+
+### Fixed — seal-install knows where its state goes
+The skill has always written `profile.json` and `runs.jsonl` under
+`<state-dir>`, but only Seal Copilot had the SessionStart hook that announces
+that directory. In seal-install sessions the model was never told it, and the
+first eval that asserted on the approved plan found the state directory empty.
+seal-install now carries a minimal SessionStart hook with the same resolution
+(`$SEAL_COPILOT_STATE_DIR`, else `~/.seal-copilot`), so both plugins share one
+state root.
+
+### Evals
+- Three cases on a seeded Next.js store whose orders API types the total as a
+  string: `install-plans-before-editing` (the repository is byte-identical after
+  the planning turn, and the plan carries the taxonomy names, the real snippet and
+  a product identifier, with no order id and no route pageview),
+  `install-simulates-then-replans-a-change` (simulates with the string total and
+  ends with `Number()` in the file, never verifies before a deploy, and replans a
+  change requested after approval), and `install-refuses-legacy-event-names`
+  (explaining the rejection and asking first is correct; whatever it plans must
+  not carry the rejected names). The first run failed two cases on the eval, not
+  the skill: the seeded store had no newsletter form to instrument, and the
+  legacy case demanded a plan where asking the user is the documented step.
+- Harness: `seedRepo`, step-level `repoUnchanged` and `repoMustMatch`, and
+  `callArgs` (with `which` and `optional`), which asserts on the arguments of a
+  tool's calls rather than its name. Seeded cases also get Edit, Glob and Grep.
+- Resuming a step used the first session id in the stream. Once seal-install
+  had a SessionStart hook, the hook's events came first with an id no
+  conversation is stored under, and every third step died with "No conversation
+  found". The runner now resumes the id the CLI's result event names. An error
+  result with no text also stops reading "unknown CLI error": the subtype and
+  stderr are reported, which is how this one was found. Both resuming cases
+  (`install-simulates-then-replans-a-change`, `explicit-rerun-actually-runs`)
+  pass after the change.
+- `fixtures/_install.mjs`: real-shaped `get_tracking_code` and instrumentation
+  guide (the old fixture taught `sealmetrics.pageview()` on route changes and an
+  invented CDN URL), and a test double of `plan_install` / `simulate_install` with
+  the real response shape and the rules the cases exercise. The rules themselves
+  are tested in setup-core against the real tracker.
+- `mcp-schema.json` gains the two tools, dumped from the 1.9.0 build;
+  `tool-availability.json` gates them. The self-test counts tools from the
+  snapshot instead of a literal 62 / 42.
+
+**Until `@sealmetrics/mcp` 1.9.0 is on npm,** `check-schema-drift.mjs --online`
+reports `plan_install` and `simulate_install` as removed. That is the expected
+result of this change landing first.
 
 ## 1.13.2 — 2026-09-14 (seal-install 1.12.1)
 

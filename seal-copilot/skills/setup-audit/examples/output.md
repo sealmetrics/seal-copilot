@@ -30,6 +30,14 @@ campaign → channel **Paid Search**, priority above the default Referral rule.
 I cannot create or dry-run it from here, so add it in the dashboard and the
 next audit will confirm the split moved.
 
+**When the site was installed with an approved plan** (step 10), its gaps sit in
+the same table, tagged with the plan, and their fix is a planning round, not code:
+
+| Gap | Why it matters | Fix | Effort |
+|---|---|---|---|
+| Revenue lost on 13% of `purchase` rows — plan `a3f9c21e7b04` | 26 of the last 200 purchases arrived with amount 0, so revenue per channel is understated by at least that share. The plan sends `Number(order.total)`; some checkout path sends the total as a string again | Plan and simulate the checkout change with `seal-install`, then deploy and verify it | S |
+| `begin_checkout` planned, not seen — plan `a3f9c21e7b04` | Approved and written, zero events in 30 days: the funnel jumps from cart to purchase | Plan and simulate it again with `seal-install`; the simulation shows whether the call runs | S |
+
 **Not checked:** saved segments and live channel rules need
 the local connector, which this session does not have. They are unscored above,
 not passing.

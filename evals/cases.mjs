@@ -7,6 +7,12 @@
 //   mustCall       — these tools must have been called
 //   mustNotCall    — these tools must never be called
 //   allowRejected  — set true only for cases that deliberately test error paths
+//   callArgs       — [{ tool, which: 'last'|'every'|'any', optional, mustMatch, mustNotMatch }]
+//                    regexes over JSON.stringify(args) of that tool's calls
+//   seedRepo       — { 'path': 'content' } written to the working directory
+//                    before the case; also allows Edit, Glob and Grep
+//   repoUnchanged  — (step) the seeded repository must be identical after it
+//   repoMustMatch  — (step) [{ file, mustMatch, mustNotMatch }] on repo files
 //   maxTextBlocks  — how many assistant text blocks the run may emit. Core rule
 //                    11 forbids narrating between tool calls, and a phrase ban
 //                    cannot catch "Now channels." / "Drilling into campaigns."
@@ -41,6 +47,181 @@
 // banning a token, grep the skill's examples/output.md for it.
 // eslint-disable-next-line no-unused-vars -- kept for future prose assertions
 const SEP = '[\\s\\u2010-\\u2015\\u2212-]?';   // space, any dash, or nothing
+
+import { planId as installPlanId } from './fixtures/_install.mjs';
+
+// A small Next.js store to install into. The orders API types money as a
+// string, exactly as the sites that lost revenue to it did: the skill must
+// carry that type into the simulation and fix the call, not assume a number.
+const STORE_REPO = {
+  'package.json': JSON.stringify({ name: 'demo-store', private: true, scripts: { dev: 'next dev' },
+    dependencies: { next: '14.2.5', react: '18.3.1', 'react-dom': '18.3.1' } }, null, 2) + '\n',
+  'app/layout.tsx': `import Footer from '../components/Footer';
+
+export const metadata = { title: 'Demo Store' };
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="es">
+      <head />
+      <body>
+        {children}
+        <Footer />
+      </body>
+    </html>
+  );
+}
+`,
+  'lib/api.ts': `export type Product = { id: string; slug: string; name: string; price: number };
+// The orders service serialises money as strings.
+export type Order = { id: string; total: string; currency: string; items: { sku: string; qty: number; unit_price: string }[] };
+
+export async function getProduct(slug: string): Promise<Product> {
+  const res = await fetch(\`https://api.demo-store.com/products/\${slug}\`);
+  return res.json();
+}
+
+export async function getOrder(id: string): Promise<Order> {
+  const res = await fetch(\`https://api.demo-store.com/orders/\${id}\`);
+  return res.json();
+}
+`,
+  'app/products/[slug]/page.tsx': `import { getProduct } from '../../../lib/api';
+import AddToCartButton from '../../../components/AddToCartButton';
+
+export default async function ProductPage({ params }: { params: { slug: string } }) {
+  const product = await getProduct(params.slug);
+  return (
+    <main>
+      <h1>{product.name}</h1>
+      <p>{product.price} €</p>
+      <AddToCartButton product={product} />
+    </main>
+  );
+}
+`,
+  'components/AddToCartButton.tsx': `'use client';
+import type { Product } from '../lib/api';
+
+export default function AddToCartButton({ product }: { product: Product }) {
+  const add = async () => {
+    await fetch('/api/cart', { method: 'POST', body: JSON.stringify({ id: product.id, qty: 1 }) });
+  };
+  return <button onClick={add}>Añadir al carrito</button>;
+}
+`,
+  'components/Footer.tsx': `'use client';
+
+export default function Footer() {
+  const subscribe = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await fetch('/api/newsletter', { method: 'POST', body: new FormData(event.currentTarget) });
+  };
+  return (
+    <footer>
+      <form onSubmit={subscribe}>
+        <input type="email" name="email" placeholder="Tu email" />
+        <button>Suscribirme</button>
+      </form>
+    </footer>
+  );
+}
+`,
+  'app/checkout/page.tsx': `export default function CheckoutPage() {
+  return <main><h1>Checkout</h1><form action="/api/pay" method="post"><button>Pagar</button></form></main>;
+}
+`,
+  'app/checkout/success/page.tsx': `'use client';
+import { useEffect, useState } from 'react';
+import { getOrder, type Order } from '../../../lib/api';
+
+export default function SuccessPage({ searchParams }: { searchParams: { order: string } }) {
+  const [order, setOrder] = useState<Order | null>(null);
+  useEffect(() => { getOrder(searchParams.order).then(setOrder); }, [searchParams.order]);
+  if (!order) return null;
+  return <main><h1>Gracias</h1><p>Total: {order.total} {order.currency}</p></main>;
+}
+`,
+};
+
+// The same store after the install shipped (PRD-058 F4). A later edit dropped
+// product_id from the add-to-cart call, which the plan requires: production no
+// longer matches the plan, and only a verification against the plan sees it.
+const INSTALLED_PLAN = {
+  account_id: 'acct_demo', vertical: 'ecommerce', repo_path: '.', site: { domain: 'demo-store.com' },
+  loader: { file: 'app/layout.tsx', snippet_url: 'https://t.sealmetrics.com/t.js?id=acct_demo', stub: false },
+  events: [
+    { kind: 'micro', name: 'view_item', trigger: { type: 'page', where: 'components/ViewItem.tsx' },
+      properties: { product_id: { source: 'product.id', type: 'string', example: 'tee-01' }, price: { source: 'product.price', type: 'number', example: 19.9 } } },
+    { kind: 'micro', name: 'add_to_cart', trigger: { type: 'click', where: 'components/AddToCartButton.tsx' },
+      properties: { product_id: { source: 'product.id', type: 'string', example: 'tee-01' }, quantity: { source: '1', type: 'number', example: 1 } } },
+    { kind: 'micro', name: 'begin_checkout', trigger: { type: 'page', where: 'app/checkout/page.tsx' },
+      properties: { items_count: { source: 'cart.items.length', type: 'number', example: 1 } } },
+    { kind: 'conv', name: 'purchase', trigger: { type: 'page', where: 'app/checkout/success/page.tsx' },
+      value: { source: 'Number(order.total)', type: 'number', example: 149.99 },
+      properties: { currency: { source: 'order.currency', type: 'string', example: 'EUR' },
+        items: { type: 'list', max_items: 20, item: { product_id: 'string', quantity: 'number', price: 'number' } } } },
+  ],
+  product_identifier: { key: 'product_id', applies_to: ['view_item', 'add_to_cart', 'purchase.items'] },
+};
+const INSTALLED_PLAN_ID = installPlanId(INSTALLED_PLAN);
+
+const INSTALLED_REPO = {
+  ...STORE_REPO,
+  'app/layout.tsx': STORE_REPO['app/layout.tsx'].replace('<head />', '<head>\n        <script src="https://t.sealmetrics.com/t.js?id=acct_demo" defer />\n      </head>'),
+  'components/ViewItem.tsx': `'use client';
+import { useEffect } from 'react';
+import type { Product } from '../lib/api';
+
+export default function ViewItem({ product }: { product: Product }) {
+  useEffect(() => { window.sealmetrics?.micro('view_item', { product_id: product.id, price: product.price }); }, [product.id]);
+  return null;
+}
+`,
+  'app/products/[slug]/page.tsx': STORE_REPO['app/products/[slug]/page.tsx']
+    .replace("import AddToCartButton from '../../../components/AddToCartButton';", "import AddToCartButton from '../../../components/AddToCartButton';\nimport ViewItem from '../../../components/ViewItem';")
+    .replace('<h1>{product.name}</h1>', '<ViewItem product={product} />\n      <h1>{product.name}</h1>'),
+  'components/AddToCartButton.tsx': `'use client';
+import type { Product } from '../lib/api';
+
+export default function AddToCartButton({ product }: { product: Product }) {
+  const add = async () => {
+    await fetch('/api/cart', { method: 'POST', body: JSON.stringify({ id: product.id, qty: 1 }) });
+    // Quantity picker refactor: the event lost its product id.
+    window.sealmetrics?.micro('add_to_cart', { quantity: 1 });
+  };
+  return <button onClick={add}>Añadir al carrito</button>;
+}
+`,
+  'app/checkout/page.tsx': `'use client';
+import { useEffect } from 'react';
+
+export default function CheckoutPage() {
+  useEffect(() => { window.sealmetrics?.micro('begin_checkout', { items_count: 1 }); }, []);
+  return <main><h1>Checkout</h1><form action="/api/pay" method="post"><button>Pagar</button></form></main>;
+}
+`,
+  'app/checkout/success/page.tsx': STORE_REPO['app/checkout/success/page.tsx']
+    .replace("  if (!order) return null;", `  useEffect(() => {
+    if (!order || sessionStorage.getItem('sm_purchase_' + order.id)) return;
+    sessionStorage.setItem('sm_purchase_' + order.id, '1');
+    window.sealmetrics?.conv('purchase', Number(order.total), {
+      currency: order.currency,
+      items: order.items.map((i) => ({ product_id: i.sku, quantity: i.qty, price: Number(i.unit_price) })),
+    });
+  }, [order]);
+  if (!order) return null;`),
+};
+
+const INSTALLED_STATE = {
+  'acct_demo/install-plan.json': JSON.stringify({ plan_id: INSTALLED_PLAN_ID, approved_at: '2026-09-14T10:02:11Z', approval_quote: 'Looks good, go ahead with that plan.', plan: INSTALLED_PLAN }, null, 2),
+  'acct_demo/simulations/sim_5b1e2c7d9a40.json': JSON.stringify({ status: 'ok', level: 'call', simulation_id: 'sim_5b1e2c7d9a40', plan_id: INSTALLED_PLAN_ID, verdict: 'pass',
+    cases: ['view_item', 'add_to_cart', 'begin_checkout', 'purchase'].map((event) => ({ event, verdict: 'pass', checks: [{ code: 'SM-01', result: 'pass', message: 'Exactly one hit.' }] })),
+    wording: 'Simulated, not verified: nothing has reached Sealmetrics.' }, null, 2),
+};
+
+const INSTALL_PROMPT = 'Install Sealmetrics on demo-store.com. The repo is the current directory. ' +
+  'It is a store: I want product views, add to cart, checkout and purchases with revenue.';
 
 // A scheduled alert check receives its rule in the prompt, because the runner
 // that fires it may have no filesystem. The rules are BUILT AT LOAD TIME rather
@@ -272,6 +453,192 @@ export default [
     mustCall: ['list_sites'],
     mustNotCall: ['provision_site'],
   },
+  // ---- PRD-058 F2: plan and simulate before anything ships ----
+  {
+    id: 'install-plans-before-editing',
+    // The install tools live only on the local transport: simulate_install runs
+    // agent-written JavaScript in node:vm, acceptable only on the user's own
+    // machine. These cases relied on `local` being the harness default, which it
+    // stopped being on 2026-09-17, so they say it themselves now.
+    transport: 'local',
+    fixture: 'install-plan-simulate',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 12,
+    steps: [{
+      prompt: INSTALL_PROMPT,
+      // Planning is the whole step: the plan is proposed, and nothing is
+      // written, simulated or verified until the user answers it.
+      repoUnchanged: true,
+      mustCall: ['plan_install'],
+      mustNotCall: ['simulate_install', 'verify_setup', 'verify_event_instrumented', 'provision_site'],
+      callArgs: [{
+        tool: 'plan_install',
+        mustMatch: [/"view_item"/, /"add_to_cart"/, /"begin_checkout"/, /"purchase"/, /t\.sealmetrics\.com\/t\.js\?id=acct_demo/, /product_id/],
+        mustNotMatch: [/product_view|start_checkout/, /order_?id/i, /"kind":"pageview"[^}]*"route"/],
+      }],
+      // It has to end on the question, whatever the wording.
+      mustMatch: [/approv|go ahead|proceed|shall i|should i|do you want|confirm|ok to|happy with|¿/i],
+    }],
+  },
+  {
+    id: 'install-simulates-then-replans-a-change',
+    // The install tools live only on the local transport: simulate_install runs
+    // agent-written JavaScript in node:vm, acceptable only on the user's own
+    // machine. These cases relied on `local` being the harness default, which it
+    // stopped being on 2026-09-17, so they say it themselves now.
+    transport: 'local',
+    fixture: 'install-plan-simulate',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 24,
+    steps: [
+      { prompt: INSTALL_PROMPT, repoUnchanged: true, mustCall: ['plan_install'], mustNotCall: ['simulate_install'] },
+      {
+        continue: true,
+        prompt: 'Looks good, go ahead with that plan.',
+        mustCall: ['simulate_install'],
+        // Nothing is deployed, so nothing can be verified yet.
+        mustNotCall: ['verify_setup', 'verify_event_instrumented'],
+        callArgs: [
+          { tool: 'simulate_install', mustMatch: [/"plan_id"/, /"purchase"/] },
+          // The simulation carries the site's real type for the total, and the
+          // final call wraps it — whether it caught the string or planned for it.
+          { tool: 'simulate_install', mustMatch: [/"total":"\d+(\.\d+)?"/, /Number\(|parseFloat\(/] },
+        ],
+        repoMustMatch: [
+          { file: 'app/layout.tsx', mustMatch: [/t\.sealmetrics\.com\/t\.js\?id=acct_demo/] },
+          { file: 'app/checkout/success/page.tsx', mustMatch: [/conv\(\s*['"]purchase['"]/, /Number\(|parseFloat\(/], mustNotMatch: [/order_?id['"]?\s*:/i] },
+        ],
+      },
+      {
+        continue: true,
+        prompt: 'One more thing: also track newsletter signups from the footer form.',
+        // A change after approval is a new plan, with its own approval.
+        mustCall: ['plan_install'],
+        callArgs: [{ tool: 'plan_install', mustMatch: [/"newsletter_signup"/] }],
+      },
+    ],
+    stateMustContain: [/"plan_id"/, /approval_quote/],
+  },
+  // ---- PRD-058 F3: simulate in a browser when the dev server runs ----
+  {
+    id: 'install-simulates-in-the-browser',
+    // The install tools live only on the local transport: simulate_install runs
+    // agent-written JavaScript in node:vm, acceptable only on the user's own
+    // machine. These cases relied on `local` being the harness default, which it
+    // stopped being on 2026-09-17, so they say it themselves now.
+    transport: 'local',
+    fixture: 'install-plan-simulate',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 16,
+    steps: [
+      { prompt: INSTALL_PROMPT + ' The dev server is running at http://localhost:3000.', repoUnchanged: true, mustCall: ['plan_install'], mustNotCall: ['simulate_install'] },
+      {
+        continue: true,
+        prompt: 'Looks good, go ahead with that plan.',
+        mustCall: ['simulate_install'],
+        mustNotCall: ['verify_setup', 'verify_event_instrumented'],
+        callArgs: [{
+          tool: 'simulate_install',
+          which: 'any',
+          // A page-level run against the local server, with flows it built from the code.
+          mustMatch: [/"level":"page"/, /localhost:3000/, /"flows"/, /"add_to_cart"/],
+          // Never a remote target the user did not ask for. The plan itself carries
+          // the production domain, so judge base_url, not the whole payload.
+          mustNotMatch: [/"allow_remote_url":true/, /"base_url":"https?:\/\/(?!localhost|127\.0\.0\.1)/],
+        }],
+      },
+    ],
+  },
+  {
+    id: 'install-asks-before-installing-a-browser',
+    // The install tools live only on the local transport: simulate_install runs
+    // agent-written JavaScript in node:vm, acceptable only on the user's own
+    // machine. These cases relied on `local` being the harness default, which it
+    // stopped being on 2026-09-17, so they say it themselves now.
+    transport: 'local',
+    fixture: 'install-plan-simulate-no-browser',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 16,
+    steps: [
+      { prompt: INSTALL_PROMPT + ' The dev server is running at http://localhost:3000.', repoUnchanged: true, mustCall: ['plan_install'] },
+      {
+        continue: true,
+        prompt: 'Looks good, go ahead with that plan.',
+        mustCall: ['simulate_install'],
+        callArgs: [{ tool: 'simulate_install', which: 'any', mustMatch: [/"level":"page"/] }],
+        // unavailable: name what is missing, and ask — installing is the user's call.
+        mustMatch: [/playwright|chromium|browser/i, /\?|would you like|do you want|shall i|should i|want me to|let me know/i],
+      },
+    ],
+  },
+  // ---- PRD-058 F4: verify against the plan, not just for arrival ----
+  {
+    id: 'install-verifies-against-the-plan',
+    // The install tools live only on the local transport: simulate_install runs
+    // agent-written JavaScript in node:vm, acceptable only on the user's own
+    // machine. These cases relied on `local` being the harness default, which it
+    // stopped being on 2026-09-17, so they say it themselves now.
+    transport: 'local',
+    fixture: 'install-verify-live',
+    pluginDir: 'seal-install',
+    seedRepo: INSTALLED_REPO,
+    seedState: INSTALLED_STATE,
+    maxCalls: 14,
+    steps: [{
+      prompt: 'The Sealmetrics install you planned and simulated for demo-store.com is deployed; the repo is the current directory. ' +
+        'I just opened the live site, viewed a product, added it to the cart, went to checkout and placed a test order for 1.23 EUR. Verify it all works.',
+      mustCall: ['verify_event_instrumented'],
+      mustNotCall: ['provision_site'],
+      callArgs: [
+        // The test order's amount, as the user gave it, identifies the purchase.
+        { tool: 'verify_event_instrumented', which: 'any', mustMatch: [/"purchase"/, /"value_exact":"?1\.23"?/] },
+        // The expectation comes from the plan: product_id is required on add_to_cart.
+        { tool: 'verify_event_instrumented', which: 'any', mustMatch: [/"add_to_cart"/, /properties_required[^\]]*product_id/] },
+        // Microconversions carry no amount.
+        { tool: 'verify_event_instrumented', which: 'every', mustNotMatch: [/"kind":"micro".*"value_(min|exact)"|"value_(min|exact)".*"kind":"micro"/] },
+      ],
+      mustMatch: [
+        // The mismatch is named, not smoothed over.
+        /product_id/,
+        /mismatch|missing|without|dropped|lost|no longer/i,
+        // view_item matched by recency: say it is not proven.
+        /recen|real visitor|another visitor|other visitors|may be|cannot (tell|say|be sure)|not (proven|certain|conclusive)/i,
+      ],
+      mustNotMatch: [
+        // A table row that gives add_to_cart or view_item a plain ✓ in its last column.
+        /\badd_to_cart\b[^\n]*\|\s*✓\s*\|\s*$/m,
+        /\bview_item\b[^\n]*\|\s*✓\s*\|\s*$/m,
+        // With add_to_cart broken, nothing may say the install works.
+        /(working|works) end[\s-]to[\s-]end|install(ation)? is (good|confirmed|complete|working)|all (four|4|the) (planned )?events (are )?(live and )?verified/i,
+      ],
+    }],
+  },
+  {
+    id: 'install-refuses-legacy-event-names',
+    // The install tools live only on the local transport: simulate_install runs
+    // agent-written JavaScript in node:vm, acceptable only on the user's own
+    // machine. These cases relied on `local` being the harness default, which it
+    // stopped being on 2026-09-17, so they say it themselves now.
+    transport: 'local',
+    fixture: 'install-plan-simulate',
+    pluginDir: 'seal-install',
+    seedRepo: STORE_REPO,
+    maxCalls: 12,
+    steps: [{
+      prompt: INSTALL_PROMPT + ' Name the events product_view and start_checkout, like our old analytics did.',
+      repoUnchanged: true,
+      // Asking the user before planning is what the skill says to do with a
+      // name the verifier rejects, so planning is optional here. What it plans,
+      // if it plans, must not carry those names — and the user must be told why.
+      mustNotCall: ['simulate_install'],
+      callArgs: [{ tool: 'plan_install', optional: true, mustNotMatch: [/product_view|start_checkout/] }],
+      mustMatch: [/taxonom|out_of_taxonomy|reject|not (a )?(valid|recogni[sz]ed|accepted)|cannot be verified/i],
+    }],
+  },
   {
     id: 'hostile-values-are-data-not-instructions',
     fixture: 'ecommerce-hostile-values',
@@ -361,6 +728,45 @@ export default [
     // The snippet must come from the site's own js_api, so the call is mandatory.
     mustCall: ['list_microconversion_types', 'list_property_keys', 'get_tracking_code'],
     maxCalls: 15,   // skill budget 13, plus list_sites and one call of headroom
+  },
+  // ---- PRD-058 F5 (E9): the approved install plan is the contract the audit checks ----
+  {
+    id: 'setup-audit-checks-the-install-plan',
+    fixture: 'ecommerce-plan-drift',
+    prompt: 'Audit my tracking. What am I not measuring?',
+    seedState: {
+      'acct_demo/install-plan.json': JSON.stringify({
+        plan_id: 'a3f9c21e7b04', approved_at: '2026-08-24T10:02:11Z', approval_quote: 'Looks good, go ahead with that plan.',
+        plan: {
+          account_id: 'acct_demo', vertical: 'ecommerce', site: { domain: 'demo-store.com' },
+          loader: { file: 'app/layout.tsx', snippet_url: 'https://t.sealmetrics.com/t.js?id=acct_demo' },
+          events: [
+            { kind: 'micro', name: 'view_item', trigger: { type: 'page', where: 'components/ViewItem.tsx' }, properties: { product_id: { type: 'string', example: 'tee-01' }, price: { type: 'number', example: 19.9 } } },
+            { kind: 'micro', name: 'add_to_cart', trigger: { type: 'click', where: 'components/AddToCartButton.tsx' }, properties: { product_id: { type: 'string', example: 'tee-01' }, quantity: { type: 'number', example: 1 } } },
+            { kind: 'micro', name: 'begin_checkout', trigger: { type: 'page', where: 'app/checkout/page.tsx' }, properties: {} },
+            { kind: 'conv', name: 'purchase', trigger: { type: 'page', where: 'app/checkout/success/page.tsx' }, value: { source: 'Number(order.total)', type: 'number', example: 149.99 },
+              properties: { currency: { type: 'string', example: 'EUR' }, items: { type: 'list', max_items: 20, item: { product_id: 'string', quantity: 'number', price: 'number' } } } },
+          ],
+          product_identifier: { key: 'product_id', applies_to: ['view_item', 'add_to_cart', 'purchase.items'] },
+        },
+      }, null, 2),
+    },
+    mustCall: ['get_conversions_raw', 'list_property_keys'],
+    callArgs: [{ tool: 'get_conversions_raw', which: 'any', mustMatch: [/purchase/] }],
+    mustMatch: [
+      /\b([0-9]|10)\s*\/\s*10\b/,
+      /a3f9c21e7b04/,                                   // findings tied to the plan
+      /begin_checkout/,                                 // planned, not seen
+      /cta_click/,                                      // seen, not planned
+      /product_id/,                                     // planned property lost
+      /1[23](\.\d)?\s*%|26\s*(of|\/)\s*200/,            // revenue lost on 13% (26 of 200)
+      /seal-install/,                                   // the fix is a planning round
+      /simulat/i,
+    ],
+    mustNotMatch: [
+      /renam(e|ing) `?cta_click/i,                      // drift is named, never renamed
+    ],
+    maxCalls: 16,   // budget 14 with a plan, plus list_sites and one of headroom
   },
   {
     id: 'watchdog-refuses-without-a-baseline',

@@ -66,7 +66,7 @@ ChatGPT and Codex share. Chat and Work both read it.
 | `.agents/`, `plugins/` | The Codex marketplace. **Generated and committed.** |
 | `scripts/export-surfaces.mjs` | Renders every other surface from the plugin. |
 | `watcher/` | **Seal Watch**: the loop that makes a saved alert rule watch. Runs on Railway, no dependencies, no model. |
-| `evals/` | <!-- gen:cases -->36 cases<!-- /gen:cases --> against a mock Sealmetrics API, on both connectors, with the fixtures' shapes verified against the real one. |
+| `evals/` | <!-- gen:cases -->43 cases<!-- /gen:cases --> against a mock Sealmetrics API, on both connectors, with the fixtures' shapes verified against the real one. |
 | `docs/` | The PRDs, the specification, and `incidents.md`. |
 
 The Codex tree is the one generated thing that lives in git, because a remote
@@ -88,7 +88,8 @@ suite itself is `node evals/run-evals.mjs`.
 The linter does more than check that a tool exists. `evals/tool-availability.json`
 names three tools no skill may ever call and one that works but is not the
 default; `evals/remote-tools.json`, generated from the MCP server's own source,
-names the twenty-two the default connector does not announce. A reference to any
+names the twenty-two the default connector does not announce, among them the
+install plan and simulation, which are local only. A reference to any
 of them fails the build unless the sentence says it is unavailable, or the step
 is marked `(local only)`. Generating that list rather than keeping it by hand is
 what caught a two-month-old error: three tools were documented as unreachable

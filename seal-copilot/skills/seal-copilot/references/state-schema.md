@@ -138,3 +138,5 @@ A deleted rule stays in the file with its date, so "did I have an alert on
 that?" has an answer. `last_fired` is when a run last found the rule firing: a
 rule that fired an hour ago and is still failing is reported as "still open
 since", not as a new incident.
+
+The install plan `setup-audit` reads is in `references/install-plan.md`.

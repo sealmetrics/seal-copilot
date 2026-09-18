@@ -13,7 +13,7 @@
       "name": "seal-copilot",
       "source": "./seal-copilot",
       "description": "AI marketing optimization analyst for Sealmetrics: diagnoses performance, finds revenue opportunities, audits catalog friction per SKU, monitors carts intraday, and turns a sentence into a sound alert rule — all from 100% of your traffic, no consent sampling.",
-      "version": "1.15.1",
+      "version": "1.16.0",
       "author": {
         "name": "Sealmetrics",
         "url": "https://sealmetrics.com"
@@ -35,8 +35,8 @@
     {
       "name": "seal-install",
       "source": "./seal-install",
-      "description": "Installs Sealmetrics on a site from scratch: creates the site, places the tracking snippet, verifies the first hit, and instruments the funnel. Carries the local MCP server, the only one that exposes the provisioning and verification tools.",
-      "version": "1.12.1",
+      "description": "Installs Sealmetrics on a site from scratch: plans the snippet and the funnel with you, writes them, simulates them against the real tracker before anything ships, and verifies the first hit and each event live. Carries the local MCP server, the only one that exposes the provisioning, planning and verification tools.",
+      "version": "1.15.0",
       "author": {
         "name": "Sealmetrics",
         "url": "https://sealmetrics.com"
