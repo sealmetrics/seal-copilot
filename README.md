@@ -95,4 +95,41 @@ is marked `(local only)`. Generating that list rather than keeping it by hand is
 what caught a two-month-old error: three tools were documented as unreachable
 while the remote connector serves all three.
 
+### Evals and the real API
+
+From the repository root:
+
+```
+bash scripts/check.sh              # linter, fixture arithmetic, self-test, manifests
+bash scripts/check.sh --online     # the above plus MCP schema drift
+node evals/run-evals.mjs           # 32 cases against a mock Sealmetrics server
+node evals/run-evals.mjs --runs 3  # each case three times; model wording varies
+node evals/preflight.mjs           # one cheap call: proves the whole chain works
+node scripts/usage-report.mjs      # local metrics from your own state directory
+```
+
+With a real API key, one more check matters more than all of these:
+
+```
+SEALMETRICS_API_KEY=sm_... node evals/validate-fixtures.mjs
+```
+
+**It ran clean on 2026-09-17**, against a real account: 33 tools compared, no
+mismatches, and the six refusals were exactly the scope-gated ones. Before that
+the fixtures were reconstructions from documented field names, and a green suite
+only proved the skills were self-consistent. It compares response **shapes**
+only — key names and types, never your figures — and writes nothing unless you
+pass `--save`. Re-run it whenever the API changes.
+
+`check.sh` needs no model and no API key, and CI runs it on every pull request.
+A second workflow checks weekly that the MCP has not moved under the plugin
+and opens an issue when it has.
+
+The eval suite spawns real `claude -p` sessions, so it costs tokens and needs
+the **CLI** to be authenticated. Being signed in to the Claude desktop app does
+not cover the terminal binary; they keep separate sessions. Either run `claude`
+in a terminal once and complete `/login`, or export `ANTHROPIC_API_KEY` — the
+second is the better route for CI since it needs no interactive step. Filter to
+one case while iterating: `node evals/run-evals.mjs healthy-says-so`.
+
 MIT licensed. Issues and pull requests welcome.
