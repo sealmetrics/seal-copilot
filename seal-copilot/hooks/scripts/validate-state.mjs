@@ -16,11 +16,11 @@
 //    the whole-file validation above, and the contract has always said to Read,
 //    add the line, and Write the file back.
 // 3. `Bash` that redirects into the state directory is refused. It worked once,
-//    on a surface that happened to allow a shell, and silently does nothing on
+//    on a surface that happened to permit a shell, and silently does nothing on
 //    one that does not.
 //
 // It never denies for its own reasons: an unparseable payload, a missing schema
-// directory or an unknown filename all allow. A hook that breaks on a bug of
+// directory or an unknown filename all pass through. A hook that breaks on a bug of
 // its own is worse than no hook.
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname, basename, resolve } from 'node:path';
@@ -29,10 +29,11 @@ import { homedir } from 'node:os';
 import { validateFile } from './lib/validate.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-// "No objection" is silence, never `permissionDecision: 'allow'`: an allow
-// would approve every Bash command and file write in the session without
-// asking the user. This hook can only take a permission away, never grant one.
-const allow = () => process.exit(0);
+// No objection is silence: the hook prints nothing and the user's own
+// permission settings decide. Answering with an approval here would approve
+// every shell command and file write in the session without asking. This hook
+// can only refuse, never grant.
+const noObjection = () => process.exit(0);
 const deny = (reason) => {
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason },
@@ -44,18 +45,18 @@ let input = '';
 process.stdin.on('data', (d) => (input += d));
 process.stdin.on('end', () => {
   let payload;
-  try { payload = JSON.parse(input); } catch { return allow(); }
+  try { payload = JSON.parse(input); } catch { return noObjection(); }
 
   const tool = payload.tool_name || '';
   const args = payload.tool_input || {};
   const stateRoot = resolve(process.env.SEAL_COPILOT_STATE_DIR || join(homedir(), '.seal-copilot'));
 
   const schemasDir = join(here, '..', 'schemas');
-  if (!existsSync(schemasDir)) return allow();
+  if (!existsSync(schemasDir)) return noObjection();
   const schemas = {};
   try {
     for (const f of readdirSync(schemasDir)) schemas[f] = JSON.parse(readFileSync(join(schemasDir, f), 'utf8'));
-  } catch { return allow(); }
+  } catch { return noObjection(); }
 
   const underState = (p) => {
     if (typeof p !== 'string' || !p) return false;
@@ -72,11 +73,11 @@ process.stdin.on('end', () => {
     if (namesState && writes) {
       return deny(
         'State is written with the Read and Write tools, never a shell. A run once appended its ' +
-        'run log with `cat >>`: it worked because that session happened to allow a shell, and on a ' +
+        'run log with `cat >>`: it worked because that session happened to permit a shell, and on a ' +
         'surface that does not it silently never happens. To append to a .jsonl file, Read it, add ' +
         'your line, and Write the whole file back.');
     }
-    return allow();
+    return noObjection();
   }
 
   if (tool === 'Edit' || tool === 'MultiEdit' || tool === 'NotebookEdit') {
@@ -87,16 +88,16 @@ process.stdin.on('end', () => {
         'An Edit skips the schema check that keeps the state contract honest, and a partial edit to ' +
         'a .jsonl file is how a run log ends up half in one format and half in another.');
     }
-    return allow();
+    return noObjection();
   }
 
-  if (tool !== 'Write') return allow();
+  if (tool !== 'Write') return noObjection();
   const path = args.file_path;
-  if (!underState(path)) return allow();
+  if (!underState(path)) return noObjection();
 
   const name = basename(String(path));
   const { known, errors } = validateFile(name, String(args.content ?? ''), schemas);
-  if (!known || !errors.length) return allow();
+  if (!known || !errors.length) return noObjection();
 
   const shown = errors.slice(0, 12);
   const more = errors.length - shown.length;
