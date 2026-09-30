@@ -201,11 +201,29 @@ converts, and the referrer carrying it is named · last non-direct click attribu
 recommendation comes with evidence, action, estimated € impact, and a
 verification plan.
 
+## What runs on your machine
+
+Three hooks, all local Node scripts in `hooks/scripts/`, none of which sends
+anything anywhere:
+
+- **SessionStart** (`session-start.mjs`) tells the model where the state
+  directory is and which site profiles are cached there.
+- **PreToolUse on Sealmetrics tools** (`call-budget.mjs`) counts the calls in
+  the current turn in a temp file and, past the largest skill budget, tells the
+  model to wrap up. It never approves or blocks a call.
+- **PreToolUse on Write, Edit and Bash** (`validate-state.mjs`) refuses a write
+  to `~/.seal-copilot/` that does not match the schemas in `hooks/schemas/`.
+  It can only refuse; it never approves a tool call, so your own permission
+  settings decide everything else.
+
+The only network traffic is the Sealmetrics connector declared in `.mcp.json`
+(`https://mcp.sealmetrics.com/mcp`), authorised with your own account.
+
 ## Privacy
 
 Sealmetrics is consentless by design and stores no personal identifiers.
 Seal Copilot works exclusively with aggregated metrics — no PII is ever
-processed or sent to the model.
+processed or sent to the model. Privacy policy: https://sealmetrics.com/privacy/
 
 ## Limitations
 
@@ -232,40 +250,8 @@ processed or sent to the model.
 
 ## Development
 
-Two checks, from the repository root:
-
-```
-bash scripts/check.sh              # linter, fixture arithmetic, self-test, manifests
-bash scripts/check.sh --online     # the above plus MCP schema drift
-node evals/run-evals.mjs           # 32 cases against a mock Sealmetrics server
-node evals/run-evals.mjs --runs 3  # each case three times; model wording varies
-node evals/preflight.mjs           # one cheap call: proves the whole chain works
-node scripts/usage-report.mjs      # local metrics from your own state directory
-```
-
-With a real API key, one more check matters more than all of these:
-
-```
-SEALMETRICS_API_KEY=sm_... node evals/validate-fixtures.mjs
-```
-
-**It ran clean on 2026-09-17**, against a real account: 33 tools compared, no
-mismatches, and the six refusals were exactly the scope-gated ones. Before that
-the fixtures were reconstructions from documented field names, and a green suite
-only proved the skills were self-consistent. It compares response **shapes**
-only — key names and types, never your figures — and writes nothing unless you
-pass `--save`. Re-run it whenever the API changes.
-
-`check.sh` needs no model and no API key, and CI runs it on every pull request.
-A second workflow checks weekly that the MCP has not moved under the plugin
-and opens an issue when it has.
-
-The eval suite spawns real `claude -p` sessions, so it costs tokens and needs
-the **CLI** to be authenticated. Being signed in to the Claude desktop app does
-not cover the terminal binary; they keep separate sessions. Either run `claude`
-in a terminal once and complete `/login`, or export `ANTHROPIC_API_KEY` — the
-second is the better route for CI since it needs no interactive step. Filter to
-one case while iterating: `node evals/run-evals.mjs healthy-says-so`.
+The checks, the eval suite and how to run them against a real account are in the
+[repository README](https://github.com/sealmetrics/seal-copilot#working-on-it).
 
 ## Support
 

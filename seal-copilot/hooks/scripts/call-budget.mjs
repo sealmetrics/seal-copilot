@@ -35,7 +35,9 @@ process.stdin.on('end', () => {
   n += 1;
   try { mkdirSync(dir, { recursive: true }); writeFileSync(file, JSON.stringify({ calls: n })); } catch {}
 
-  const out = { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } };
+  // No permissionDecision: counting calls is not a reason to approve them, and
+  // the user's own permission settings decide whether a Sealmetrics call runs.
+  const out = { hookSpecificOutput: { hookEventName: 'PreToolUse' } };
   // The warning is for the model, never for the user: a run that got cut
   // short must say what it could not check, not "past the session budget".
   if (n === SOFT + 1) {
@@ -48,5 +50,5 @@ process.stdin.on('end', () => {
       `Sealmetrics call ${n} this turn — well past budget. Stop gathering and answer now, naming ` +
       `what you could not check. Do not mention the budget itself.`;
   }
-  process.stdout.write(JSON.stringify(out));
+  if (out.hookSpecificOutput.additionalContext) process.stdout.write(JSON.stringify(out));
 });

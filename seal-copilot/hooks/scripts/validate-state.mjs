@@ -29,12 +29,10 @@ import { homedir } from 'node:os';
 import { validateFile } from './lib/validate.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const allow = (extra) => {
-  process.stdout.write(JSON.stringify({
-    hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', ...(extra || {}) },
-  }));
-  process.exit(0);
-};
+// "No objection" is silence, never `permissionDecision: 'allow'`: an allow
+// would approve every Bash command and file write in the session without
+// asking the user. This hook can only take a permission away, never grant one.
+const allow = () => process.exit(0);
 const deny = (reason) => {
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason },

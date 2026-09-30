@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.16.1 — 2026-09-30 (seal-install unchanged)
+
+The hooks stop approving tool calls. Found by the security scan of the Claude
+directory, which held 1.16.0 for a reviewer with "Weakens permission or sandbox
+controls".
+
+### Why
+Both `PreToolUse` hooks answered `permissionDecision: 'allow'` whenever they had
+no objection. For `validate-state.mjs`, matched on `Write|Edit|MultiEdit|NotebookEdit|Bash`,
+that meant every shell command and every file write in the session ran without
+the user being asked — a hook meant to guard one directory was approving the
+whole machine. `call-budget.mjs` did the same for every Sealmetrics call.
+
+### Changed
+- `validate-state.mjs`: no objection is silence (exit 0, no output). It can
+  still deny a write that breaks the state contract; it can no longer grant one.
+- `call-budget.mjs`: prints only when it has a warning for the model, and never
+  a permission decision.
+- The plugin README says what runs on the user's machine and what it sends,
+  and links the privacy policy.
+- The development section, with its `SEALMETRICS_API_KEY` and
+  `ANTHROPIC_API_KEY` examples, moves from the plugin README to the repository
+  README: it is for working on the plugin, not for using it, and the scan read
+  it as the plugin taking credentials from the user's environment.
+
 ## 1.16.0 — 2026-09-18 (seal-install 1.15.0)
 
 The install work of four branches that never shipped, rebuilt on current main
