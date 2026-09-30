@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.16.2 — 2026-09-30 (seal-install unchanged)
+
+The directory's validator still held 1.16.1 with "Hook grants permission". The
+hooks no longer approved anything, but `validate-state.mjs` said so in a
+comment that quoted the old approval literally, and its no-objection helper was
+named after it. The validator reads the source without running it, so it read
+the explanation as the behaviour. The helper is now `noObjection()` and the
+comments describe the rule without quoting the approval. Behaviour unchanged.
+
 ## 1.16.1 — 2026-09-30 (seal-install unchanged)
 
 The hooks stop approving tool calls. Found by the security scan of the Claude
