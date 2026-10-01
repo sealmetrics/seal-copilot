@@ -1,5 +1,17 @@
 # Changelog
 
+## seal-install 1.16.1 — 2026-10-01 (Seal Copilot unchanged)
+
+The API key is optional. 1.16.0 made it required, which locked out the person
+`seal-install` exists for: someone with no Sealmetrics account. Without a key
+the local server starts in setup mode, `provision_site` creates the account
+from the chat, and the new key is used for the rest of the session.
+
+- `userConfig.api_key` is `required: false` with an empty default, so an unset
+  key reaches the server as an empty string, which it reads as no key.
+- The README says what to do with and without an account, and how to keep the
+  key for later sessions.
+
 ## 1.16.3 — 2026-10-01 (seal-install 1.16.0)
 
 `seal-install` gets ready for the Claude directory, whose validator blocked it.

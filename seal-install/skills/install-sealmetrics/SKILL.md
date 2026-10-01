@@ -21,7 +21,7 @@ that writes code, and the only one that can create an account — both are gated
 below. Budget: ≤24 tool calls plus whatever editing the codebase takes.
 
 **This skill needs the local connector**, the one this plugin carries:
-`npx @sealmetrics/mcp` with the API key the plugin asks for. Most of
+`npx @sealmetrics/mcp`, with or without an API key. Most of
 the procedure — `provision_site`, `verify_setup`, `get_instrumentation_guide`,
 `plan_install`, `simulate_install`, `verify_event_instrumented` — is not
 announced by the remote OAuth connector, which is why installing lives in its
@@ -29,7 +29,7 @@ own plugin rather than in Seal Copilot.
 
 Check before step 0: if `provision_site` and `verify_setup` are not in your
 tool list, you are on the remote connector. Say so in one line, tell the user
-to install `seal-install` and enter their API key when it asks, and stop. Never hand
+to install `seal-install`, and stop. Never hand
 over a snippet you could not fetch, which is how a site ends up with tracking
 that looks right and measures nothing. If those two are there but
 `plan_install` and `simulate_install` are not, the connector predates them
