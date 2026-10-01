@@ -42,7 +42,7 @@ connector decides which tools exist" in
 2. `get_overview(30d)` — is data flowing at expected volume? If the site has
    **no data at all**, stop auditing: there is nothing to score until the pixel
    is live. Name the `seal-install` plugin, which is where installing lives, and
-   say it needs `SEALMETRICS_API_KEY` in the environment.
+   say it asks for a Sealmetrics API key when enabled.
 3. `list_microconversion_types` — which funnel stages are instrumented?
    Compare against the canonical funnel for the vertical (stores:
    `view_item` / `add_to_cart` / `begin_checkout`; hotels: `search` /
