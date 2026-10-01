@@ -154,7 +154,7 @@ the matching playbook:
 
 **Installing tracking is a different plugin.** It needs provisioning and
 verification tools that no connector here announces. Say in one line that it is
-`seal-install` and that it needs `SEALMETRICS_API_KEY`, then stop. Never
+`seal-install`, which asks for a Sealmetrics API key, then stop. Never
 improvise a snippet from memory: one that was not fetched is wrong for the site,
 and it gets pasted anyway.
 

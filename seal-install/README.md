@@ -28,18 +28,15 @@ person reading a weekly report is not, and should never meet an API key.
 claude plugin marketplace add sealmetrics/seal-copilot
 ```
 
-Then `claude plugin install seal-install@sealmetrics`, and put your key in the
-environment before starting the session:
-
-```bash
-export SEALMETRICS_API_KEY=sm_...
-```
-
-Generate one at my.sealmetrics.com → Settings → API Tokens. The key is read by
-`npx @sealmetrics/mcp`, which this plugin declares; nothing is stored here.
+Then `claude plugin install seal-install@sealmetrics`. When the plugin is
+enabled, Claude Code asks for your **Sealmetrics API key**: generate one at
+my.sealmetrics.com → Settings → API Tokens. The key is kept in your system's
+secure credential store and passed only to the Sealmetrics MCP server this
+plugin declares (`npx @sealmetrics/mcp@1.11.1`, pinned); nothing is written to
+the plugin or sent anywhere else.
 
 Claude Code and Cowork only. Codex and Claude.ai have no way to run a local
-stdio server with a key from your environment, so Seal Copilot ships there and
+stdio server, so Seal Copilot ships there and
 this does not.
 
 ## What it does

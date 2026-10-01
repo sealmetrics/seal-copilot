@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.16.3 — 2026-10-01 (seal-install 1.16.0)
+
+`seal-install` gets ready for the Claude directory, whose validator blocked it.
+
+### Changed — `seal-install` 1.16.0
+- **The MCP server is pinned:** `npx -y @sealmetrics/mcp@1.11.1`. An unpinned
+  launcher is a blocking finding: whatever `latest` points to on the day a user
+  enables the plugin is what runs on their machine.
+- **The API key is asked for, not read from the environment.** `plugin.json`
+  declares `userConfig.api_key` with `sensitive: true`; Claude Code prompts for it
+  when the plugin is enabled, keeps it in the system's credential store and
+  passes it to the server as `${user_config.api_key}`. Reading
+  `SEALMETRICS_API_KEY` from the user's shell was held as "Uses a credential from
+  the user's machine".
+- README and the install skill say so.
+
+### Changed — Seal Copilot
+- `setup-audit` and the core skill point at `seal-install` and its API key
+  prompt, not at an environment variable.
+
 ## 1.16.2 — 2026-09-30 (seal-install unchanged)
 
 The directory's validator still held 1.16.1 with "Hook grants permission". The
