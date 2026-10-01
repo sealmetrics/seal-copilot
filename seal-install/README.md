@@ -29,11 +29,18 @@ claude plugin marketplace add sealmetrics/seal-copilot
 ```
 
 Then `claude plugin install seal-install@sealmetrics`. When the plugin is
-enabled, Claude Code asks for your **Sealmetrics API key**: generate one at
-my.sealmetrics.com → Settings → API Tokens. The key is kept in your system's
-secure credential store and passed only to the Sealmetrics MCP server this
-plugin declares (`npx @sealmetrics/mcp@1.11.1`, pinned); nothing is written to
-the plugin or sent anywhere else.
+enabled, Claude Code asks for an optional **Sealmetrics API key**:
+
+- **No account yet?** Leave it empty. The plugin creates a free account and
+  site from the chat (`provision_site`, after you accept the terms), and uses
+  the new key for the rest of that session. To keep using it in later
+  sessions, add the key in the plugin's settings.
+- **Already a customer?** Paste an API token from my.sealmetrics.com →
+  Settings → API Tokens.
+
+The key is kept in your system's secure credential store and passed only to the
+Sealmetrics MCP server this plugin declares (`npx @sealmetrics/mcp@1.11.1`,
+pinned); nothing is written to the plugin or sent anywhere else.
 
 Claude Code and Cowork only. Codex and Claude.ai have no way to run a local
 stdio server, so Seal Copilot ships there and

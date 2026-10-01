@@ -28,10 +28,11 @@ connector: run `/mcp`, pick **sealmetrics**, and sign in with your Sealmetrics
 account in the browser. No token to copy.
 
 To install tracking on a site, add the second plugin as well:
-`claude plugin install seal-install@sealmetrics`; it asks for your Sealmetrics
-API key when enabled and keeps it in the system's credential store. It is a
-separate install because the OAuth connector cannot reach the provisioning tools, and a skill that promises what it cannot finish is
-worse than one that is not there.
+`claude plugin install seal-install@sealmetrics`. It asks for an optional
+Sealmetrics API key: leave it empty without an account, and it creates one from
+the chat. It is a separate install because the OAuth connector cannot reach the
+provisioning tools, and a skill that promises what it cannot finish is worse
+than one that is not there.
 
 **Codex**
 
